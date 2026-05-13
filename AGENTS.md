@@ -22,8 +22,8 @@
 
 | 触发词 | 规则文件 | 核心内容 |
 |--------|----------|----------|
-| `写代码`、`修Bug`、`重构`、`Debug`、`优化` | behavior.md | 思考方式、工作原则、场景原则 |
-| `提交`、`commit`、`git`、`push` | conventions.md + review.md | Git提交规范、提交前检查清单 |
+| `写代码`、`修Bug`、`重构`、`Debug`、`优化` | behavior.md + verification.md | 思考方式、工作原则、验证流程 |
+| `提交`、`commit`、`git`、`push` | conventions.md + review.md + verification.md | Git提交规范、提交前检查、验证流程 |
 | `API`、`数据库`、`字段`、`表`、`安全`、`错误码`、`配置`、`日志` | conventions.md | API/DB/安全/错误码/配置/日志规范 |
 | `架构`、`模块`、`依赖`、`分层`、`新建项目`、`初始化目录` | architecture.md + frontend.md + backend.md | 架构原则、前后端目录结构 |
 | `部署`、`Docker`、`docker-compose`、`容器` | deployment.md + templates.md | 部署规范、Dockerfile模板 |
