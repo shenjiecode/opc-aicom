@@ -17,10 +17,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Routes without Layout - Auth pages */}
+        {/* Routes without Layout - Auth pages & Fullscreen pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+        <Route path="/opc-workbench" element={<OPCWorkbench />} />
         {/* Routes with Layout */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
@@ -32,7 +32,6 @@ function App() {
           <Route path="/my-agents" element={<MyAgents />} />
           <Route path="/my-workflows" element={<MyWorkflows />} />
           <Route path="/points-mall" element={<PointsMall />} />
-<Route path="/opc-workbench" element={<OPCWorkbench />} />
         </Route>
       </Routes>
     </BrowserRouter>
