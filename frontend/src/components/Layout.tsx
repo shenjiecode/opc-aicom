@@ -30,7 +30,7 @@ export function Layout({ className }: LayoutProps) {
   }, [mobileMenuOpen]);
 
   return (
-    <div className={cn("min-h-screen bg-[var(--gray-950)]", className)}>
+    <div className={cn("h-screen overflow-hidden bg-[var(--gray-950)] flex", className)}>
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div 
@@ -39,9 +39,9 @@ export function Layout({ className }: LayoutProps) {
         />
       )}
 
-      {/* Sidebar - Desktop: fixed, Mobile: slide-in */}
+      {/* Sidebar - Desktop: relative, Mobile: fixed with slide-in */}
       <div className={cn(
-        "transition-transform duration-300 ease-in-out lg:translate-x-0",
+        "fixed lg:relative h-full z-50 transition-transform duration-300 ease-in-out lg:translate-x-0",
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <Sidebar 
@@ -51,25 +51,17 @@ export function Layout({ className }: LayoutProps) {
         />
       </div>
 
-      {/* Main Content Wrapper */}
-      <div className={cn(
-        "transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
-      )}>
-        {/* Header */}
+      {/* Main Content Wrapper - flex-col to stack header + content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header - fixed height */}
         <Header 
           sidebarCollapsed={sidebarCollapsed}
           onMenuClick={() => setMobileMenuOpen(true)} 
         />
 
-        {/* Main Content Area */}
-        <main 
-          className={cn(
-            "pt-[var(--header-height)] min-h-screen",
-            "bg-[var(--gray-950)]"
-          )}
-        >
-          <div className="p-4 lg:p-8">
+        {/* Main Content Area - scrollable */}
+        <main className="flex-1 overflow-y-auto bg-[var(--gray-950)]">
+          <div className="p-4 lg:p-8 min-h-full">
             <Outlet />
           </div>
         </main>

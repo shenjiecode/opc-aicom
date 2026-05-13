@@ -91,7 +91,7 @@ export function Sidebar({
   return (
     <aside 
       className={cn(
-        "fixed left-0 top-0 bottom-0 z-40",
+        "h-full flex-shrink-0",
         "bg-[var(--gray-900)] border-r border-[var(--gray-800)]",
         "flex flex-col",
         "transition-all duration-300 ease-in-out",

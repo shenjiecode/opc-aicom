@@ -44,11 +44,9 @@ export function Header({ className, onMenuClick, sidebarCollapsed = false }: Hea
   return (
     <header 
       className={cn(
-        "fixed top-0 right-0 left-0 z-50 h-[var(--header-height)]",
+        "flex-shrink-0 h-[var(--header-height)]",
         "bg-[var(--gray-900)] border-b border-[var(--gray-800)]",
         "flex items-center justify-between px-4 lg:px-6",
-        "transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "lg:left-16" : "lg:left-64",
         className
       )}
     >
