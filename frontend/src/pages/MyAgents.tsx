@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -7,11 +6,11 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Bot,
   Plus,
@@ -26,13 +25,13 @@ import {
   Zap,
   Calendar,
   Activity,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface Agent {
   id: string;
   name: string;
   description: string;
-  status: 'active' | 'paused' | 'offline';
+  status: "active" | "paused" | "offline";
   model: string;
   version: string;
   createdAt: string;
@@ -45,85 +44,96 @@ interface Agent {
 
 const mockAgents: Agent[] = [
   {
-    id: '1',
-    name: 'Customer Support Bot',
-    description: 'Handles customer inquiries, FAQs, and routes complex issues to human agents',
-    status: 'active',
-    model: 'GPT-4',
-    version: '2.1.0',
-    createdAt: '2024-01-10',
-    lastActive: '2 min ago',
+    id: "1",
+    name: "Customer Support Bot",
+    description:
+      "Handles customer inquiries, FAQs, and routes complex issues to human agents",
+    status: "active",
+    model: "GPT-4",
+    version: "2.1.0",
+    createdAt: "2024-01-10",
+    lastActive: "2 min ago",
     conversations: 15420,
-    avgResponseTime: '1.2s',
-    tags: ['Support', 'Customer Service'],
-    icon: 'MessageSquare',
+    avgResponseTime: "1.2s",
+    tags: ["Support", "Customer Service"],
+    icon: "MessageSquare",
   },
   {
-    id: '2',
-    name: 'Code Assistant Pro',
-    description: 'Helps with code review, debugging, and generating code snippets',
-    status: 'active',
-    model: 'Claude 3',
-    version: '1.5.2',
-    createdAt: '2024-01-15',
-    lastActive: '5 min ago',
+    id: "2",
+    name: "Code Assistant Pro",
+    description:
+      "Helps with code review, debugging, and generating code snippets",
+    status: "active",
+    model: "Claude 3",
+    version: "1.5.2",
+    createdAt: "2024-01-15",
+    lastActive: "5 min ago",
     conversations: 8930,
-    avgResponseTime: '2.1s',
-    tags: ['Development', 'Coding'],
-    icon: 'Code',
+    avgResponseTime: "2.1s",
+    tags: ["Development", "Coding"],
+    icon: "Code",
   },
   {
-    id: '3',
-    name: 'Data Analyst',
-    description: 'Analyzes data, creates visualizations, and generates insights',
-    status: 'paused',
-    model: 'GPT-4',
-    version: '1.0.0',
-    createdAt: '2024-01-20',
-    lastActive: '2 days ago',
+    id: "3",
+    name: "Data Analyst",
+    description:
+      "Analyzes data, creates visualizations, and generates insights",
+    status: "paused",
+    model: "GPT-4",
+    version: "1.0.0",
+    createdAt: "2024-01-20",
+    lastActive: "2 days ago",
     conversations: 3200,
-    avgResponseTime: '3.5s',
-    tags: ['Analytics', 'Data'],
-    icon: 'TrendingUp',
+    avgResponseTime: "3.5s",
+    tags: ["Analytics", "Data"],
+    icon: "TrendingUp",
   },
   {
-    id: '4',
-    name: 'Content Writer',
-    description: 'Creates blog posts, social media content, and marketing copy',
-    status: 'offline',
-    model: 'GPT-3.5',
-    version: '1.2.0',
-    createdAt: '2024-02-01',
-    lastActive: '1 week ago',
+    id: "4",
+    name: "Content Writer",
+    description: "Creates blog posts, social media content, and marketing copy",
+    status: "offline",
+    model: "GPT-3.5",
+    version: "1.2.0",
+    createdAt: "2024-02-01",
+    lastActive: "1 week ago",
     conversations: 5600,
-    avgResponseTime: '1.8s',
-    tags: ['Content', 'Marketing'],
-    icon: 'FileText',
+    avgResponseTime: "1.8s",
+    tags: ["Content", "Marketing"],
+    icon: "FileText",
   },
 ];
 
 const statsData = [
-  { label: 'Total Agents', value: '12', icon: Bot, change: '+2 this month' },
-  { label: 'Active Now', value: '8', icon: Activity, change: '67% active' },
-  { label: 'Total Conversations', value: '33.2k', icon: MessageSquare, change: '+12% vs last month' },
-  { label: 'Avg Response Time', value: '1.8s', icon: Zap, change: '20% faster' },
+  { label: "Total Agents", value: "12", icon: Bot, change: "+2 this month" },
+  { label: "Active Now", value: "8", icon: Activity, change: "67% active" },
+  {
+    label: "Total Conversations",
+    value: "33.2k",
+    icon: MessageSquare,
+    change: "+12% vs last month",
+  },
+  {
+    label: "Avg Response Time",
+    value: "1.8s",
+    icon: Zap,
+    change: "20% faster",
+  },
 ];
-
-import { Code, FileText, TrendingUp } from 'lucide-react';
 
 export default function MyAgents() {
   const [agents, setAgents] = useState<Agent[]>(mockAgents);
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>(mockAgents);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: '',
-    description: '',
-    model: 'GPT-4',
+    name: "",
+    description: "",
+    model: "GPT-4",
   });
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   const isAuthenticated = !!token;
 
   useEffect(() => {
@@ -135,11 +145,11 @@ export default function MyAgents() {
         (agent) =>
           agent.name.toLowerCase().includes(query) ||
           agent.description.toLowerCase().includes(query) ||
-          agent.tags.some((tag) => tag.toLowerCase().includes(query))
+          agent.tags.some((tag) => tag.toLowerCase().includes(query)),
       );
     }
 
-    if (selectedStatus !== 'all') {
+    if (selectedStatus !== "all") {
       result = result.filter((agent) => agent.status === selectedStatus);
     }
 
@@ -150,16 +160,16 @@ export default function MyAgents() {
     setAgents((prev) =>
       prev.map((agent) => {
         if (agent.id === agentId) {
-          const newStatus = agent.status === 'active' ? 'paused' : 'active';
+          const newStatus = agent.status === "active" ? "paused" : "active";
           return { ...agent, status: newStatus };
         }
         return agent;
-      })
+      }),
     );
   };
 
   const handleDeleteAgent = (agentId: string) => {
-    if (confirm('Are you sure you want to delete this agent?')) {
+    if (confirm("Are you sure you want to delete this agent?")) {
       setAgents((prev) => prev.filter((agent) => agent.id !== agentId));
     }
   };
@@ -169,9 +179,9 @@ export default function MyAgents() {
       ...agent,
       id: Date.now().toString(),
       name: `${agent.name} (Copy)`,
-      status: 'paused',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastActive: 'Just created',
+      status: "paused",
+      createdAt: new Date().toISOString().split("T")[0],
+      lastActive: "Just created",
     };
     setAgents((prev) => [duplicated, ...prev]);
   };
@@ -182,44 +192,44 @@ export default function MyAgents() {
       id: Date.now().toString(),
       name: createForm.name,
       description: createForm.description,
-      status: 'paused',
+      status: "paused",
       model: createForm.model,
-      version: '1.0.0',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastActive: 'Just created',
+      version: "1.0.0",
+      createdAt: new Date().toISOString().split("T")[0],
+      lastActive: "Just created",
       conversations: 0,
-      avgResponseTime: 'N/A',
-      tags: ['Custom'],
-      icon: 'Bot',
+      avgResponseTime: "N/A",
+      tags: ["Custom"],
+      icon: "Bot",
     };
     setAgents((prev) => [newAgent, ...prev]);
     setIsCreateModalOpen(false);
-    setCreateForm({ name: '', description: '', model: 'GPT-4' });
+    setCreateForm({ name: "", description: "", model: "GPT-4" });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'paused':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'offline':
-        return 'bg-slate-100 text-slate-700 border-slate-200';
+      case "active":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "paused":
+        return "bg-amber-100 text-amber-700 border-amber-200";
+      case "offline":
+        return "bg-slate-100 text-slate-700 border-slate-200";
       default:
-        return 'bg-slate-100 text-slate-700';
+        return "bg-slate-100 text-slate-700";
     }
   };
 
   const getStatusDot = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'bg-green-500';
-      case 'paused':
-        return 'bg-amber-500';
-      case 'offline':
-        return 'bg-slate-400';
+      case "active":
+        return "bg-green-500";
+      case "paused":
+        return "bg-amber-500";
+      case "offline":
+        return "bg-slate-400";
       default:
-        return 'bg-slate-400';
+        return "bg-slate-400";
     }
   };
 
@@ -230,10 +240,15 @@ export default function MyAgents() {
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">My Agents</h1>
-            <p className="mt-1 text-slate-600">Manage and customize your AI agents</p>
+            <p className="mt-1 text-slate-600">
+              Manage and customize your AI agents
+            </p>
           </div>
           {isAuthenticated && (
-            <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" />
               Create Agent
             </Button>
@@ -248,7 +263,9 @@ export default function MyAgents() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-500">{stat.label}</p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">{stat.value}</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900">
+                      {stat.value}
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">{stat.change}</p>
                   </div>
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
@@ -274,10 +291,10 @@ export default function MyAgents() {
                 />
               </div>
               <div className="flex gap-2">
-                {['all', 'active', 'paused', 'offline'].map((status) => (
+                {["all", "active", "paused", "offline"].map((status) => (
                   <Button
                     key={status}
-                    variant={selectedStatus === status ? 'default' : 'outline'}
+                    variant={selectedStatus === status ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedStatus(status)}
                     className="capitalize"
@@ -296,12 +313,12 @@ export default function MyAgents() {
             <CardContent className="py-12 text-center">
               <Bot className="mx-auto mb-4 h-12 w-12 text-slate-300" />
               <h3 className="mb-2 text-lg font-medium text-slate-900">
-                {searchQuery ? 'No agents found' : 'No agents yet'}
+                {searchQuery ? "No agents found" : "No agents yet"}
               </h3>
               <p className="mb-4 text-slate-500">
                 {searchQuery
-                  ? 'Try adjusting your search'
-                  : 'Create your first AI agent to get started'}
+                  ? "Try adjusting your search"
+                  : "Create your first AI agent to get started"}
               </p>
               {!searchQuery && isAuthenticated && (
                 <Button onClick={() => setIsCreateModalOpen(true)}>
@@ -326,12 +343,16 @@ export default function MyAgents() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">{agent.name}</CardTitle>
+                          <CardTitle className="text-base">
+                            {agent.name}
+                          </CardTitle>
                           <div
                             className={`h-2 w-2 rounded-full ${getStatusDot(agent.status)}`}
                           />
                         </div>
-                        <p className="text-xs text-slate-500">v{agent.version}</p>
+                        <p className="text-xs text-slate-500">
+                          v{agent.version}
+                        </p>
                       </div>
                     </div>
                     <Badge
@@ -384,12 +405,12 @@ export default function MyAgents() {
 
                 <CardFooter className="flex gap-2 pt-0">
                   <Button
-                    variant={agent.status === 'active' ? 'outline' : 'default'}
+                    variant={agent.status === "active" ? "outline" : "default"}
                     size="sm"
                     className="flex-1"
                     onClick={() => handleToggleStatus(agent.id)}
                   >
-                    {agent.status === 'active' ? (
+                    {agent.status === "active" ? (
                       <>
                         <Pause className="mr-1 h-3 w-3" />
                         Pause
@@ -459,7 +480,10 @@ export default function MyAgents() {
                       id="description"
                       value={createForm.description}
                       onChange={(e) =>
-                        setCreateForm({ ...createForm, description: e.target.value })
+                        setCreateForm({
+                          ...createForm,
+                          description: e.target.value,
+                        })
                       }
                       placeholder="Describe what this agent does..."
                       rows={3}
@@ -477,8 +501,12 @@ export default function MyAgents() {
                       }
                       className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
                     >
-                      <option value="GPT-4">GPT-4 (Best for complex tasks)</option>
-                      <option value="Claude 3">Claude 3 (Great for analysis)</option>
+                      <option value="GPT-4">
+                        GPT-4 (Best for complex tasks)
+                      </option>
+                      <option value="Claude 3">
+                        Claude 3 (Great for analysis)
+                      </option>
                       <option value="GPT-3.5">GPT-3.5 (Fast responses)</option>
                     </select>
                   </div>

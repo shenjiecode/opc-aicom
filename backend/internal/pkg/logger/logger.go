@@ -17,10 +17,10 @@ var (
 type Config struct {
 	Level      string `json:"level"`      // debug, info, warn, error
 	FilePath   string `json:"filePath"`   // log file path
-	MaxSize    int    `json:"maxSize"`  // max size in MB before rotation
+	MaxSize    int    `json:"maxSize"`    // max size in MB before rotation
 	MaxBackups int    `json:"maxBackups"` // max number of old files to keep
-	MaxAge     int    `json:"maxAge"`    // max days to retain old files
-	Compress   bool   `json:"compress"` // compress rotated files
+	MaxAge     int    `json:"maxAge"`     // max days to retain old files
+	Compress   bool   `json:"compress"`   // compress rotated files
 }
 
 // DefaultConfig returns a default configuration

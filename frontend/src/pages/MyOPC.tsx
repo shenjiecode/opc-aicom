@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Coins,
   Ticket,
@@ -14,7 +14,7 @@ import {
   Eye,
   Heart,
   MessageCircle,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface UserAssets {
   points: number;
@@ -25,7 +25,7 @@ interface UserAssets {
 interface Task {
   id: string;
   title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: "pending" | "in_progress" | "completed" | "cancelled";
   reward: number;
   createdAt: string;
   updatedAt: string;
@@ -49,21 +49,21 @@ interface UserInfo {
   appliedTasks: Task[];
 }
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 async function fetchUserInfo(token: string): Promise<UserInfo> {
   const response = await fetch(`${API_BASE}/user/info`, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({}),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch user info');
+    throw new Error(error.message || "Failed to fetch user info");
   }
 
   const result = await response.json();
@@ -72,29 +72,44 @@ async function fetchUserInfo(token: string): Promise<UserInfo> {
 
 async function fetchUserPosts(token: string): Promise<Post[]> {
   const response = await fetch(`${API_BASE}/community/list`, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ page: 1, pageSize: 10 }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch posts');
+    throw new Error(error.message || "Failed to fetch posts");
   }
 
   const result = await response.json();
   return result.data.posts || [];
 }
 
-function getStatusBadge(status: Task['status']) {
-  const config: Record<Task['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; icon: typeof CheckCircle }> = {
-    pending: { variant: 'outline', label: 'Pending', icon: Clock },
-    in_progress: { variant: 'default', label: 'In Progress', icon: AlertCircle },
-    completed: { variant: 'secondary', label: 'Completed', icon: CheckCircle },
-    cancelled: { variant: 'destructive', label: 'Cancelled', icon: AlertCircle },
+function getStatusBadge(status: Task["status"]) {
+  const config: Record<
+    Task["status"],
+    {
+      variant: "default" | "secondary" | "destructive" | "outline";
+      label: string;
+      icon: typeof CheckCircle;
+    }
+  > = {
+    pending: { variant: "outline", label: "Pending", icon: Clock },
+    in_progress: {
+      variant: "default",
+      label: "In Progress",
+      icon: AlertCircle,
+    },
+    completed: { variant: "secondary", label: "Completed", icon: CheckCircle },
+    cancelled: {
+      variant: "destructive",
+      label: "Cancelled",
+      icon: AlertCircle,
+    },
   };
 
   const { variant, label, icon: Icon } = config[status];
@@ -110,26 +125,28 @@ export default function MyOPC() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) {
-          throw new Error('Please login to view this page');
+          throw new Error("Please login to view this page");
         }
 
         const [info, posts] = await Promise.all([
           fetchUserInfo(token),
           fetchUserPosts(token),
         ]);
-        
+
         setUserInfo(info);
-        const myPosts = posts.filter(post => post.author === info.username);
+        const myPosts = posts.filter((post) => post.author === info.username);
         setUserPosts(myPosts);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load user info');
+        setError(
+          err instanceof Error ? err.message : "Failed to load user info",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -140,37 +157,40 @@ export default function MyOPC() {
 
   const assetCards = [
     {
-      title: 'Points',
+      title: "Points",
       value: userInfo?.assets.points ?? 0,
       icon: Coins,
-      description: 'Earned from completing tasks',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
+      description: "Earned from completing tasks",
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-50",
     },
     {
-      title: 'Coupons',
+      title: "Coupons",
       value: userInfo?.assets.coupons ?? 0,
       icon: Ticket,
-      description: 'Available discount coupons',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      description: "Available discount coupons",
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
     },
     {
-      title: 'Compute Hours',
+      title: "Compute Hours",
       value: userInfo?.assets.computeHours ?? 0,
       icon: Cpu,
-      description: 'Remaining compute resources',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      description: "Remaining compute resources",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
     },
   ];
 
-  const totalTasks = (userInfo?.myTasks?.length || 0) + (userInfo?.appliedTasks?.length || 0);
-  const completedTasks = 
-    (userInfo?.myTasks?.filter((t) => t.status === 'completed').length || 0) +
-    (userInfo?.appliedTasks?.filter((t) => t.status === 'completed').length || 0);
-  const successRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const totalEarnings = 
+  const totalTasks =
+    (userInfo?.myTasks?.length || 0) + (userInfo?.appliedTasks?.length || 0);
+  const completedTasks =
+    (userInfo?.myTasks?.filter((t) => t.status === "completed").length || 0) +
+    (userInfo?.appliedTasks?.filter((t) => t.status === "completed").length ||
+      0);
+  const successRate =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const totalEarnings =
     (userInfo?.myTasks?.reduce((sum, t) => sum + t.reward, 0) || 0) +
     (userInfo?.appliedTasks?.reduce((sum, t) => sum + t.reward, 0) || 0);
 
@@ -190,12 +210,14 @@ export default function MyOPC() {
           <div className="flex items-center gap-4 mb-2">
             <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center">
               <span className="text-2xl font-bold text-slate-600">
-                {userInfo?.username?.charAt(0).toUpperCase() || '?'}
+                {userInfo?.username?.charAt(0).toUpperCase() || "?"}
               </span>
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-900">My OPC</h1>
-              <p className="text-slate-600">@{userInfo?.username || 'Loading...'}</p>
+              <p className="text-slate-600">
+                @{userInfo?.username || "Loading..."}
+              </p>
             </div>
           </div>
         </div>
@@ -230,7 +252,9 @@ export default function MyOPC() {
                     <div className="text-2xl font-bold text-slate-900">
                       {asset.value.toLocaleString()}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{asset.description}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {asset.description}
+                    </p>
                   </CardContent>
                 </Card>
               );
@@ -250,7 +274,9 @@ export default function MyOPC() {
           <Card>
             <CardContent className="pt-6">
               {userInfo?.myTasks?.length === 0 ? (
-                <div className="py-8 text-center text-slate-500">No tasks created yet</div>
+                <div className="py-8 text-center text-slate-500">
+                  No tasks created yet
+                </div>
               ) : (
                 <div className="space-y-4">
                   {userInfo?.myTasks?.map((task) => (
@@ -259,13 +285,19 @@ export default function MyOPC() {
                       className="flex items-center justify-between p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
                     >
                       <div>
-                        <h3 className="font-medium text-slate-900">{task.title}</h3>
+                        <h3 className="font-medium text-slate-900">
+                          {task.title}
+                        </h3>
                         <p className="text-sm text-slate-500">
-                          Created {new Date(task.createdAt).toLocaleDateString()}
+                          Created{" "}
+                          {new Date(task.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <Badge variant="secondary" className="flex items-center gap-1">
+                        <Badge
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
                           <Coins className="h-3 w-3" />
                           {task.reward} pts
                         </Badge>
@@ -283,7 +315,9 @@ export default function MyOPC() {
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="h-5 w-5 text-slate-600" />
-            <h2 className="text-xl font-semibold text-slate-900">Applied Tasks</h2>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Applied Tasks
+            </h2>
             <Badge variant="outline" className="ml-2">
               {userInfo?.appliedTasks?.length || 0}
             </Badge>
@@ -291,7 +325,9 @@ export default function MyOPC() {
           <Card>
             <CardContent className="pt-6">
               {userInfo?.appliedTasks?.length === 0 ? (
-                <div className="py-8 text-center text-slate-500">No applied tasks yet</div>
+                <div className="py-8 text-center text-slate-500">
+                  No applied tasks yet
+                </div>
               ) : (
                 <div className="space-y-4">
                   {userInfo?.appliedTasks?.map((task) => (
@@ -300,13 +336,19 @@ export default function MyOPC() {
                       className="flex items-center justify-between p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
                     >
                       <div>
-                        <h3 className="font-medium text-slate-900">{task.title}</h3>
+                        <h3 className="font-medium text-slate-900">
+                          {task.title}
+                        </h3>
                         <p className="text-sm text-slate-500">
-                          Updated {new Date(task.updatedAt).toLocaleDateString()}
+                          Updated{" "}
+                          {new Date(task.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <Badge variant="secondary" className="flex items-center gap-1">
+                        <Badge
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
                           <Coins className="h-3 w-3" />
                           {task.reward} pts
                         </Badge>
@@ -324,7 +366,9 @@ export default function MyOPC() {
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="h-5 w-5 text-slate-600" />
-            <h2 className="text-xl font-semibold text-slate-900">Business Dashboard</h2>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Business Dashboard
+            </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
@@ -353,7 +397,9 @@ export default function MyOPC() {
                 <div className="text-2xl font-bold text-slate-900">
                   {totalEarnings.toLocaleString()} pts
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Sum of rewards from all tasks</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Sum of rewards from all tasks
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -371,7 +417,9 @@ export default function MyOPC() {
           <Card>
             <CardContent className="pt-6">
               {userPosts.length === 0 ? (
-                <div className="py-8 text-center text-slate-500">No posts yet</div>
+                <div className="py-8 text-center text-slate-500">
+                  No posts yet
+                </div>
               ) : (
                 <div className="space-y-4">
                   {userPosts.map((post) => (
@@ -380,7 +428,9 @@ export default function MyOPC() {
                       className="flex items-center justify-between p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-slate-900 truncate">{post.title}</h3>
+                        <h3 className="font-medium text-slate-900 truncate">
+                          {post.title}
+                        </h3>
                         <p className="text-sm text-slate-500">
                           {new Date(post.createdAt).toLocaleDateString()}
                         </p>

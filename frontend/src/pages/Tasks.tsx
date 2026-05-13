@@ -1,564 +1,311 @@
-import { useEffect, useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Plus,
-  Filter,
-  DollarSign,
-  Clock,
-  Briefcase,
-  BarChart3,
-  CheckCircle,
-} from 'lucide-react';
+import { useState, useEffect } from "react";
+import { ClipboardList, Search, Pin, Clock, Flame } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface Task {
-  id: string;
+  id: number;
   title: string;
   description: string;
   budget: number;
-  type: 'design' | 'dev' | 'write';
-  level: 'easy' | 'medium' | 'hard';
-  status: 'open' | 'in_progress' | 'completed';
-  deadline: string;
-  createdBy: string;
-}
-
-interface TaskFilters {
   type: string;
   level: string;
-  status: string;
+  urgent: boolean;
+  duration_days: number;
+  applicants_count: number;
+  created_at: string;
 }
 
-interface CreateTaskData {
-  title: string;
-  description: string;
-  budget: number;
-  type: 'design' | 'dev' | 'write';
-  level: 'easy' | 'medium' | 'hard';
-  deadline: string;
+interface TaskListResponse {
+  list: Task[];
+  total: number;
 }
 
-const API_BASE = '/api';
-
-const typeOptions = [
-  { value: '', label: 'All Types' },
-  { value: 'design', label: 'Design' },
-  { value: 'dev', label: 'Development' },
-  { value: 'write', label: 'Writing' },
+const PROJECT_TYPES = [
+  "全部",
+  "平面设计",
+  "UI/UX",
+  "短视频",
+  "软件开发",
+  "短剧",
+  "IP联名",
 ];
 
-const levelOptions = [
-  { value: '', label: 'All Levels' },
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-];
-
-const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'open', label: 'Open' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-];
-
-const typeColors: Record<string, string> = {
-  design: 'bg-purple-100 text-purple-700 border-purple-200',
-  dev: 'bg-blue-100 text-blue-700 border-blue-200',
-  write: 'bg-green-100 text-green-700 border-green-200',
-};
-
-const levelColors: Record<string, string> = {
-  easy: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  medium: 'bg-amber-100 text-amber-700 border-amber-200',
-  hard: 'bg-red-100 text-red-700 border-red-200',
-};
-
-const statusColors: Record<string, string> = {
-  open: 'bg-emerald-100 text-emerald-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  completed: 'bg-slate-100 text-slate-700',
-};
+const DIFFICULTY_LEVELS = ["全部", "初级", "中级", "高级"];
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filters, setFilters] = useState<TaskFilters>({
-    type: '',
-    level: '',
-    status: '',
-  });
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateTaskData>({
-    title: '',
-    description: '',
-    budget: 0,
-    type: 'dev',
-    level: 'medium',
-    deadline: '',
-  });
-  const [isCreating, setIsCreating] = useState(false);
-  const [applyingTaskId, setApplyingTaskId] = useState<string | null>(null);
-
-  const token = localStorage.getItem('token');
-  const isAuthenticated = !!token;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeType, setActiveType] = useState("全部");
+  const [activeLevel, setActiveLevel] = useState("全部");
 
   useEffect(() => {
     fetchTasks();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [tasks, filters]);
+  }, [activeType, activeLevel]);
 
   const fetchTasks = async () => {
     setIsLoading(true);
-    setError('');
-
     try {
-      const response = await fetch(`${API_BASE}/task/list`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+      const response = await fetch("/api/tasks/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page: 1,
+          pageSize: 20,
+          type: activeType === "全部" ? "" : activeType,
+          level: activeLevel === "全部" ? "" : activeLevel,
+        }),
       });
+
       if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
+        throw new Error("Failed to fetch tasks");
       }
+
       const result = await response.json();
-      const data = result.data;
-      if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
-      }
-      setTasks(data.tasks || []);
-      setTasks(data.tasks || []);
+      const data: TaskListResponse = result.data;
+      setTasks(data.list || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      console.error("Failed to load tasks", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const applyFilters = () => {
-    let result = [...tasks];
-
-    if (filters.type) {
-      result = result.filter((task) => task.type === filters.type);
-    }
-    if (filters.level) {
-      result = result.filter((task) => task.level === filters.level);
-    }
-    if (filters.status) {
-      result = result.filter((task) => task.status === filters.status);
-    }
-
-    setFilteredTasks(result);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("zh-CN", {
+      style: "currency",
+      currency: "CNY",
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreating(true);
-    setError('');
+  // Fake avatars for the UI demo based on the applicants_count
+  const generateMockAvatars = (count: number) => {
+    const letters = ["A", "B", "C", "D", "E"];
+    const colors = [
+      "bg-green-400",
+      "bg-blue-400",
+      "bg-purple-400",
+      "bg-rose-400",
+      "bg-amber-400",
+    ];
+    const displayCount = Math.min(count, 3);
 
-    try {
-      const response = await fetch(`${API_BASE}/task/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(createForm),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to create task');
-      }
-
-      setIsCreateDialogOpen(false);
-      setCreateForm({
-        title: '',
-        description: '',
-        budget: 0,
-        type: 'dev',
-        level: 'medium',
-        deadline: '',
-      });
-      fetchTasks();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleApply = async (taskId: string) => {
-    setApplyingTaskId(taskId);
-    setError('');
-
-    try {
-      const response = await fetch(`${API_BASE}/task/apply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ taskId }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to apply for task');
-      }
-
-      // Refresh tasks to show updated status
-      fetchTasks();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply for task');
-    } finally {
-      setApplyingTaskId(null);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const isTaskApplicable = (task: Task) => {
-    return task.status === 'open' && isAuthenticated;
+    return Array.from({ length: displayCount }).map((_, i) => ({
+      letter: letters[i % letters.length],
+      color: colors[i % colors.length],
+    }));
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Tasks</h1>
-            <p className="text-slate-600">
-              Browse and apply for available tasks in the community
-            </p>
-          </div>
-          {isAuthenticated && (
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Post Task
-            </Button>
-          )}
+    <div className="min-h-screen bg-white w-full overflow-x-hidden flex flex-col">
+      {/* Top Header - Aligned with Sidebar Logo Area */}
+      <div className="h-[var(--header-height)] border-b border-slate-100 flex items-center justify-between px-6 bg-white shrink-0 sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <ClipboardList className="w-8 h-8 text-amber-700" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            任务中心
+          </h1>
+          <p className="text-slate-500 text-sm ml-4 border-l border-slate-200 pl-4">
+            发现优质任务，用技能赚取收益和积分
+          </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-            {error}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              className="pl-10 w-72 bg-slate-100/50 border-transparent focus-visible:ring-indigo-500 rounded-lg h-9 text-sm"
+              placeholder="搜索任务..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-        )}
+          <Button className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-6 h-9">
+            <Pin className="w-4 h-4 mr-2" />
+            发布任务
+          </Button>
+        </div>
+      </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filters
-            </CardTitle>
-            <CardDescription>Filter tasks by type, level, or status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type-filter">Type</Label>
-                <select
-                  id="type-filter"
-                  value={filters.type}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, type: e.target.value }))
-                  }
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                >
-                  {typeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="level-filter">Level</Label>
-                <select
-                  id="level-filter"
-                  value={filters.level}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, level: e.target.value }))
-                  }
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                >
-                  {levelOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status-filter">Status</Label>
-                <select
-                  id="status-filter"
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, status: e.target.value }))
-                  }
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+      <div className="w-full flex-1">
+        {/* Filters Section */}
+        <div className="pt-6 px-6 mb-6">
+          <div className="flex flex-col gap-4">
+            {/* Project Type Filter */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-slate-600 shrink-0">
+                项目类型：
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {PROJECT_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setActiveType(type)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
+                      activeType === type
+                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Difficulty Level Filter */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-slate-600 shrink-0">
+                难度级别：
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {DIFFICULTY_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setActiveLevel(level)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
+                      activeLevel === level
+                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
+                    )}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Task List */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-slate-500">Loading tasks...</div>
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-12">
-            <Briefcase className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No tasks found</h3>
-            <p className="text-slate-500">
-              {tasks.length === 0
-                ? 'Be the first to post a task!'
-                : 'Try adjusting your filters to see more results.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTasks.map((task) => (
-              <Card key={task.id} className="flex flex-col">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <CardTitle className="text-lg leading-tight">{task.title}</CardTitle>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColors[task.status]}`}
-                    >
-                      {task.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs border ${typeColors[task.type]}`}
-                    >
-                      {task.type}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs border ${levelColors[task.level]}`}
-                    >
-                      {task.level}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  <p className="text-sm text-slate-600 mb-4 line-clamp-3">
-                    {task.description}
-                  </p>
-                  <div className="mt-auto space-y-2">
-                    <div className="flex items-center text-sm text-slate-600">
-                      <DollarSign className="h-4 w-4 mr-1.5 text-slate-400" />
-                      <span className="font-medium">${task.budget.toLocaleString()}</span>
+        <div className="px-6 pb-8 space-y-4">
+          {isLoading ? (
+            <div className="py-20 text-center text-slate-500">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+              <p className="mt-4">加载中...</p>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="py-20 text-center text-slate-500 bg-white rounded-2xl border border-slate-100">
+              暂无符合条件的任务
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <Card
+                key={task.id}
+                className="overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white rounded-xl border border-slate-100"
+              >
+                <CardContent className="p-6 flex flex-col md:flex-row justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                        {task.title}
+                      </h3>
+                      <div className="text-indigo-600 font-bold text-lg md:hidden">
+                        {formatCurrency(task.budget)}
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-slate-600">
-                      <Clock className="h-4 w-4 mr-1.5 text-slate-400" />
-                      <span>Due {formatDate(task.deadline)}</span>
-                    </div>
-                    <div className="pt-3">
-                      {isTaskApplicable(task) ? (
-                        <Button
-                          onClick={() => handleApply(task.id)}
-                          disabled={applyingTaskId === task.id}
-                          className="w-full"
-                          variant="default"
-                        >
-                          {applyingTaskId === task.id ? 'Applying...' : 'Apply'}
-                        </Button>
-                      ) : (
-                        <Button className="w-full" disabled variant="secondary">
-                          {task.status === 'completed' ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Completed
-                            </>
-                          ) : task.status === 'in_progress' ? (
-                            <>
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              In Progress
-                            </>
-                          ) : (
-                            'Login to Apply'
-                          )}
-                        </Button>
+
+                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                      {task.description}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2 mb-6">
+                      <span className="bg-indigo-50 text-indigo-600 text-xs px-2.5 py-1 rounded font-medium">
+                        {task.type}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded font-medium",
+                          task.level === "初级"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : task.level === "中级"
+                              ? "bg-blue-50 text-blue-600"
+                              : "bg-teal-50 text-teal-600",
+                        )}
+                      >
+                        {task.level}
+                      </span>
+                      {task.urgent && (
+                        <span className="bg-rose-50 text-rose-600 text-xs px-2.5 py-1 rounded font-medium flex items-center">
+                          <Flame className="w-3 h-3 mr-1" />
+                          急招
+                        </span>
                       )}
+                      <span className="text-slate-400 text-xs px-2.5 py-1 flex items-center bg-slate-50 rounded font-medium">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {task.duration_days}天
+                      </span>
                     </div>
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                          {generateMockAvatars(task.applicants_count).map(
+                            (avatar, idx) => (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "w-7 h-7 rounded-full flex items-center justify-center text-[10px] text-white font-bold border-2 border-white",
+                                  avatar.color,
+                                )}
+                              >
+                                {avatar.letter}
+                              </div>
+                            ),
+                          )}
+                          {task.applicants_count > 3 && (
+                            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-600 font-medium border-2 border-white">
+                              +{task.applicants_count - 3}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-sm text-slate-500">
+                          {task.applicants_count} 人已报名
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:flex flex-col items-end justify-between shrink-0 min-w-[120px]">
+                    <div className="text-indigo-600 font-bold text-xl">
+                      {formatCurrency(task.budget)}
+                    </div>
+                    <div className="flex items-center gap-3 mt-4">
+                      <Button
+                        variant="outline"
+                        className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        详情
+                      </Button>
+                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white">
+                        立即报名
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Actions */}
+                  <div className="flex md:hidden items-center justify-end gap-3 mt-4 pt-4 border-t border-slate-50">
+                    <Button
+                      variant="outline"
+                      className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50 flex-1"
+                    >
+                      详情
+                    </Button>
+                    <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1">
+                      立即报名
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Create Task Dialog */}
-        {isCreateDialogOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-slate-900">Post New Task</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsCreateDialogOpen(false)}
-                    className="h-8 w-8"
-                  >
-                    ×
-                  </Button>
-                </div>
-                <form onSubmit={handleCreateTask} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={createForm.title}
-                      onChange={(e) =>
-                        setCreateForm((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      placeholder="Enter task title"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <textarea
-                      id="description"
-                      value={createForm.description}
-                      onChange={(e) =>
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          description: e.target.value,
-                        }))
-                      }
-                      placeholder="Describe the task requirements"
-                      rows={4}
-                      className="flex w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 min-h-[100px]"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="budget">Budget ($)</Label>
-                      <Input
-                        id="budget"
-                        type="number"
-                        min="0"
-                        value={createForm.budget || ''}
-                        onChange={(e) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            budget: parseInt(e.target.value) || 0,
-                          }))
-                        }
-                        placeholder="Enter budget"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="deadline">Deadline</Label>
-                      <Input
-                        id="deadline"
-                        type="date"
-                        value={createForm.deadline}
-                        onChange={(e) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            deadline: e.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Type</Label>
-                      <select
-                        id="type"
-                        value={createForm.type}
-                        onChange={(e) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            type: e.target.value as CreateTaskData['type'],
-                          }))
-                        }
-                        className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                      >
-                        <option value="design">Design</option>
-                        <option value="dev">Development</option>
-                        <option value="write">Writing</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level">Level</Label>
-                      <select
-                        id="level"
-                        value={createForm.level}
-                        onChange={(e) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            level: e.target.value as CreateTaskData['level'],
-                          }))
-                        }
-                        className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                      >
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setIsCreateDialogOpen(false)}
-                      disabled={isCreating}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="flex-1" disabled={isCreating}>
-                      {isCreating ? 'Creating...' : 'Create Task'}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

@@ -19,30 +19,41 @@ type PostListResponse struct {
 	PageSize int         `json:"pageSize"`
 }
 
+// ListPostRequest represents the request body for getting post list
+type ListPostRequest struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"pageSize"`
+	Category string `json:"category"`
+}
+
 // ListPosts handles getting post list with pagination
 // POST /api/community/list
 func ListPosts(db *gorm.DB) gin.HandlerFunc {
 	postRepo := repository.NewPostRepository(db)
 
 	return func(c *gin.Context) {
-		// Parse pagination parameters with defaults
-		page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
-		if err != nil || page < 1 {
-			page = 1
+		var req ListPostRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			// Fallback to query params if JSON binding fails (for compatibility)
+			page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+			pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+			req.Page = page
+			req.PageSize = pageSize
+			req.Category = c.Query("category")
 		}
 
-		pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
-		if err != nil || pageSize < 1 {
-			pageSize = 10
+		if req.Page < 1 {
+			req.Page = 1
 		}
-
-		// Cap pageSize at reasonable max
-		if pageSize > 100 {
-			pageSize = 100
+		if req.PageSize < 1 {
+			req.PageSize = 10
+		}
+		if req.PageSize > 100 {
+			req.PageSize = 100
 		}
 
 		// Query posts from repository
-		posts, total, err := postRepo.List(page, pageSize)
+		posts, total, err := postRepo.List(req.Page, req.PageSize, req.Category)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
 				Code:    500,
@@ -58,8 +69,8 @@ func ListPosts(db *gorm.DB) gin.HandlerFunc {
 			Data: PostListResponse{
 				List:     posts,
 				Total:    total,
-				Page:     page,
-				PageSize: pageSize,
+				Page:     req.Page,
+				PageSize: req.PageSize,
 			},
 		})
 	}
@@ -305,7 +316,7 @@ func CreatePost(db *gorm.DB) gin.HandlerFunc {
 		// Create post
 		post := &model.Post{
 			UserID:  userID,
-			Title:  req.Title,
+			Title:   req.Title,
 			Content: req.Content,
 		}
 

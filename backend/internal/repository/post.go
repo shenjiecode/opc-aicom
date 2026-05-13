@@ -35,18 +35,33 @@ func (r *PostRepository) GetByID(id uint) (*model.Post, error) {
 	return &post, nil
 }
 
-// List retrieves posts with pagination.
-func (r *PostRepository) List(page, pageSize int) ([]*model.Post, int64, error) {
-	var posts []*model.Post
+// PostWithAuthor represents a post with its author's information.
+type PostWithAuthor struct {
+	model.Post
+	AuthorName   string  `json:"author_name"`
+	AuthorAvatar *string `json:"author_avatar"`
+}
+
+// List retrieves posts with pagination and optional category filter.
+func (r *PostRepository) List(page, pageSize int, category string) ([]*PostWithAuthor, int64, error) {
+	var posts []*PostWithAuthor
 	var total int64
 
 	offset := (page - 1) * pageSize
-	err := r.db.Model(&model.Post{}).Count(&total).Error
+
+	query := r.db.Model(&model.Post{})
+	if category != "" && category != "全部" {
+		query = query.Where("category = ?", category)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-err = r.db.Offset(offset).Limit(pageSize).Order("created_at DESC").Find(&posts).Error
+	err = query.Select("posts.*, users.username as author_name, users.avatar as author_avatar").
+		Joins("LEFT JOIN users ON users.id = posts.user_id").
+		Offset(offset).Limit(pageSize).Order("posts.created_at DESC").Find(&posts).Error
 	if err != nil {
 		return nil, 0, err
 	}

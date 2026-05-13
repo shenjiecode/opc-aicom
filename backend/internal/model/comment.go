@@ -12,8 +12,8 @@ type Comment struct {
 	PostID    uint           `gorm:"not null;index" json:"post_id"`
 	UserID    uint           `gorm:"not null;index" json:"user_id"`
 	Content   string         `gorm:"type:text;not null" json:"content"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

@@ -14,7 +14,7 @@ type ActivityLog struct {
 	Bg          string         `gorm:"size:50" json:"bg"`
 	ContentHTML string         `gorm:"type:text" json:"content_html"`
 	TimeStr     string         `gorm:"size:50" json:"time_str"`
-	CreatedAt   time.Time     `json:"created_at"`
+	CreatedAt   time.Time      `json:"created_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,11 +6,11 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Headphones,
   Search,
@@ -23,13 +23,12 @@ import {
   Phone,
   Clock,
   CheckCircle,
-
   ChevronDown,
   ChevronUp,
   ExternalLink,
   Send,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface FAQ {
   id: string;
@@ -41,122 +40,130 @@ interface FAQ {
 interface SupportTicket {
   id: string;
   subject: string;
-  status: 'open' | 'in_progress' | 'resolved';
+  status: "open" | "in_progress" | "resolved";
   createdAt: string;
   lastUpdate: string;
 }
 
 const mockFAQs: FAQ[] = [
   {
-    id: '1',
-    question: 'How do I get started with OPC platform?',
-    answer: 'Getting started is easy! First, create an account by clicking the Register button. Then, complete your profile setup and explore the available tasks. You can start applying for tasks that match your skills right away.',
-    category: 'Getting Started',
+    id: "1",
+    question: "How do I get started with OPC platform?",
+    answer:
+      "Getting started is easy! First, create an account by clicking the Register button. Then, complete your profile setup and explore the available tasks. You can start applying for tasks that match your skills right away.",
+    category: "Getting Started",
   },
   {
-    id: '2',
-    question: 'How does the task payment system work?',
-    answer: 'Tasks are posted with a defined budget. When you complete a task and it\'s approved by the poster, the payment is processed through our secure payment system. Funds are transferred to your account within 3-5 business days.',
-    category: 'Payments',
+    id: "2",
+    question: "How does the task payment system work?",
+    answer:
+      "Tasks are posted with a defined budget. When you complete a task and it's approved by the poster, the payment is processed through our secure payment system. Funds are transferred to your account within 3-5 business days.",
+    category: "Payments",
   },
   {
-    id: '3',
-    question: 'What types of tasks can I find on the platform?',
-    answer: 'Our platform features a wide variety of tasks including design work, software development, content writing, data analysis, AI model training, and more. Use the filters to find tasks that match your expertise.',
-    category: 'Tasks',
+    id: "3",
+    question: "What types of tasks can I find on the platform?",
+    answer:
+      "Our platform features a wide variety of tasks including design work, software development, content writing, data analysis, AI model training, and more. Use the filters to find tasks that match your expertise.",
+    category: "Tasks",
   },
   {
-    id: '4',
-    question: 'How do I create my own AI agent?',
-    answer: 'Navigate to "My Agents" section and click "Create New Agent". You can choose from templates or start from scratch. Configure your agent\'s capabilities, connect APIs, and train it with your data.',
-    category: 'AI Features',
+    id: "4",
+    question: "How do I create my own AI agent?",
+    answer:
+      'Navigate to "My Agents" section and click "Create New Agent". You can choose from templates or start from scratch. Configure your agent\'s capabilities, connect APIs, and train it with your data.',
+    category: "AI Features",
   },
   {
-    id: '5',
-    question: 'Is there a mobile app available?',
-    answer: 'Yes! We offer mobile apps for both iOS and Android. Download them from the App Store or Google Play Store to manage your tasks and agents on the go.',
-    category: 'Platform',
+    id: "5",
+    question: "Is there a mobile app available?",
+    answer:
+      "Yes! We offer mobile apps for both iOS and Android. Download them from the App Store or Google Play Store to manage your tasks and agents on the go.",
+    category: "Platform",
   },
   {
-    id: '6',
-    question: 'How can I earn points in the Points Mall?',
-    answer: 'You earn points by completing tasks, participating in community discussions, referring new users, and achieving milestones. Points can be redeemed for rewards in the Points Mall.',
-    category: 'Points & Rewards',
+    id: "6",
+    question: "How can I earn points in the Points Mall?",
+    answer:
+      "You earn points by completing tasks, participating in community discussions, referring new users, and achieving milestones. Points can be redeemed for rewards in the Points Mall.",
+    category: "Points & Rewards",
   },
 ];
 
 const mockTickets: SupportTicket[] = [
   {
-    id: 'T-1001',
-    subject: 'Payment not received for completed task',
-    status: 'in_progress',
-    createdAt: '2024-01-15',
-    lastUpdate: '2024-01-16',
+    id: "T-1001",
+    subject: "Payment not received for completed task",
+    status: "in_progress",
+    createdAt: "2024-01-15",
+    lastUpdate: "2024-01-16",
   },
   {
-    id: 'T-1002',
-    subject: 'Cannot connect AI agent to external API',
-    status: 'resolved',
-    createdAt: '2024-01-10',
-    lastUpdate: '2024-01-12',
+    id: "T-1002",
+    subject: "Cannot connect AI agent to external API",
+    status: "resolved",
+    createdAt: "2024-01-10",
+    lastUpdate: "2024-01-12",
   },
 ];
 
 const supportChannels = [
   {
     icon: MessageCircle,
-    title: 'Live Chat',
-    description: 'Chat with our support team in real-time',
-    availability: '24/7',
-    action: 'Start Chat',
+    title: "Live Chat",
+    description: "Chat with our support team in real-time",
+    availability: "24/7",
+    action: "Start Chat",
   },
   {
     icon: Mail,
-    title: 'Email Support',
-    description: 'Send us an email for detailed inquiries',
-    availability: 'Response within 24h',
-    action: 'Send Email',
+    title: "Email Support",
+    description: "Send us an email for detailed inquiries",
+    availability: "Response within 24h",
+    action: "Send Email",
   },
   {
     icon: Phone,
-    title: 'Phone Support',
-    description: 'Call us for urgent matters',
-    availability: 'Mon-Fri 9AM-6PM',
-    action: 'Call Now',
+    title: "Phone Support",
+    description: "Call us for urgent matters",
+    availability: "Mon-Fri 9AM-6PM",
+    action: "Call Now",
   },
 ];
 
 const resources = [
   {
     icon: BookOpen,
-    title: 'Documentation',
-    description: 'Comprehensive guides and API references',
-    link: '#',
+    title: "Documentation",
+    description: "Comprehensive guides and API references",
+    link: "#",
   },
   {
     icon: Video,
-    title: 'Video Tutorials',
-    description: 'Step-by-step video guides for beginners',
-    link: '#',
+    title: "Video Tutorials",
+    description: "Step-by-step video guides for beginners",
+    link: "#",
   },
   {
     icon: FileQuestion,
-    title: 'API Reference',
-    description: 'Detailed API documentation for developers',
-    link: '#',
+    title: "API Reference",
+    description: "Detailed API documentation for developers",
+    link: "#",
   },
 ];
 
 export default function ServiceCenter() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'faq' | 'contact' | 'tickets'>('faq');
+  const [activeTab, setActiveTab] = useState<"faq" | "contact" | "tickets">(
+    "faq",
+  );
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
   });
   const [tickets] = useState<SupportTicket[]>(mockTickets);
 
@@ -164,32 +171,35 @@ export default function ServiceCenter() {
     (faq) =>
       faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.category.toLowerCase().includes(searchQuery.toLowerCase())
+      faq.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const categorizedFAQs = filteredFAQs.reduce((acc, faq) => {
-    if (!acc[faq.category]) acc[faq.category] = [];
-    acc[faq.category].push(faq);
-    return acc;
-  }, {} as Record<string, FAQ[]>);
+  const categorizedFAQs = filteredFAQs.reduce(
+    (acc, faq) => {
+      if (!acc[faq.category]) acc[faq.category] = [];
+      acc[faq.category].push(faq);
+      return acc;
+    },
+    {} as Record<string, FAQ[]>,
+  );
 
   const handleContactSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    alert('Support ticket submitted! We\'ll get back to you soon.');
+    alert("Support ticket submitted! We'll get back to you soon.");
     setIsContactModalOpen(false);
-    setContactForm({ name: '', email: '', subject: '', message: '' });
+    setContactForm({ name: "", email: "", subject: "", message: "" });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open':
-        return 'bg-blue-100 text-blue-700';
-      case 'in_progress':
-        return 'bg-amber-100 text-amber-700';
-      case 'resolved':
-        return 'bg-emerald-100 text-emerald-700';
+      case "open":
+        return "bg-blue-100 text-blue-700";
+      case "in_progress":
+        return "bg-amber-100 text-amber-700";
+      case "resolved":
+        return "bg-emerald-100 text-emerald-700";
       default:
-        return 'bg-slate-100 text-slate-700';
+        return "bg-slate-100 text-slate-700";
     }
   };
 
@@ -225,9 +235,9 @@ export default function ServiceCenter() {
         {/* Quick Stats */}
         <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {[
-            { icon: CheckCircle, label: 'Issues Resolved', value: '98%' },
-            { icon: Clock, label: 'Avg Response Time', value: '< 2h' },
-            { icon: LifeBuoy, label: 'Support Articles', value: '150+' },
+            { icon: CheckCircle, label: "Issues Resolved", value: "98%" },
+            { icon: Clock, label: "Avg Response Time", value: "< 2h" },
+            { icon: LifeBuoy, label: "Support Articles", value: "150+" },
           ].map((stat) => (
             <Card key={stat.label} className="border-slate-200">
               <CardContent className="flex items-center gap-4 p-4">
@@ -235,7 +245,9 @@ export default function ServiceCenter() {
                   <stat.icon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
+                  <div className="text-2xl font-bold text-slate-900">
+                    {stat.value}
+                  </div>
                   <div className="text-sm text-slate-500">{stat.label}</div>
                 </div>
               </CardContent>
@@ -246,13 +258,13 @@ export default function ServiceCenter() {
         {/* Tab Navigation */}
         <div className="mb-6 flex justify-center gap-2">
           {[
-            { id: 'faq', label: 'FAQ', icon: FileQuestion },
-            { id: 'contact', label: 'Contact Us', icon: MessageCircle },
-            { id: 'tickets', label: 'My Tickets', icon: Mail },
+            { id: "faq", label: "FAQ", icon: FileQuestion },
+            { id: "contact", label: "Contact Us", icon: MessageCircle },
+            { id: "tickets", label: "My Tickets", icon: Mail },
           ].map((tab) => (
             <Button
               key={tab.id}
-              variant={activeTab === tab.id ? 'default' : 'outline'}
+              variant={activeTab === tab.id ? "default" : "outline"}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className="gap-2"
             >
@@ -263,7 +275,7 @@ export default function ServiceCenter() {
         </div>
 
         {/* FAQ Tab */}
-        {activeTab === 'faq' && (
+        {activeTab === "faq" && (
           <div className="space-y-8">
             {Object.entries(categorizedFAQs).length === 0 ? (
               <Card className="border-dashed border-2">
@@ -272,13 +284,17 @@ export default function ServiceCenter() {
                   <h3 className="mb-2 text-lg font-medium text-slate-900">
                     No results found
                   </h3>
-                  <p className="text-slate-500">Try searching with different keywords</p>
+                  <p className="text-slate-500">
+                    Try searching with different keywords
+                  </p>
                 </CardContent>
               </Card>
             ) : (
               Object.entries(categorizedFAQs).map(([category, faqs]) => (
                 <div key={category}>
-                  <h2 className="mb-4 text-xl font-semibold text-slate-900">{category}</h2>
+                  <h2 className="mb-4 text-xl font-semibold text-slate-900">
+                    {category}
+                  </h2>
                   <div className="space-y-3">
                     {faqs.map((faq) => (
                       <Card
@@ -329,8 +345,12 @@ export default function ServiceCenter() {
                       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 group-hover:bg-blue-100">
                         <resource.icon className="h-5 w-5 text-slate-600 group-hover:text-blue-600" />
                       </div>
-                      <h3 className="mb-1 font-medium text-slate-900">{resource.title}</h3>
-                      <p className="mb-3 text-sm text-slate-500">{resource.description}</p>
+                      <h3 className="mb-1 font-medium text-slate-900">
+                        {resource.title}
+                      </h3>
+                      <p className="mb-3 text-sm text-slate-500">
+                        {resource.description}
+                      </p>
                       <div className="flex items-center text-sm text-blue-600">
                         Learn more
                         <ExternalLink className="ml-1 h-3 w-3" />
@@ -344,7 +364,7 @@ export default function ServiceCenter() {
         )}
 
         {/* Contact Tab */}
-        {activeTab === 'contact' && (
+        {activeTab === "contact" && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {supportChannels.map((channel) => (
               <Card key={channel.title} className="border-slate-200">
@@ -365,7 +385,7 @@ export default function ServiceCenter() {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      if (channel.title === 'Email Support') {
+                      if (channel.title === "Email Support") {
                         setIsContactModalOpen(true);
                       }
                     }}
@@ -379,10 +399,12 @@ export default function ServiceCenter() {
         )}
 
         {/* Tickets Tab */}
-        {activeTab === 'tickets' && (
+        {activeTab === "tickets" && (
           <div>
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">My Support Tickets</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                My Support Tickets
+              </h2>
               <Button onClick={() => setIsContactModalOpen(true)}>
                 <Mail className="mr-2 h-4 w-4" />
                 New Ticket
@@ -392,8 +414,12 @@ export default function ServiceCenter() {
               <Card className="border-dashed border-2">
                 <CardContent className="py-12 text-center">
                   <Mail className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-                  <h3 className="mb-2 text-lg font-medium text-slate-900">No tickets yet</h3>
-                  <p className="text-slate-500 mb-4">Create a new support ticket if you need help</p>
+                  <h3 className="mb-2 text-lg font-medium text-slate-900">
+                    No tickets yet
+                  </h3>
+                  <p className="text-slate-500 mb-4">
+                    Create a new support ticket if you need help
+                  </p>
                   <Button onClick={() => setIsContactModalOpen(true)}>
                     Create Ticket
                   </Button>
@@ -411,12 +437,15 @@ export default function ServiceCenter() {
                               {ticket.id}
                             </span>
                             <Badge className={getStatusColor(ticket.status)}>
-                              {ticket.status.replace('_', ' ')}
+                              {ticket.status.replace("_", " ")}
                             </Badge>
                           </div>
-                          <h3 className="font-medium text-slate-900">{ticket.subject}</h3>
+                          <h3 className="font-medium text-slate-900">
+                            {ticket.subject}
+                          </h3>
                           <div className="mt-1 text-sm text-slate-500">
-                            Created: {ticket.createdAt} • Last update: {ticket.lastUpdate}
+                            Created: {ticket.createdAt} • Last update:{" "}
+                            {ticket.lastUpdate}
                           </div>
                         </div>
                         <Button variant="ghost" size="sm">
@@ -450,7 +479,8 @@ export default function ServiceCenter() {
                   </Button>
                 </div>
                 <CardDescription>
-                  Fill out the form below and we'll get back to you as soon as possible
+                  Fill out the form below and we'll get back to you as soon as
+                  possible
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -462,7 +492,10 @@ export default function ServiceCenter() {
                         id="name"
                         value={contactForm.name}
                         onChange={(e) =>
-                          setContactForm({ ...contactForm, name: e.target.value })
+                          setContactForm({
+                            ...contactForm,
+                            name: e.target.value,
+                          })
                         }
                         required
                       />
@@ -474,7 +507,10 @@ export default function ServiceCenter() {
                         type="email"
                         value={contactForm.email}
                         onChange={(e) =>
-                          setContactForm({ ...contactForm, email: e.target.value })
+                          setContactForm({
+                            ...contactForm,
+                            email: e.target.value,
+                          })
                         }
                         required
                       />
@@ -486,7 +522,10 @@ export default function ServiceCenter() {
                       id="subject"
                       value={contactForm.subject}
                       onChange={(e) =>
-                        setContactForm({ ...contactForm, subject: e.target.value })
+                        setContactForm({
+                          ...contactForm,
+                          subject: e.target.value,
+                        })
                       }
                       required
                     />
@@ -497,7 +536,10 @@ export default function ServiceCenter() {
                       id="message"
                       value={contactForm.message}
                       onChange={(e) =>
-                        setContactForm({ ...contactForm, message: e.target.value })
+                        setContactForm({
+                          ...contactForm,
+                          message: e.target.value,
+                        })
                       }
                       rows={4}
                       className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"

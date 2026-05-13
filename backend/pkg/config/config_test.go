@@ -50,10 +50,10 @@ func TestLoadWithEnvOverride(t *testing.T) {
 func TestGetDatabaseDSN(t *testing.T) {
 	cfg := &DatabaseConfig{
 		Host:     "localhost",
-		Port:    5432,
-		User:    "postgres",
+		Port:     5432,
+		User:     "postgres",
 		Password: "password",
-		Name:    "testdb",
+		Name:     "testdb",
 	}
 
 	dsn := cfg.GetDatabaseDSN()

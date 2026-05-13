@@ -1,30 +1,36 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { login } from '@/lib/api';
-import { Cpu, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { login } from "@/lib/api";
+import { Cpu, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!username.trim()) {
-      setError('请输入用户名');
+      setError("请输入用户名");
       return;
     }
 
     if (!password.trim()) {
-      setError('请输入密码');
+      setError("请输入密码");
       return;
     }
 
@@ -32,11 +38,11 @@ export default function Login() {
 
     try {
       const response = await login(username, password);
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('userId', response.userId);
-      navigate('/');
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("userId", response.userId);
+      navigate("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : '登录失败，请重试');
+      setError(err instanceof Error ? err.message : "登录失败，请重试");
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +125,7 @@ export default function Login() {
                   登录中...
                 </>
               ) : (
-                '登录'
+                "登录"
               )}
             </Button>
           </form>

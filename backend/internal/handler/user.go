@@ -7,9 +7,9 @@ import (
 	"github.com/opc-aicom/backend/internal/middleware"
 	"github.com/opc-aicom/backend/internal/model"
 	"github.com/opc-aicom/backend/internal/pkg/jwt"
+	"github.com/opc-aicom/backend/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"github.com/opc-aicom/backend/pkg/config"
 )
 
 // RegisterRequest represents the user registration request body
@@ -25,9 +25,9 @@ type RegisterResponse struct {
 
 // UnifiedResponse represents the unified API response format
 type UnifiedResponse struct {
-	Code    int  `json:"code"`
+	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Data    any  `json:"data,omitempty"`
+	Data    any    `json:"data,omitempty"`
 }
 
 // Register handles user registration

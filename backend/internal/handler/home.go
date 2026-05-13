@@ -10,9 +10,9 @@ import (
 
 // StatsResponse represents the home stats response
 type StatsResponse struct {
-	UserCount  int64 `json:"userCount"`
-	PostCount  int64 `json:"postCount"`
-	TaskCount  int64 `json:"taskCount"`
+	UserCount int64 `json:"userCount"`
+	PostCount int64 `json:"postCount"`
+	TaskCount int64 `json:"taskCount"`
 }
 
 // GetStats handles getting home stats

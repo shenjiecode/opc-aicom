@@ -1,48 +1,54 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { register } from '@/lib/api';
-import { Cpu, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { register } from "@/lib/api";
+import { Cpu, AlertCircle, Loader2, CheckCircle } from "lucide-react";
 
 export default function Register() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     if (!username.trim()) {
-      setError('请输入用户名');
+      setError("请输入用户名");
       return;
     }
 
     if (username.trim().length < 3) {
-      setError('用户名至少需要 3 个字符');
+      setError("用户名至少需要 3 个字符");
       return;
     }
 
     if (!password.trim()) {
-      setError('请输入密码');
+      setError("请输入密码");
       return;
     }
 
     if (password.length < 6) {
-      setError('密码至少需要 6 个字符');
+      setError("密码至少需要 6 个字符");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError("两次输入的密码不一致");
       return;
     }
 
@@ -50,12 +56,12 @@ export default function Register() {
 
     try {
       await register(username, password);
-      setSuccess('注册成功！即将跳转到登录页面...');
+      setSuccess("注册成功！即将跳转到登录页面...");
       setTimeout(() => {
-        navigate('/login');
+        navigate("/login");
       }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '注册失败，请重试');
+      setError(err instanceof Error ? err.message : "注册失败，请重试");
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +126,10 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-slate-700 font-medium"
+              >
                 确认密码
               </Label>
               <Input
@@ -161,7 +170,7 @@ export default function Register() {
                   注册中...
                 </>
               ) : (
-                '创建账号'
+                "创建账号"
               )}
             </Button>
           </form>

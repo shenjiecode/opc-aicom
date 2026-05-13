@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -6,10 +6,10 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Search,
   Sparkles,
@@ -24,13 +24,13 @@ import {
   Filter,
   Download,
   TrendingUp,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface AIResource {
   id: string;
   name: string;
   description: string;
-  category: 'agent' | 'model' | 'tool' | 'api';
+  category: "agent" | "model" | "tool" | "api";
   tags: string[];
   rating: number;
   usageCount: number;
@@ -42,80 +42,86 @@ interface AIResource {
 
 const mockResources: AIResource[] = [
   {
-    id: '1',
-    name: 'GPT-4 Assistant',
-    description: 'Advanced language model for complex tasks, coding, and creative writing',
-    category: 'model',
-    tags: ['NLP', 'Coding', 'Creative'],
+    id: "1",
+    name: "GPT-4 Assistant",
+    description:
+      "Advanced language model for complex tasks, coding, and creative writing",
+    category: "model",
+    tags: ["NLP", "Coding", "Creative"],
     rating: 4.9,
     usageCount: 125000,
-    author: 'OpenAI',
-    icon: 'Bot',
+    author: "OpenAI",
+    icon: "Bot",
     isOfficial: true,
     installed: true,
   },
   {
-    id: '2',
-    name: 'Code Reviewer Pro',
-    description: 'Automated code review agent that checks for bugs, security issues, and best practices',
-    category: 'agent',
-    tags: ['DevOps', 'Security', 'Code Quality'],
+    id: "2",
+    name: "Code Reviewer Pro",
+    description:
+      "Automated code review agent that checks for bugs, security issues, and best practices",
+    category: "agent",
+    tags: ["DevOps", "Security", "Code Quality"],
     rating: 4.7,
     usageCount: 45000,
-    author: 'DevTools Inc',
-    icon: 'Code',
+    author: "DevTools Inc",
+    icon: "Code",
     isOfficial: false,
     installed: false,
   },
   {
-    id: '3',
-    name: 'Image Generator API',
-    description: 'High-quality image generation API with style customization and editing capabilities',
-    category: 'api',
-    tags: ['Image', 'Creative', 'API'],
+    id: "3",
+    name: "Image Generator API",
+    description:
+      "High-quality image generation API with style customization and editing capabilities",
+    category: "api",
+    tags: ["Image", "Creative", "API"],
     rating: 4.5,
     usageCount: 89000,
-    author: 'AI Art Studio',
-    icon: 'Palette',
+    author: "AI Art Studio",
+    icon: "Palette",
     isOfficial: false,
     installed: false,
   },
   {
-    id: '4',
-    name: 'Data Analyzer',
-    description: 'Intelligent data analysis tool with visualization and reporting features',
-    category: 'tool',
-    tags: ['Data', 'Analytics', 'Business'],
+    id: "4",
+    name: "Data Analyzer",
+    description:
+      "Intelligent data analysis tool with visualization and reporting features",
+    category: "tool",
+    tags: ["Data", "Analytics", "Business"],
     rating: 4.6,
     usageCount: 32000,
-    author: 'DataFlow AI',
-    icon: 'BarChart3',
+    author: "DataFlow AI",
+    icon: "BarChart3",
     isOfficial: false,
     installed: true,
   },
   {
-    id: '5',
-    name: 'Translation Master',
-    description: 'Real-time multilingual translation with context awareness and tone adjustment',
-    category: 'agent',
-    tags: ['Translation', 'NLP', 'Global'],
+    id: "5",
+    name: "Translation Master",
+    description:
+      "Real-time multilingual translation with context awareness and tone adjustment",
+    category: "agent",
+    tags: ["Translation", "NLP", "Global"],
     rating: 4.4,
     usageCount: 67000,
-    author: 'LinguaTech',
-    icon: 'Globe',
+    author: "LinguaTech",
+    icon: "Globe",
     isOfficial: false,
     installed: false,
   },
   {
-    id: '6',
-    name: 'Content Writer',
-    description: 'AI writing assistant for blog posts, marketing copy, and social media content',
-    category: 'agent',
-    tags: ['Writing', 'Marketing', 'Content'],
+    id: "6",
+    name: "Content Writer",
+    description:
+      "AI writing assistant for blog posts, marketing copy, and social media content",
+    category: "agent",
+    tags: ["Writing", "Marketing", "Content"],
     rating: 4.3,
     usageCount: 54000,
-    author: 'ContentAI',
-    icon: 'FileText',
+    author: "ContentAI",
+    icon: "FileText",
     isOfficial: false,
     installed: false,
   },
@@ -129,27 +135,28 @@ const categoryIcons = {
 };
 
 const categoryColors = {
-  agent: 'bg-blue-100 text-blue-700 border-blue-200',
-  model: 'bg-purple-100 text-purple-700 border-purple-200',
-  tool: 'bg-amber-100 text-amber-700 border-amber-200',
-  api: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  agent: "bg-blue-100 text-blue-700 border-blue-200",
+  model: "bg-purple-100 text-purple-700 border-purple-200",
+  tool: "bg-amber-100 text-amber-700 border-amber-200",
+  api: "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
 const categoryLabels = {
-  agent: 'Agent',
-  model: 'Model',
-  tool: 'Tool',
-  api: 'API',
+  agent: "Agent",
+  model: "Model",
+  tool: "Tool",
+  api: "API",
 };
 
 export default function AiResources() {
   const [resources, setResources] = useState<AIResource[]>(mockResources);
-  const [filteredResources, setFilteredResources] = useState<AIResource[]>(mockResources);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'rating' | 'usage' | 'newest'>('rating');
+  const [filteredResources, setFilteredResources] =
+    useState<AIResource[]>(mockResources);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"rating" | "usage" | "newest">("rating");
 
-  const categories = ['all', 'agent', 'model', 'tool', 'api'];
+  const categories = ["all", "agent", "model", "tool", "api"];
 
   useEffect(() => {
     let result = [...resources];
@@ -160,21 +167,21 @@ export default function AiResources() {
         (r) =>
           r.name.toLowerCase().includes(query) ||
           r.description.toLowerCase().includes(query) ||
-          r.tags.some((tag) => tag.toLowerCase().includes(query))
+          r.tags.some((tag) => tag.toLowerCase().includes(query)),
       );
     }
 
-    if (selectedCategory !== 'all') {
+    if (selectedCategory !== "all") {
       result = result.filter((r) => r.category === selectedCategory);
     }
 
     result.sort((a, b) => {
       switch (sortBy) {
-        case 'rating':
+        case "rating":
           return b.rating - a.rating;
-        case 'usage':
+        case "usage":
           return b.usageCount - a.usageCount;
-        case 'newest':
+        case "newest":
           return b.id.localeCompare(a.id);
         default:
           return 0;
@@ -186,13 +193,15 @@ export default function AiResources() {
 
   const handleInstall = (resourceId: string) => {
     setResources((prev) =>
-      prev.map((r) => (r.id === resourceId ? { ...r, installed: !r.installed } : r))
+      prev.map((r) =>
+        r.id === resourceId ? { ...r, installed: !r.installed } : r,
+      ),
     );
   };
 
   const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "k";
     return num.toString();
   };
 
@@ -213,7 +222,8 @@ export default function AiResources() {
               AI Resources & Agent Market
             </h1>
             <p className="max-w-2xl text-lg text-white/90">
-              Discover, install, and integrate powerful AI models, agents, and tools to supercharge your workflow
+              Discover, install, and integrate powerful AI models, agents, and
+              tools to supercharge your workflow
             </p>
           </div>
         </div>
@@ -221,10 +231,10 @@ export default function AiResources() {
         {/* Stats Bar */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
-            { icon: Bot, label: 'Agents', value: '150+' },
-            { icon: Cpu, label: 'Models', value: '80+' },
-            { icon: Zap, label: 'Tools', value: '200+' },
-            { icon: Users, label: 'Active Users', value: '50k+' },
+            { icon: Bot, label: "Agents", value: "150+" },
+            { icon: Cpu, label: "Models", value: "80+" },
+            { icon: Zap, label: "Tools", value: "200+" },
+            { icon: Users, label: "Active Users", value: "50k+" },
           ].map((stat) => (
             <Card key={stat.label} className="border-slate-200">
               <CardContent className="flex items-center gap-3 p-4">
@@ -232,7 +242,9 @@ export default function AiResources() {
                   <stat.icon className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
+                  <div className="text-2xl font-bold text-slate-900">
+                    {stat.value}
+                  </div>
                   <div className="text-xs text-slate-500">{stat.label}</div>
                 </div>
               </CardContent>
@@ -257,7 +269,7 @@ export default function AiResources() {
                 {categories.map((cat) => (
                   <Button
                     key={cat}
-                    variant={selectedCategory === cat ? 'default' : 'outline'}
+                    variant={selectedCategory === cat ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(cat)}
                     className="capitalize"
@@ -288,8 +300,12 @@ export default function AiResources() {
           <Card className="border-dashed border-2">
             <CardContent className="py-12 text-center">
               <Search className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-              <h3 className="mb-2 text-lg font-medium text-slate-900">No resources found</h3>
-              <p className="text-slate-500">Try adjusting your search or filters</p>
+              <h3 className="mb-2 text-lg font-medium text-slate-900">
+                No resources found
+              </h3>
+              <p className="text-slate-500">
+                Try adjusting your search or filters
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -343,14 +359,16 @@ export default function AiResources() {
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                         <span className="font-medium">{resource.rating}</span>
-                        <span className="text-slate-400">({formatNumber(resource.usageCount)})</span>
+                        <span className="text-slate-400">
+                          ({formatNumber(resource.usageCount)})
+                        </span>
                       </div>
                       <div className="text-slate-500">by {resource.author}</div>
                     </div>
                   </CardContent>
                   <CardFooter className="flex gap-2 pt-3">
                     <Button
-                      variant={resource.installed ? 'outline' : 'default'}
+                      variant={resource.installed ? "outline" : "default"}
                       className="flex-1"
                       onClick={() => handleInstall(resource.id)}
                     >

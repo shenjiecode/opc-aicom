@@ -193,63 +193,51 @@ func ApplyTask(db *gorm.DB) gin.HandlerFunc {
 
 // ListTasksResponse represents the response for listing tasks
 type ListTasksResponse struct {
-	List  []model.Task `json:"list"`
-	Total int64        `json:"total"`
+	List     []*model.Task `json:"list"`
+	Total    int64         `json:"total"`
+	Page     int           `json:"page"`
+	PageSize int           `json:"pageSize"`
+}
+
+type ListTaskRequest struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"pageSize"`
+	Type     string `json:"type"`
+	Level    string `json:"level"`
 }
 
 // ListTasks handles listing tasks with filters
-// POST /api/task/list
+// POST /api/tasks/list
 func ListTasks(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Parse pagination params
-		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
-
-		if page < 1 {
-			page = 1
-		}
-		if pageSize < 1 {
-			pageSize = 10
-		}
-
-		// Build filter from query params
-		filter := &model.TaskFilter{}
-		if t := c.Query("type"); t != "" {
-			filter.Type = t
-		}
-		if l := c.Query("level"); l != "" {
-			filter.Level = l
-		}
-		if s := c.Query("status"); s != "" {
-			filter.Status = s
+		var req ListTaskRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+			pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+			req.Page = page
+			req.PageSize = pageSize
+			req.Type = c.Query("type")
+			req.Level = c.Query("level")
 		}
 
-		// Calculate offset
-		offset := (page - 1) * pageSize
+		if req.Page < 1 {
+			req.Page = 1
+		}
+		if req.PageSize < 1 {
+			req.PageSize = 10
+		}
+		if req.PageSize > 100 {
+			req.PageSize = 100
+		}
 
 		// Get task repository
 		taskRepo := repository.NewTaskRepository(db)
 
-		// Get total count
-		var total int64
-		countQuery := db.Model(&model.Task{})
-		if filter.Type != "" {
-			countQuery = countQuery.Where("type = ?", filter.Type)
-		}
-		if filter.Level != "" {
-			countQuery = countQuery.Where("level = ?", filter.Level)
-		}
-		if filter.Status != "" {
-			countQuery = countQuery.Where("status = ?", filter.Status)
-		}
-		countQuery.Count(&total)
-
-		// Get list
-		tasks, err := taskRepo.List(filter, pageSize, offset)
+		tasks, total, err := taskRepo.List(req.Page, req.PageSize, req.Type, req.Level)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
 				Code:    500,
-				Message: "failed to fetch tasks",
+				Message: "Failed to fetch tasks",
 			})
 			return
 		}
@@ -257,7 +245,12 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
-			Data:    ListTasksResponse{List: tasks, Total: total},
+			Data: ListTasksResponse{
+				List:     tasks,
+				Total:    total,
+				Page:     req.Page,
+				PageSize: req.PageSize,
+			},
 		})
 	}
 }
