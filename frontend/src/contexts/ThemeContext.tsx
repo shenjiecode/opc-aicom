@@ -20,7 +20,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ 
   children, 
-  defaultTheme = 'light' 
+  defaultTheme = 'dark'
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     // 优先从 localStorage 读取

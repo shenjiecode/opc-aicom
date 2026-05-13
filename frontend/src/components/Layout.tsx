@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
 
@@ -51,15 +50,9 @@ export function Layout({ className }: LayoutProps) {
         />
       </div>
 
-      {/* Main Content Wrapper - flex-col to stack header + content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header - fixed height */}
-        <Header 
-          onMenuClick={() => setMobileMenuOpen(true)} 
-        />
-
-        {/* Main Content Area - scrollable */}
-        <main className="flex-1 overflow-y-auto bg-[var(--bg-surface)]">
+      {/* Main Content Area */}
+      <div className="flex-1 h-full overflow-hidden">
+        <main className="h-full overflow-y-auto bg-[var(--bg-surface)]">
           <div className="p-4 lg:p-8 min-h-full">
             <Outlet />
           </div>

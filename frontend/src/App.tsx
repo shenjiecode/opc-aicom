@@ -16,7 +16,7 @@ import OPCWorkbench from './pages/OPCWorkbench';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider defaultTheme="dark">
       <BrowserRouter>
         <Routes>
           {/* Routes without Layout - Auth pages & Fullscreen pages */}
