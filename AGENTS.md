@@ -12,7 +12,30 @@
 | 格式化 | gofmt（Go）/ ruff（Python）/ Prettier（TS），提交前必须格式化 |
 | 测试 | gotests / pytest / Vitest + Playwright |
 
-<!-- 根据项目实际情况调整 -->
+---
+
+⚠️ **执行任何操作前，先匹配下方触发词，加载对应规则文件**
+
+---
+
+# 按需加载
+
+| 触发词 | 规则文件 | 核心内容 |
+|--------|----------|----------|
+| `写代码`、`修Bug`、`重构`、`Debug`、`优化` | behavior.md | 思考方式、工作原则、场景原则 |
+| `提交`、`commit`、`git`、`push` | conventions.md + review.md | Git提交规范、提交前检查清单 |
+| `API`、`数据库`、`字段`、`表`、`安全`、`错误码`、`配置`、`日志` | conventions.md | API/DB/安全/错误码/配置/日志规范 |
+| `前端`、`UI`、`样式`、`组件`、`页面`、`React` | frontend.md | 前端目录结构、UI约束 |
+| `后端`、`Go`、`Gin`、`handler`、`service`、`repository` | backend.md | 后端目录结构、分层原则 |
+| `架构`、`模块`、`依赖`、`分层` | architecture.md | 架构原则 |
+| `部署`、`Docker`、`docker-compose`、`容器` | deployment.md + templates.md | 部署规范、Dockerfile模板 |
+| `写Dockerfile` | templates.md | Dockerfile模板 |
+| `修改规则`、`新增规则`、`删除规则`、`AGENTS.md` | philosophy.md | 规则哲学 |
+
+**规则文件位置**: `docs/rules/`
+
+---
+
 # 行为底线
 
 ## 先理解，再动手
@@ -36,20 +59,6 @@
 - 禁止静默吞掉错误、空 catch
 - 禁止绕过类型系统（any、@ts-ignore）
 
-# 按需加载
-
-
-任务涉及多个领域时，加载所有相关规则。拿不准时宁可多加载。
-| 任务 | 额外加载 |
-|------|---------|
-| 写代码/修 Bug | behavior.md |
-| 重构/提交代码 | review.md |
-| API/数据库/安全/错误码/配置/日志/提交 | conventions.md |
-| 前端开发 | frontend.md |
-| 后端开发 | backend.md |
-| 架构修改 | architecture.md |
-| 部署 | deployment.md |
-| 写 Dockerfile | templates.md |
-| 修改/新增/删除规则 | philosophy.md |
+---
 
 规则未覆盖的情境，优先遵循项目既有代码风格。
