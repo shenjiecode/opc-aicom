@@ -64,6 +64,11 @@
 
 # 提交规范
 
-- Conventional Commits：`type(scope): 描述`
-- type：feat / fix / refactor / docs / test / chore / perf
+- 使用中文描述 commit message
+- 按功能分开提交，禁止一把梭（除非只有一个功能）
+- 提交粒度示例：
+  - `feat: 添加用户登录页面`
+  - `fix: 修复登录表单验证逻辑`
+  - `refactor: 重构 Layout 组件滚动逻辑`
+  - `style: 优化滚动条样式`
 - 每次提交是原子变更，不混合功能+重构+修复
