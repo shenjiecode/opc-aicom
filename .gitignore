@@ -32,11 +32,8 @@ npm-debug.log*
 # Playwright MCP
 .playwright-mcp/
 
-# Test artifacts
-*.png
-homepage.png
-tasks-page.png
-
+# Screenshots
+.screenshots/
 # Backend binaries
 backend/opc-aicom
 backend/server

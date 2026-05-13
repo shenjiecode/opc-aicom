@@ -196,11 +196,10 @@ echo "Frontend running on port: $FRONTEND_PORT"
 ```
 
 ```typescript
+```typescript
 // 截图验证（使用动态端口）
 await page.goto(`http://localhost:${process.env.FRONTEND_PORT || 5173}`);
-await page.screenshot({ path: 'screenshot.png' });
-
-// 检查元素存在
+await page.screenshot({ path: '.screenshots/screenshot.png' });
 await expect(page.locator('h1')).toBeVisible();
 
 // 检查控制台无错误
