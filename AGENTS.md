@@ -25,9 +25,7 @@
 | `写代码`、`修Bug`、`重构`、`Debug`、`优化` | behavior.md | 思考方式、工作原则、场景原则 |
 | `提交`、`commit`、`git`、`push` | conventions.md + review.md | Git提交规范、提交前检查清单 |
 | `API`、`数据库`、`字段`、`表`、`安全`、`错误码`、`配置`、`日志` | conventions.md | API/DB/安全/错误码/配置/日志规范 |
-| `前端`、`UI`、`样式`、`组件`、`页面`、`React` | frontend.md | 前端目录结构、UI约束 |
-| `后端`、`Go`、`Gin`、`handler`、`service`、`repository` | backend.md | 后端目录结构、分层原则 |
-| `架构`、`模块`、`依赖`、`分层` | architecture.md | 架构原则 |
+| `架构`、`模块`、`依赖`、`分层`、`新建项目`、`初始化目录` | architecture.md + frontend.md + backend.md | 架构原则、前后端目录结构 |
 | `部署`、`Docker`、`docker-compose`、`容器` | deployment.md + templates.md | 部署规范、Dockerfile模板 |
 | `写Dockerfile` | templates.md | Dockerfile模板 |
 | `修改规则`、`新增规则`、`删除规则`、`AGENTS.md` | philosophy.md | 规则哲学 |
