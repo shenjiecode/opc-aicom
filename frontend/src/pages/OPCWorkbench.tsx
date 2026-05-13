@@ -98,9 +98,10 @@ export default function OPCWorkbench() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
-      {/* Left Panel: AI Team & Workflows */}
-      <div className="w-full lg:w-72 flex flex-col gap-6">
+    <div className="h-screen bg-[#0a0a0f] p-4 lg:p-6 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
+        {/* Left Panel: AI Team & Workflows */}
+        <div className="w-full lg:w-72 flex flex-col gap-6">
         {/* Header Card */}
         <Card className="bg-[#1a1b26] border-slate-800">
           <CardHeader className="pb-3">
@@ -190,10 +191,10 @@ export default function OPCWorkbench() {
             </div>
           </CardHeader>
         </Card>
-      </div>
+        </div>
 
-      {/* Middle Panel: Chat/Command Center */}
-      <div className="flex-1 flex flex-col min-h-0">
+        {/* Middle Panel: Chat/Command Center */}
+        <div className="flex-1 flex flex-col min-h-0">
         <Card className="bg-[#13141f] border-slate-800 flex-1 flex flex-col">
           {/* Header */}
           <CardHeader className="border-b border-slate-800 pb-4">
@@ -317,10 +318,10 @@ export default function OPCWorkbench() {
             </div>
           </div>
         </Card>
-      </div>
+        </div>
 
-      {/* Right Panel: Status & Analytics */}
-      <div className="w-full lg:w-80 flex flex-col gap-6">
+        {/* Right Panel: Status & Analytics */}
+        <div className="w-full lg:w-80 flex flex-col gap-6">
         {/* Workflow Status */}
         <Card className="bg-[#1a1b26] border-slate-800">
           <CardHeader className="pb-3">
@@ -415,6 +416,7 @@ export default function OPCWorkbench() {
             </div>
           </CardHeader>
         </Card>
+        </div>
       </div>
     </div>
   );
