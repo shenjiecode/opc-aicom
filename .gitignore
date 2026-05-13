@@ -23,7 +23,22 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# opencode
+# OpenCode
 .opencode/auth.json
 .opencode/*.db*
 .opencode/log/
+.sisyphus/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Test artifacts
+*.png
+homepage.png
+tasks-page.png
+
+# Backend binaries
+backend/opc-aicom
+backend/server
+backend/bin/
+frontend/dist/
