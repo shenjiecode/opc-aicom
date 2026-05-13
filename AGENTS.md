@@ -11,21 +11,9 @@
 | 工具/脚本 | TypeScript（Node.js） |
 | 格式化 | gofmt（Go）/ ruff（Python）/ Prettier（TS），提交前必须格式化 |
 | 测试 | gotests / pytest / Vitest + Playwright |
-
 ---
 
-## ⚠️ 项目说明索引
-
-各子项目的关键信息记录在各自的 README.md 中：
-
-| 项目 | 说明文件 | 关键内容 |
-|------|----------|----------|
-| frontend | `frontend/README.md` | 路由布局、主题系统、组件结构、渐进式适配 |
-
-**AI 行为要求**：
-- 开始任务前，先阅读相关项目的 README.md
-- 了解项目的关键设计决策和当前状态
-- 遵循项目中已有的模式和约定
+各项目的关键技术记录在 `项目/README.md`（如 `frontend/README.md`）。
 
 ---
 
