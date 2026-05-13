@@ -30,7 +30,7 @@ export function Layout({ className }: LayoutProps) {
   }, [mobileMenuOpen]);
 
   return (
-    <div className={cn("h-screen overflow-hidden bg-[var(--gray-950)] flex", className)}>
+    <div className={cn("h-screen overflow-hidden bg-[var(--bg-base)] flex", className)}>
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div 
@@ -55,12 +55,11 @@ export function Layout({ className }: LayoutProps) {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header - fixed height */}
         <Header 
-          sidebarCollapsed={sidebarCollapsed}
           onMenuClick={() => setMobileMenuOpen(true)} 
         />
 
         {/* Main Content Area - scrollable */}
-        <main className="flex-1 overflow-y-auto bg-[var(--gray-950)]">
+        <main className="flex-1 overflow-y-auto bg-[var(--bg-surface)]">
           <div className="p-4 lg:p-8 min-h-full">
             <Outlet />
           </div>

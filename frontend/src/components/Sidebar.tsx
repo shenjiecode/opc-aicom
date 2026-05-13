@@ -92,7 +92,7 @@ export function Sidebar({
     <aside 
       className={cn(
         "h-full flex-shrink-0",
-        "bg-[var(--gray-900)] border-r border-[var(--gray-800)]",
+        "bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)]",
         "flex flex-col",
         "transition-all duration-300 ease-in-out",
         collapsed ? "w-16" : "w-64",
@@ -101,7 +101,7 @@ export function Sidebar({
     >
       {/* Logo Section */}
       <div className={cn(
-        "h-[var(--header-height)] flex items-center border-b border-[var(--gray-800)]",
+        "h-[var(--header-height)] flex items-center border-b border-[var(--sidebar-border)]",
         collapsed ? "justify-center px-2" : "px-4"
       )}>
         <div className="flex items-center gap-3 overflow-hidden">
@@ -112,14 +112,14 @@ export function Sidebar({
             "flex flex-col overflow-hidden transition-all duration-300",
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
           )}>
-            <span className="font-bold text-white text-lg tracking-tight whitespace-nowrap">OPC AICom</span>
-            <span className="text-xs text-[var(--gray-500)] whitespace-nowrap">AI 算力社区</span>
+            <span className="font-bold text-[var(--text-primary)] text-lg tracking-tight whitespace-nowrap">OPC AICom</span>
+            <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">AI 算力社区</span>
           </div>
         </div>
       </div>
 
       {/* Navigation Groups */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 scrollbar-thin scrollbar-thumb-[var(--gray-700)] scrollbar-track-transparent">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 scrollbar-thin scrollbar-thumb-[var(--border-default)] scrollbar-track-transparent">
         {navigationGroups.map((group) => (
           <div key={group.section}>
             {/* Section Title - Hidden when collapsed */}
@@ -127,7 +127,7 @@ export function Sidebar({
               "px-3 mb-2 transition-all duration-300",
               collapsed ? "h-0 opacity-0 overflow-hidden" : "h-auto opacity-100"
             )}>
-              <span className="text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                 {group.section}
               </span>
             </div>
@@ -145,17 +145,17 @@ export function Sidebar({
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg",
                       "transition-all duration-200 group relative",
-                      "hover:bg-[var(--gray-800)]",
+                      "hover:bg-[var(--bg-muted)]",
                       active 
-                        ? "bg-[var(--primary-500)]/10 text-[var(--primary-400)]" 
-                        : "text-[var(--gray-400)] hover:text-white",
+                        ? "bg-[var(--primary-500)]/10 text-[var(--primary-500)]" 
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
                       collapsed && "justify-center px-2"
                     )}
                   >
                     {/* Icon */}
                     <Icon className={cn(
                       "w-5 h-5 flex-shrink-0 transition-colors",
-                      active ? "text-[var(--primary-400)]" : "group-hover:text-white"
+                      active ? "text-[var(--primary-500)]" : "group-hover:text-[var(--text-primary)]"
                     )} />
                     
                     {/* Label - Hidden when collapsed */}
@@ -171,8 +171,8 @@ export function Sidebar({
                       <span className={cn(
                         "ml-auto text-xs px-2 py-0.5 rounded-full",
                         item.badgeType === 'hot' 
-                          ? "bg-red-500/20 text-red-400" 
-                          : "bg-[var(--primary-500)]/20 text-[var(--primary-400)]"
+                          ? "bg-red-500/20 text-red-500" 
+                          : "bg-[var(--primary-500)]/20 text-[var(--primary-500)]"
                       )}>
                         {item.badge}
                       </span>
@@ -185,10 +185,10 @@ export function Sidebar({
 
                     {/* Tooltip for collapsed state */}
                     {collapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--gray-800)] text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                      <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
                         {item.label}
                         {item.badge && (
-                          <span className="ml-2 text-xs text-[var(--primary-400)]">
+                          <span className="ml-2 text-xs text-[var(--primary-500)]">
                             {item.badge}
                           </span>
                         )}
@@ -203,13 +203,13 @@ export function Sidebar({
       </nav>
 
       {/* Collapse Toggle Button */}
-      <div className="p-3 border-t border-[var(--gray-800)]">
+      <div className="p-3 border-t border-[var(--sidebar-border)]">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            "w-full text-[var(--gray-500)] hover:text-white hover:bg-[var(--gray-800)] transition-colors",
+            "w-full text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-muted)] transition-colors",
             collapsed && "justify-center"
           )}
         >
