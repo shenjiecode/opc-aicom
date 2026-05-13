@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Make sure tables exist
-	database.AutoMigrate(db, &model.User{}, &model.Post{}, &model.Event{}, &model.Task{})
+	database.AutoMigrate(db, &model.User{}, &model.Post{}, &model.Event{}, &model.Task{}, &model.Resource{}, &model.Service{}, &model.Agent{})
 
 	// Create test users
 	users := []model.User{
@@ -256,6 +256,242 @@ func main() {
 	}
 
 	log.Println("Successfully seeded 4 tasks!")
+
+	// Create resources based on the screenshot
+	resources := []model.Resource{
+		{
+			Title:       "皮卡丘 官方IP授权包",
+			Category:    "二次元动漫IP",
+			Description: "正版皮卡丘数字资产授权，包含3D模型、2D原画、官方配音包，可用于电商商品素材、数字人、游戏NPC等AI生成场景。",
+			IconEmoji:   "⚡",
+			IconBgColor: "bg-amber-100",
+			IconColor:   "text-amber-500",
+			Publisher:   "任天堂/Pokémon",
+			Rating:      4.9,
+			AuthCount:   2843,
+			Price:       8999,
+			Type:        "ip",
+		},
+		{
+			Title:       "火影忍者 官方IP授权包",
+			Category:    "二次元动漫IP",
+			Description: "火影忍者核心角色（鸣人、佐助、卡卡西等）模型与音色库。支持通过Lora微调生成指定画风的漫画、短视频或数字人分身。",
+			IconEmoji:   "🌀",
+			IconBgColor: "bg-orange-100",
+			IconColor:   "text-orange-500",
+			Publisher:   "集英社/Studio Pierrot",
+			Rating:      4.9,
+			AuthCount:   5120,
+			Price:       12999,
+			Type:        "ip",
+		},
+		{
+			Title:       "初音未来 官方IP授权包",
+			Category:    "虚拟偶像IP",
+			Description: "包含初音未来V4X核心音源库、全套MMD动作数据、官方正版插画素材。支持通过AI音乐生成工具快速编曲填词并合成MV。",
+			IconEmoji:   "🎤",
+			IconBgColor: "bg-teal-100",
+			IconColor:   "text-teal-500",
+			Publisher:   "Crypton Future Media",
+			Rating:      4.8,
+			AuthCount:   1932,
+			Price:       6999,
+			Type:        "ip",
+		},
+		{
+			Title:       "短视频爆款脚本IP模板",
+			Category:    "内容IP模板",
+			Description: "涵盖抖音、快手、视频号等平台最新爆款脚本结构，提供直接可用的提示词工程预设。适用于AI自动生成爆款带货视频脚本。",
+			IconEmoji:   "🎬",
+			IconBgColor: "bg-cyan-100",
+			IconColor:   "text-cyan-600",
+			Publisher:   "短视频爆款工场",
+			Rating:      4.7,
+			AuthCount:   8542,
+			Price:       1999,
+			Type:        "ip",
+		},
+		{
+			Title:       "跨境电商客服意图库",
+			Category:    "对话意图库",
+			Description: "包含超过50万条跨境电商真实用户对话数据，清洗后的多语种客服意图库。适合用于训练出海AI客服大模型。",
+			IconEmoji:   "🌍",
+			IconBgColor: "bg-blue-100",
+			IconColor:   "text-blue-500",
+			Publisher:   "DataGlobal",
+			Rating:      4.9,
+			AuthCount:   1024,
+			Price:       15000,
+			Type:        "ip",
+		},
+		{
+			Title:       "迪士尼 官方IP授权包",
+			Category:    "欧美动漫IP",
+			Description: "包含米奇、唐老鸭等经典角色3D资产，支持在数字展厅、元宇宙场景及电商虚拟主播中使用。",
+			IconEmoji:   "🏰",
+			IconBgColor: "bg-indigo-100",
+			IconColor:   "text-indigo-500",
+			Publisher:   "Disney",
+			Rating:      5.0,
+			AuthCount:   9521,
+			Price:       18999,
+			Type:        "ip",
+		},
+		{
+			Title:       "AI 提示词工程专家",
+			Category:    "提示词工程",
+			Description: "精通各大主流模型（GPT-4, Claude 3, Midjourney）的提示词编写，擅长系统性地优化和测试Prompt链，提升模型输出的稳定性。",
+			IconEmoji:   "🧙‍♂️",
+			IconBgColor: "bg-purple-100",
+			IconColor:   "text-purple-600",
+			Publisher:   "PromptMaster",
+			Rating:      4.9,
+			AuthCount:   312,
+			Price:       5000,
+			Type:        "expert",
+		},
+		{
+			Title:       "企业级大模型微调服务",
+			Category:    "模型微调",
+			Description: "提供基于开源模型（Llama 3, Qwen）的企业私有化微调服务，包括数据清洗、SFT、RLHF全流程解决方案。",
+			IconEmoji:   "🛠️",
+			IconBgColor: "bg-red-100",
+			IconColor:   "text-red-500",
+			Publisher:   "AI架构师老王",
+			Rating:      4.8,
+			AuthCount:   85,
+			Price:       35000,
+			Type:        "expert",
+		},
+		{
+			Title:       "RAG 知识库系统搭建",
+			Category:    "架构设计",
+			Description: "为企业提供检索增强生成（RAG）系统的从零搭建服务，优化文档解析、向量化及多路召回策略，解决AI幻觉问题。",
+			IconEmoji:   "📚",
+			IconBgColor: "bg-emerald-100",
+			IconColor:   "text-emerald-600",
+			Publisher:   "Tech Lead 张哥",
+			Rating:      5.0,
+			AuthCount:   156,
+			Price:       12000,
+			Type:        "expert",
+		},
+		{
+			Title:       "AI 数字人全案定制",
+			Category:    "数字人制作",
+			Description: "提供2D/3D高拟真数字人克隆服务，包含形象建模、声音克隆、动作捕捉及驱动系统私有化部署。",
+			IconEmoji:   "🧑‍💼",
+			IconBgColor: "bg-pink-100",
+			IconColor:   "text-pink-500",
+			Publisher:   "MetaHuman工作室",
+			Rating:      4.7,
+			AuthCount:   420,
+			Price:       25000,
+			Type:        "expert",
+		},
+	}
+
+	for i := range resources {
+		db.Create(&resources[i])
+	}
+
+	log.Println("Successfully seeded additional resources!")
+
+	// Create services based on the screenshot
+	services := []model.Service{
+		{
+			Title:       "人才孵化器",
+			Subtitle:    "超级个体成长计划",
+			Description: "面向AI原生时代的个人成长加速器。提供技能培训、项目实战、导师1v1指导、...",
+			Tags:        `["技能培训", "实战项目", "导师指导"]`,
+			Status:      "内测中",
+			ThemeColor:  "from-blue-400 to-blue-500",
+			IconEmoji:   "🌱",
+		},
+		{
+			Title:       "融资对接",
+			Subtitle:    "资本加速器",
+			Description: "连接优质投资机构与AI创业项目。提供商业计划书优化、路演辅导、投资人对接...",
+			Tags:        `["BP优化", "路演辅导", "投资人对接"]`,
+			Status:      "内测中",
+			ThemeColor:  "from-emerald-400 to-emerald-500",
+			IconEmoji:   "💰",
+		},
+		{
+			Title:       "法律与财税",
+			Subtitle:    "创业合规助手",
+			Description: "为AI创业者提供公司注册、知识产权保护、合同审查、税务筹划等专业服务。",
+			Tags:        `["公司注册", "商标专利", "合同审查"]`,
+			Status:      "内测中",
+			ThemeColor:  "from-orange-400 to-red-400",
+			IconEmoji:   "🛡️",
+		},
+	}
+
+	// Delete existing services to prevent duplicates during testing
+	db.Exec("DELETE FROM services")
+
+	for i := range services {
+		db.Create(&services[i])
+	}
+
+	log.Println("Successfully seeded services!")
+
+	// Create agents based on user request
+	agents := []model.Agent{
+		{
+			UserID:        users[0].ID,
+			Name:          "比特bit",
+			Description:   "全能AI助手，精通代码编写、系统架构设计与日常任务自动化。",
+			Status:        "运行中",
+			DrivenModel:   "GPT-4o",
+			KnowledgeBase: "代码库、系统架构文档",
+			CostPerUse:    0.05,
+			ThemeColor:    "from-blue-400 to-blue-600",
+			IconEmoji:     "🤖",
+		},
+		{
+			UserID:        users[0].ID,
+			Name:          "小O智能体",
+			Description:   "贴心的日常助理，帮助你管理日程、分析数据、提供创意灵感。",
+			Status:        "空闲",
+			DrivenModel:   "Claude-3.5-Sonnet",
+			KnowledgeBase: "日程安排、创意素材库",
+			CostPerUse:    0.03,
+			ThemeColor:    "from-purple-400 to-purple-600",
+			IconEmoji:     "🦄",
+		},
+		{
+			UserID:        users[0].ID,
+			Name:          "Strategic Analyst",
+			Description:   "深度业务分析与策略规划专家，提供市场洞察和商业决策支持。",
+			Status:        "运行中",
+			DrivenModel:   "GPT-4-Turbo",
+			KnowledgeBase: "行业研究报告、财务数据",
+			CostPerUse:    0.10,
+			ThemeColor:    "from-emerald-400 to-emerald-600",
+			IconEmoji:     "📈",
+		},
+		{
+			UserID:        users[0].ID,
+			Name:          "Content Creator",
+			Description:   "高效的文案与内容创作助手，适用于社媒运营和博客文章生成。",
+			Status:        "空闲",
+			DrivenModel:   "Claude-3-Haiku",
+			KnowledgeBase: "爆款文案库、品牌调性指南",
+			CostPerUse:    0.01,
+			ThemeColor:    "from-amber-400 to-orange-500",
+			IconEmoji:     "✍️",
+		},
+	}
+
+	db.Exec("DELETE FROM agents")
+
+	for i := range agents {
+		db.Create(&agents[i])
+	}
+
+	log.Println("Successfully seeded agents!")
 }
 
 func stringPtr(s string) *string {

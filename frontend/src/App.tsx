@@ -5,7 +5,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Tasks from "./pages/Tasks";
 import Community from "./pages/Community";
-import AiResources from "./pages/AiResources";
+import AiResources from './pages/AiResources';
 import ServiceCenter from "./pages/ServiceCenter";
 import MyAgents from "./pages/MyAgents";
 import MyWorkflows from "./pages/MyWorkflows";
@@ -13,6 +13,7 @@ import PointsMall from "./pages/PointsMall";
 import { Layout } from "./components/Layout";
 import MyOPC from "./pages/MyOPC";
 import OPCWorkbench from "./pages/OPCWorkbench";
+import AiBit from './pages/AiBit';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route path="/my-agents" element={<MyAgents />} />
             <Route path="/my-workflows" element={<MyWorkflows />} />
             <Route path="/points-mall" element={<PointsMall />} />
+            <Route path="/aibit" element={<AiBit />} />
           </Route>
         </Routes>
       </BrowserRouter>

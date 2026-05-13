@@ -1,530 +1,183 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Bot,
   Plus,
-  Search,
-  Play,
-  Pause,
-  Edit,
-  Trash2,
-  Copy,
-  Cpu,
   MessageSquare,
-  Zap,
-  Calendar,
-  Activity,
+  Settings,
+  Bot,
+  BrainCircuit,
+  Database,
+  Coins,
+  Play,
+  Pause
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Agent {
-  id: string;
+  id: number;
   name: string;
   description: string;
-  status: "active" | "paused" | "offline";
-  model: string;
-  version: string;
-  createdAt: string;
-  lastActive: string;
-  conversations: number;
-  avgResponseTime: string;
-  tags: string[];
-  icon: string;
+  status: string;
+  driven_model: string;
+  knowledge_base: string;
+  cost_per_use: number;
+  theme_color: string;
+  icon_emoji: string;
 }
 
-const mockAgents: Agent[] = [
-  {
-    id: "1",
-    name: "Customer Support Bot",
-    description:
-      "Handles customer inquiries, FAQs, and routes complex issues to human agents",
-    status: "active",
-    model: "GPT-4",
-    version: "2.1.0",
-    createdAt: "2024-01-10",
-    lastActive: "2 min ago",
-    conversations: 15420,
-    avgResponseTime: "1.2s",
-    tags: ["Support", "Customer Service"],
-    icon: "MessageSquare",
-  },
-  {
-    id: "2",
-    name: "Code Assistant Pro",
-    description:
-      "Helps with code review, debugging, and generating code snippets",
-    status: "active",
-    model: "Claude 3",
-    version: "1.5.2",
-    createdAt: "2024-01-15",
-    lastActive: "5 min ago",
-    conversations: 8930,
-    avgResponseTime: "2.1s",
-    tags: ["Development", "Coding"],
-    icon: "Code",
-  },
-  {
-    id: "3",
-    name: "Data Analyst",
-    description:
-      "Analyzes data, creates visualizations, and generates insights",
-    status: "paused",
-    model: "GPT-4",
-    version: "1.0.0",
-    createdAt: "2024-01-20",
-    lastActive: "2 days ago",
-    conversations: 3200,
-    avgResponseTime: "3.5s",
-    tags: ["Analytics", "Data"],
-    icon: "TrendingUp",
-  },
-  {
-    id: "4",
-    name: "Content Writer",
-    description: "Creates blog posts, social media content, and marketing copy",
-    status: "offline",
-    model: "GPT-3.5",
-    version: "1.2.0",
-    createdAt: "2024-02-01",
-    lastActive: "1 week ago",
-    conversations: 5600,
-    avgResponseTime: "1.8s",
-    tags: ["Content", "Marketing"],
-    icon: "FileText",
-  },
-];
-
-const statsData = [
-  { label: "Total Agents", value: "12", icon: Bot, change: "+2 this month" },
-  { label: "Active Now", value: "8", icon: Activity, change: "67% active" },
-  {
-    label: "Total Conversations",
-    value: "33.2k",
-    icon: MessageSquare,
-    change: "+12% vs last month",
-  },
-  {
-    label: "Avg Response Time",
-    value: "1.8s",
-    icon: Zap,
-    change: "20% faster",
-  },
-];
-
 export default function MyAgents() {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
-  const [filteredAgents, setFilteredAgents] = useState<Agent[]>(mockAgents);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    name: "",
-    description: "",
-    model: "GPT-4",
-  });
-
-  const token = localStorage.getItem("token");
-  const isAuthenticated = !!token;
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let result = [...agents];
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (agent) =>
-          agent.name.toLowerCase().includes(query) ||
-          agent.description.toLowerCase().includes(query) ||
-          agent.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      result = result.filter((agent) => agent.status === selectedStatus);
-    }
-
-    setFilteredAgents(result);
-  }, [agents, searchQuery, selectedStatus]);
-
-  const handleToggleStatus = (agentId: string) => {
-    setAgents((prev) =>
-      prev.map((agent) => {
-        if (agent.id === agentId) {
-          const newStatus = agent.status === "active" ? "paused" : "active";
-          return { ...agent, status: newStatus };
+    const fetchAgents = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.post('/api/agents/list');
+        if (res.data.code === 200) {
+          setAgents(res.data.data.list || []);
         }
-        return agent;
-      }),
-    );
-  };
-
-  const handleDeleteAgent = (agentId: string) => {
-    if (confirm("Are you sure you want to delete this agent?")) {
-      setAgents((prev) => prev.filter((agent) => agent.id !== agentId));
-    }
-  };
-
-  const handleDuplicateAgent = (agent: Agent) => {
-    const duplicated: Agent = {
-      ...agent,
-      id: Date.now().toString(),
-      name: `${agent.name} (Copy)`,
-      status: "paused",
-      createdAt: new Date().toISOString().split("T")[0],
-      lastActive: "Just created",
+      } catch (error) {
+        console.error("Failed to fetch agents:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    setAgents((prev) => [duplicated, ...prev]);
-  };
-
-  const handleCreateAgent = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const newAgent: Agent = {
-      id: Date.now().toString(),
-      name: createForm.name,
-      description: createForm.description,
-      status: "paused",
-      model: createForm.model,
-      version: "1.0.0",
-      createdAt: new Date().toISOString().split("T")[0],
-      lastActive: "Just created",
-      conversations: 0,
-      avgResponseTime: "N/A",
-      tags: ["Custom"],
-      icon: "Bot",
-    };
-    setAgents((prev) => [newAgent, ...prev]);
-    setIsCreateModalOpen(false);
-    setCreateForm({ name: "", description: "", model: "GPT-4" });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "paused":
-        return "bg-amber-100 text-amber-700 border-amber-200";
-      case "offline":
-        return "bg-slate-100 text-slate-700 border-slate-200";
-      default:
-        return "bg-slate-100 text-slate-700";
-    }
-  };
-
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-500";
-      case "paused":
-        return "bg-amber-500";
-      case "offline":
-        return "bg-slate-400";
-      default:
-        return "bg-slate-400";
-    }
-  };
+    fetchAgents();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">My Agents</h1>
-            <p className="mt-1 text-slate-600">
-              Manage and customize your AI agents
-            </p>
-          </div>
-          {isAuthenticated && (
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Create Agent
-            </Button>
-          )}
+    <div className="min-h-full flex flex-col bg-[var(--bg-default)]">
+      {/* Banner Area */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-[var(--primary-900)] to-[var(--bg-default)] border-b border-[var(--border-default)]">
+        {/* Background Decorative Elements */}
+        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
+          <div className="absolute right-10 top-10 w-64 h-64 bg-[var(--primary-500)] rounded-full mix-blend-screen filter blur-[80px] animate-pulse" />
+          <div className="absolute right-40 bottom-10 w-48 h-48 bg-purple-500 rounded-full mix-blend-screen filter blur-[60px] animate-pulse" style={{ animationDelay: "2s" }} />
         </div>
 
-        {/* Stats Grid */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statsData.map((stat) => (
-            <Card key={stat.label} className="border-slate-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">{stat.label}</p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">
-                      {stat.value}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">{stat.change}</p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
-                    <stat.icon className="h-5 w-5 text-indigo-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <Card className="mb-6 border-slate-200">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Search agents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-12 lg:py-16">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--primary-500)]/10 border border-[var(--primary-500)]/20 text-[var(--primary-500)] text-sm font-medium mb-6">
+                <Bot className="w-4 h-4" />
+                <span>My Agents</span>
               </div>
-              <div className="flex gap-2">
-                {["all", "active", "paused", "offline"].map((status) => (
-                  <Button
-                    key={status}
-                    variant={selectedStatus === status ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedStatus(status)}
-                    className="capitalize"
-                  >
-                    {status}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Agents Grid */}
-        {filteredAgents.length === 0 ? (
-          <Card className="border-dashed border-2">
-            <CardContent className="py-12 text-center">
-              <Bot className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-              <h3 className="mb-2 text-lg font-medium text-slate-900">
-                {searchQuery ? "No agents found" : "No agents yet"}
-              </h3>
-              <p className="mb-4 text-slate-500">
-                {searchQuery
-                  ? "Try adjusting your search"
-                  : "Create your first AI agent to get started"}
+              <h1 className="text-4xl sm:text-5xl font-bold text-[var(--text-primary)] mb-6 tracking-tight">
+                我的智能体
+              </h1>
+              <p className="text-lg text-[var(--text-secondary)] leading-relaxed">
+                管理和调用您专属的 AI 智能体，提升工作效率
               </p>
-              {!searchQuery && isAuthenticated && (
-                <Button onClick={() => setIsCreateModalOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Agent
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            
+            <div className="flex-shrink-0 flex items-center gap-4">
+              <Button size="lg" className="bg-[var(--primary-600)] hover:bg-[var(--primary-500)] text-white shadow-lg shadow-[var(--primary-500)]/20">
+                <Plus className="w-5 h-5 mr-2" />
+                创建智能体
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 max-w-7xl mx-auto px-6 lg:px-8 py-10 w-full">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-500)]"></div>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredAgents.map((agent) => (
-              <Card
-                key={agent.id}
-                className="group border-slate-200 transition-all duration-300 hover:shadow-lg"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {agents.map((agent) => (
+              <Card 
+                key={agent.id} 
+                className="group relative bg-[var(--bg-elevated)] border-[var(--border-default)] hover:border-[var(--primary-500)]/50 transition-all duration-300 flex flex-col h-full overflow-hidden"
               >
-                <CardHeader className="pb-3">
-                  <div className="mb-3 flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                        <Bot className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">
-                            {agent.name}
-                          </CardTitle>
-                          <div
-                            className={`h-2 w-2 rounded-full ${getStatusDot(agent.status)}`}
-                          />
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          v{agent.version}
-                        </p>
-                      </div>
+                {/* Status Indicator Line */}
+                <div className={cn(
+                  "absolute top-0 left-0 w-full h-1",
+                  agent.status === "运行中" ? "bg-green-500" : "bg-gray-500"
+                )} />
+
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm bg-gradient-to-br",
+                      agent.theme_color
+                    )}>
+                      {agent.icon_emoji}
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={getStatusColor(agent.status)}
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "font-normal",
+                        agent.status === "运行中" 
+                          ? "bg-green-500/10 text-green-500 border-green-500/20" 
+                          : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                      )}
                     >
+                      {agent.status === "运行中" ? <Play className="w-3 h-3 mr-1" /> : <Pause className="w-3 h-3 mr-1" />}
                       {agent.status}
                     </Badge>
                   </div>
-                  <CardDescription className="line-clamp-2">
+                  <CardTitle className="text-xl font-semibold mt-4 text-[var(--text-primary)]">
+                    {agent.name}
+                  </CardTitle>
+                  <p className="text-sm text-[var(--text-secondary)] mt-2 line-clamp-2 min-h-[40px]">
                     {agent.description}
-                  </CardDescription>
+                  </p>
                 </CardHeader>
+                
+                <CardContent className="flex-1 pb-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm text-[var(--text-secondary)] bg-[var(--bg-muted)] px-3 py-2 rounded-md">
+                      <BrainCircuit className="w-4 h-4 mr-2 text-[var(--primary-500)] flex-shrink-0" />
+                      <span className="truncate">{agent.driven_model}</span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-[var(--text-secondary)] bg-[var(--bg-muted)] px-3 py-2 rounded-md">
+                      <Database className="w-4 h-4 mr-2 text-purple-500 flex-shrink-0" />
+                      <span className="truncate" title={agent.knowledge_base}>{agent.knowledge_base || "无知识库"}</span>
+                    </div>
 
-                <CardContent className="pb-3">
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {agent.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Cpu className="h-4 w-4 text-slate-400" />
-                      <span>{agent.model}</span>
+                    <div className="flex items-center text-sm text-[var(--text-secondary)] bg-[var(--bg-muted)] px-3 py-2 rounded-md">
+                      <Coins className="w-4 h-4 mr-2 text-amber-500 flex-shrink-0" />
+                      <span>{agent.cost_per_use} 积分 / 次</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <MessageSquare className="h-4 w-4 text-slate-400" />
-                      <span>{agent.conversations.toLocaleString()} chats</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Calendar className="h-4 w-4 text-slate-400" />
-                      <span>{agent.createdAt}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Zap className="h-4 w-4 text-slate-400" />
-                      <span>{agent.avgResponseTime}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-                    Last active: {agent.lastActive}
                   </div>
                 </CardContent>
 
-                <CardFooter className="flex gap-2 pt-0">
-                  <Button
-                    variant={agent.status === "active" ? "outline" : "default"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleToggleStatus(agent.id)}
-                  >
-                    {agent.status === "active" ? (
-                      <>
-                        <Pause className="mr-1 h-3 w-3" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-1 h-3 w-3" />
-                        Activate
-                      </>
-                    )}
+                <CardFooter className="pt-0 border-t border-[var(--border-default)] mt-auto flex gap-2">
+                  <Button variant="default" className="flex-1 bg-[var(--primary-600)] hover:bg-[var(--primary-500)] mt-4">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    对话
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleDuplicateAgent(agent)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => handleDeleteAgent(agent.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
+                  <Button variant="outline" className="flex-1 border-[var(--border-default)] hover:bg-[var(--bg-muted)] mt-4 text-[var(--text-primary)]">
+                    <Settings className="w-4 h-4 mr-2" />
+                    配置
                   </Button>
                 </CardFooter>
               </Card>
             ))}
-          </div>
-        )}
 
-        {/* Create Agent Modal */}
-        {isCreateModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <Card className="w-full max-w-lg">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-violet-600" />
-                  <CardTitle>Create New Agent</CardTitle>
-                </div>
-                <CardDescription>
-                  Set up a new AI agent to automate tasks and assist users
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateAgent} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Agent Name</Label>
-                    <Input
-                      id="name"
-                      value={createForm.name}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, name: e.target.value })
-                      }
-                      placeholder="e.g., Customer Support Bot"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <textarea
-                      id="description"
-                      value={createForm.description}
-                      onChange={(e) =>
-                        setCreateForm({
-                          ...createForm,
-                          description: e.target.value,
-                        })
-                      }
-                      placeholder="Describe what this agent does..."
-                      rows={3}
-                      className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="model">AI Model</Label>
-                    <select
-                      id="model"
-                      value={createForm.model}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, model: e.target.value })
-                      }
-                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                    >
-                      <option value="GPT-4">
-                        GPT-4 (Best for complex tasks)
-                      </option>
-                      <option value="Claude 3">
-                        Claude 3 (Great for analysis)
-                      </option>
-                      <option value="GPT-3.5">GPT-3.5 (Fast responses)</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setIsCreateModalOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="flex-1">
-                      Create Agent
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
+            {/* Empty State / Add New Card */}
+            <Card className="group relative bg-[var(--bg-elevated)] border-[var(--border-default)] border-dashed hover:border-[var(--primary-500)] transition-all duration-300 flex flex-col h-full items-center justify-center min-h-[320px] cursor-pointer hover:bg-[var(--primary-500)]/5">
+              <div className="w-14 h-14 rounded-full bg-[var(--bg-muted)] group-hover:bg-[var(--primary-500)]/20 flex items-center justify-center transition-colors">
+                <Plus className="w-6 h-6 text-[var(--text-muted)] group-hover:text-[var(--primary-500)]" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-[var(--text-secondary)] group-hover:text-[var(--primary-500)]">
+                创建新智能体
+              </p>
             </Card>
           </div>
         )}

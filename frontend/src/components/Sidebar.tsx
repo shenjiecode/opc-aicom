@@ -12,7 +12,7 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
-  Zap,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ const navigationGroups: NavGroup[] = [
     section: "核心板块",
     items: [
       { id: "home", path: "/", icon: Home, label: "首页" },
+      { id: "aibit", path: "/aibit", icon: Zap, label: "AI比特", badgeType: "hot" },
       {
         id: "community",
         path: "/community",
@@ -158,10 +159,10 @@ export function Sidebar({
             )}
           >
             <span className="font-bold text-[var(--text-primary)] text-lg tracking-tight whitespace-nowrap">
-              OPC AICom
+              BitBay OPC
             </span>
             <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
-              AI 算力社区
+              OPC协作平台
             </span>
           </div>
         </div>

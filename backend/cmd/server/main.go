@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Auto migrate database models
-	if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}); err != nil {
+	if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.Resource{}, &model.Service{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
@@ -56,7 +56,24 @@ func main() {
 			home.POST("/stats", handler.GetStats(db))
 		}
 
-		// Task routes (no auth required for listing)
+		// Resource routes
+		resources := api.Group("/resources")
+		{
+			resources.POST("/list", handler.ListResources(db))
+		}
+
+		// Service routes
+		services := api.Group("/services")
+		{
+			services.POST("/list", handler.ListServices(db))
+		}
+
+		// Agent routes
+		agents := api.Group("/agents")
+		{
+			agents.POST("/list", handler.ListAgents(db))
+		}
+
 		tasks := api.Group("/tasks")
 		{
 			tasks.POST("/list", handler.ListTasks(db))
