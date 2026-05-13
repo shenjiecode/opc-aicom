@@ -25,7 +25,7 @@ interface Post {
 }
 
 interface PostListResponse {
-  posts: Post[];
+  list: Post[];
   total: number;
   page: number;
   pageSize: number;
@@ -55,18 +55,15 @@ export default function Community() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ page, pageSize: 10 }),
       });
+
       if (!response.ok) {
         throw new Error('Failed to fetch posts');
       }
+
       const result = await response.json();
       const data: PostListResponse = result.data;
-      if (!response.ok) {
-        throw new Error('Failed to fetch posts');
-      }
-      setPosts(data.posts);
-      setCurrentPage(data.page);
-      setTotalPages(Math.ceil(data.total / data.pageSize));
-      setPosts(data.posts);
+
+      setPosts(data.list || []);
       setCurrentPage(data.page);
       setTotalPages(Math.ceil(data.total / data.pageSize));
     } catch (err) {
@@ -75,7 +72,6 @@ export default function Community() {
       setIsLoading(false);
     }
   };
-
   useEffect(() => {
     fetchPosts(1);
   }, []);
