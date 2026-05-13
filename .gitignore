@@ -32,8 +32,9 @@ npm-debug.log*
 # Playwright MCP
 .playwright-mcp/
 
-# Screenshots
-.screenshots/
+# Database data
+data/mysql/
+
 # Backend binaries
 backend/opc-aicom
 backend/server
