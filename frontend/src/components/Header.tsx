@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   className?: string;
@@ -29,19 +30,11 @@ interface HeaderProps {
 export function Header({ className, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { user, logout, isAuthenticated } = useAuth();
   const [notifications] = useState(3);
 
-  // Mock user data - in real app, this would come from auth context
-  const user = {
-    name: "SuperBuilder",
-    avatar: "S",
-    role: "AI 原生创业者",
-  };
-
-  const handleLogout = () => {
-    // Clear auth token
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -104,69 +97,79 @@ export function Header({ className, onMenuClick }: HeaderProps) {
           )}
         </Button>
 
-        {/* User Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 px-2 py-1.5 h-auto hover:bg-[var(--bg-muted)]"
+        {/* User Dropdown or Login Button */}
+        {isAuthenticated && user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 px-2 py-1.5 h-auto hover:bg-[var(--bg-muted)]"
+              >
+                {/* Avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+
+                {/* User Info - Hidden on mobile */}
+                <div className="hidden sm:flex flex-col items-start text-left">
+                  <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">
+                    {user.username}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)] leading-tight">
+                    {user.role === 'user' ? '普通用户' : user.role}
+                  </span>
+                </div>
+
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)] hidden sm:block" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              align="end"
+              className="w-56 bg-[var(--bg-elevated)] border-[var(--border-default)] text-[var(--text-primary)]"
             >
-              {/* Avatar */}
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
-                {user.avatar}
+              <div className="flex items-center gap-3 px-3 py-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white font-medium">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">{user.username}</span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {user.role === 'user' ? '普通用户' : user.role}
+                  </span>
+                </div>
               </div>
 
-              {/* User Info - Hidden on mobile */}
-              <div className="hidden sm:flex flex-col items-start text-left">
-                <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">
-                  {user.name}
-                </span>
-                <span className="text-xs text-[var(--text-muted)] leading-tight">
-                  {user.role}
-                </span>
-              </div>
+              <DropdownMenuSeparator className="bg-[var(--border-default)]" />
 
-              <ChevronDown className="w-4 h-4 text-[var(--text-muted)] hidden sm:block" />
-            </Button>
-          </DropdownMenuTrigger>
+              <DropdownMenuItem
+                className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
+                onClick={() => navigate("/profile")}
+              >
+                <User className="w-4 h-4 mr-2" />
+                个人资料
+              </DropdownMenuItem>
 
-          <DropdownMenuContent
-            align="end"
-            className="w-56 bg-[var(--bg-elevated)] border-[var(--border-default)] text-[var(--text-primary)]"
+              <DropdownMenuSeparator className="bg-[var(--border-default)]" />
+
+              <DropdownMenuItem
+                className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="ghost"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-muted)]"
+            onClick={() => navigate("/login")}
           >
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white font-medium">
-                {user.avatar}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">{user.name}</span>
-                <span className="text-xs text-[var(--text-muted)]">
-                  {user.role}
-                </span>
-              </div>
-            </div>
-
-            <DropdownMenuSeparator className="bg-[var(--border-default)]" />
-
-            <DropdownMenuItem
-              className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
-              onClick={() => navigate("/profile")}
-            >
-              <User className="w-4 h-4 mr-2" />
-              个人资料
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator className="bg-[var(--border-default)]" />
-
-            <DropdownMenuItem
-              className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              退出登录
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            登录
+          </Button>
+        )}
       </div>
     </header>
   );

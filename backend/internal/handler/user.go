@@ -128,6 +128,32 @@ func Register(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// setAuthCookie sets the authentication cookie
+func setAuthCookie(c *gin.Context, token string, cfg *config.Config) {
+	c.SetCookie(
+		cfg.JWT.Cookie.Name,
+		token,
+		cfg.JWT.Cookie.MaxAge,
+		cfg.JWT.Cookie.Path,
+		cfg.JWT.Cookie.Domain,
+		cfg.JWT.Cookie.Secure,
+		cfg.JWT.Cookie.HttpOnly,
+	)
+}
+
+// clearAuthCookie clears the authentication cookie
+func clearAuthCookie(c *gin.Context, cfg *config.Config) {
+	c.SetCookie(
+		cfg.JWT.Cookie.Name,
+		"",
+		-1, // MaxAge -1 deletes the cookie
+		cfg.JWT.Cookie.Path,
+		cfg.JWT.Cookie.Domain,
+		cfg.JWT.Cookie.Secure,
+		cfg.JWT.Cookie.HttpOnly,
+	)
+}
+
 // LoginRequest represents the user login request body
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
@@ -190,12 +216,15 @@ func Login(db *gorm.DB, cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Return success response with token
+		// Set httpOnly cookie
+		setAuthCookie(c, token, cfg)
+
+		// Return success response with user info (token in cookie only)
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
 			Data: LoginResponse{
-				Token:    token,
+				Token:    "",
 				UserID:   user.ID,
 				Username: user.Username,
 			},
@@ -246,12 +275,26 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
-			Data: GetUserInfoResponse{
-				UserID:   user.ID,
-				Username: user.Username,
-				Role:     user.Role,
-				VipLevel: user.VipLevel,
-			},
+		Data: GetUserInfoResponse{
+			UserID:   user.ID,
+			Username: user.Username,
+			Role:     user.Role,
+			VipLevel: user.VipLevel,
+		},
+	})
+}
+}
+
+// Logout handles user logout
+// POST /api/user/logout
+func Logout(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Clear the auth cookie
+		clearAuthCookie(c, cfg)
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
 		})
 	}
 }

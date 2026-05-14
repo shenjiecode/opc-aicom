@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { login } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { Cpu, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Login() {
@@ -18,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,9 +38,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await login(username, password);
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("userId", response.userId);
+      await login(username, password);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请重试");

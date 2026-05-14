@@ -15,3 +15,10 @@ database:
 jwt:
   secret: your-secret-key-change-in-production
   expire_hours: 24
+  cookie:
+    name: auth_token
+    path: /
+    domain: localhost
+    secure: false      # 生产环境改为 true (HTTPS)
+    http_only: true
+    max_age: 86400     # 24小时，单位秒

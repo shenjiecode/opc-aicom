@@ -36,20 +36,22 @@ func main() {
 	// API routes
 	api := router.Group("/api")
 	{
-		// User routes
+		// User routes (public)
 		user := api.Group("/user")
 		{
-			// Public routes
 			user.POST("/register", handler.Register(db))
 			user.POST("/login", handler.Login(db, cfg))
+			user.POST("/logout", handler.Logout(cfg))
 		}
 
 		// User routes (auth required)
 		userAuth := api.Group("/user")
-		userAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		userAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
 			userAuth.POST("/info", handler.GetUserInfo(db))
+			userAuth.POST("/refresh", handler.RefreshToken(cfg))
 		}
+
 		// Home routes (no auth required)
 		home := api.Group("/home")
 		{
@@ -86,7 +88,7 @@ func main() {
 
 		// Community routes (auth required)
 		communityAuth := api.Group("/community")
-		communityAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		communityAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
 			communityAuth.POST("/create", handler.CreatePost(db))
 			communityAuth.POST("/like", handler.LikePost(db))
@@ -101,7 +103,7 @@ func main() {
 
 		// Task routes (auth required)
 		taskAuth := api.Group("/task")
-		taskAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		taskAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
 			taskAuth.POST("/create", handler.CreateTask(db))
 			taskAuth.POST("/apply", handler.ApplyTask(db))

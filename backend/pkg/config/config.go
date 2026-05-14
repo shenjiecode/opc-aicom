@@ -36,8 +36,19 @@ type DatabaseConfig struct {
 
 // JWTConfig holds JWT configuration
 type JWTConfig struct {
-	Secret      string `mapstructure:"secret"`
-	ExpireHours int    `mapstructure:"expire_hours"`
+	Secret      string       `mapstructure:"secret"`
+	ExpireHours int          `mapstructure:"expire_hours"`
+	Cookie      CookieConfig `mapstructure:"cookie"`
+}
+
+// CookieConfig holds cookie configuration
+type CookieConfig struct {
+	Name     string `mapstructure:"name"`
+	Path     string `mapstructure:"path"`
+	Domain   string `mapstructure:"domain"`
+	Secure   bool   `mapstructure:"secure"`
+	HttpOnly bool   `mapstructure:"http_only"`
+	MaxAge   int    `mapstructure:"max_age"`
 }
 
 // Load loads configuration from config.yaml with environment variable overrides
