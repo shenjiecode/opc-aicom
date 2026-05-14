@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download } from 'lucide-react';
+import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText } from 'lucide-react';
 import axios from 'axios';
 
 // ============================================
@@ -719,11 +719,65 @@ const AiBit: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Status & Logs */}
+        {/* Right Column: PRD & Status */}
         <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6">
           
+          {/* PRD Artifact */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center">
+                <FileText className="w-4 h-4 text-emerald-600 mr-2" />
+                <h2 className="text-base font-bold text-slate-800">需求PRD产物</h2>
+              </div>
+              <button className="text-slate-400 hover:text-emerald-600 transition-colors" title="下载文档">
+                <Download className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto bg-white">
+              {messages.length > 0 ? (
+                <div className="prose prose-sm prose-slate max-w-none">
+                  <h1 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">项目需求文档 (PRD)</h1>
+                  
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">1. 项目概述</h3>
+                  <p className="text-slate-600 mb-6 leading-relaxed">
+                    本项目旨在根据甲方沟通的初步意向，设计并开发相关产物。目前正在进行需求边界的界定与确认。
+                  </p>
+                  
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">2. 核心需求清单</h3>
+                  <ul className="list-disc pl-5 mb-6 text-slate-600 space-y-2">
+                    <li>受众定位：精准投放目标用户群体</li>
+                    <li>风格偏好：按照沟通确认的基调执行</li>
+                    <li>交付标准：符合平台及行业规范</li>
+                    <li>内容素材：需进一步确认由哪方提供</li>
+                  </ul>
+
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">3. 预算与周期预估</h3>
+                  <p className="text-slate-600 mb-6 leading-relaxed">
+                    根据当前需求复杂度，系统正在智能评估开发周期与所需积分，待需求完全明确后生成最终报价单。
+                  </p>
+                  
+                  <div className="mt-8 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-start">
+                    <Sparkles className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-emerald-800 text-sm">文档实时生成中</h4>
+                      <p className="text-xs text-emerald-600/80 mt-1.5 leading-relaxed">
+                        随着您与「比特」的对话深入，这份需求文档将自动完善，最终生成可供开发执行的标准PRD。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                  <FileText className="w-12 h-12 mb-3 text-slate-200" />
+                  <p className="text-sm font-medium text-slate-500">需求尚未明确</p>
+                  <p className="text-xs mt-1.5 text-slate-400">请在左侧与比特管家沟通需求</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* OPC Match Source */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden shrink-0">
             <div className="px-6 py-4 border-b border-slate-50">
               <h2 className="text-base font-bold text-slate-800">OPC 匹配源</h2>
             </div>
@@ -732,64 +786,6 @@ const AiBit: React.FC = () => {
                 <p className="text-sm text-slate-500 leading-relaxed">
                   等待甲方生成需求单后，小O将自动匹配最佳OPC服务方，并推送收款信息。
                 </p>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Workflow Event Log */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-800">AI协作事件流</h2>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={handleExportLogs}
-                  className="p-1 hover:bg-slate-100 rounded transition-colors"
-                  title="导出完整日志"
-                >
-                  <Download className="w-4 h-4 text-slate-400" />
-                </button>
-                <Terminal className="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-            <div className="flex-1 p-4 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl">
-              <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
-              
-              <div className="space-y-1 relative z-0">
-                {/* 状态行 */}
-                <div className="flex items-start">
-                  <span className="text-slate-500 mr-2">&gt;</span>
-                  <span className="text-slate-400 mr-2">[{new Date().toLocaleTimeString('en-US', {hour12: false})}]</span>
-                  <span className="flex-1">
-                    {modelStatus?.status === 'connected' ? (
-                      <>
-                        <span className="mr-1">✅</span>
-                        <span className="text-slate-300">平台已就绪。</span>
-                        <span className="text-emerald-400 font-semibold">{modelStatus.url}</span>
-                        <span className="text-slate-500 ml-1">v{modelStatus.version}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-1">❌</span>
-                        <span className="text-red-400 font-semibold">连接失败</span>
-                        <span className="text-slate-500 ml-1">({modelStatus?.status || 'disconnected'})</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-                
-                {/* 日志行 */}
-                {uiLogLines.map((line, i) => (
-                  <div key={i} className="flex items-start">
-                    <span className="text-slate-500 mr-2">&gt;</span>
-                    <span className="flex-1 text-slate-300">{line.split('] ')[1]}</span>
-                  </div>
-                ))}
-                
-                {/* 闪烁光标 */}
-                <div className="flex items-start mt-2">
-                  <span className="text-slate-500 mr-2">&gt;</span>
-                  <span className="w-2 h-3 bg-emerald-500 animate-pulse mt-[2px]"></span>
-                </div>
               </div>
             </div>
           </div>
