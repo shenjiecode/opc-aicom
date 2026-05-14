@@ -108,19 +108,12 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
     if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
       let targetText = '';
       
-      // If parts has more than 1 item, try to find the actual response which is usually the last part
-      // The earlier parts are often thought processes
-      if (msg.parts.length > 1) {
-        // Look for the part that contains the JSON structure {"msg": ..., "options": ...}
-        const jsonPart = msg.parts.find((p: any) => p.text && p.text.includes('"msg"') && p.text.includes('"options"'));
-        if (jsonPart) {
-          targetText = jsonPart.text;
-        } else {
-          // If no explicit JSON part found, default to the last part (often parts[2] or parts[1])
-          targetText = msg.parts[msg.parts.length - 1].text;
-        }
+      // User explicitly requested to fixate on parts[2] if available
+      if (msg.parts.length > 2 && msg.parts[2].text) {
+        targetText = msg.parts[2].text;
       } else {
-        targetText = msg.parts[0].text;
+        // If there's no parts[2], fallback to the last part available
+        targetText = msg.parts[msg.parts.length - 1].text;
       }
 
        console.log('====== PARSED PARTS targetText  ======', targetText);
