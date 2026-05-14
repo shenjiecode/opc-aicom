@@ -217,9 +217,7 @@ const parseModelResponse = (rawText: string | undefined, msgIndex: number): { te
   return { text: displayText, rawParsed: null };
 };
 
-// ============================================
-// 消息处理器 - 带详细日志
-// ============================================
+// A shared function to process message arrays
 const processMessages = (messagesData: any[]): ChatMessage[] => {
   logger.log('RENDER', `开始处理消息数组`, { 
     messageCount: messagesData.length,
@@ -484,10 +482,11 @@ const AiBit: React.FC = () => {
   // ============================================
   // Phase 3: 发送消息
   // ============================================
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading || !sessionId) return;
+  const handleSend = async (textToSend?: string | React.MouseEvent | React.KeyboardEvent) => {
+    const text = typeof textToSend === 'string' ? textToSend : inputValue;
+    if (!text.trim() || isLoading || !sessionId) return;
 
-    const messageText = inputValue.trim();
+    const messageText = text.trim();
     logger.log('MESSAGE', '用户发送消息', { text: messageText, sessionId });
     addUILog(`📤 发送消息: "${messageText.substring(0, 30)}..."`);
 
@@ -669,7 +668,11 @@ const AiBit: React.FC = () => {
                               {p.options.map((opt: string, optIdx: number) => (
                                 <button
                                   key={optIdx}
-                                  onClick={() => setInputValue(opt)}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSend(opt);
+                                  }}
                                   className="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white border border-emerald-100 hover:border-emerald-500 rounded-lg text-sm font-medium transition-colors shadow-sm"
                                 >
                                   {opt}
@@ -677,6 +680,7 @@ const AiBit: React.FC = () => {
                               ))}
                             </div>
                           )}
+
                         </div>
                       ))}
                     </div>
