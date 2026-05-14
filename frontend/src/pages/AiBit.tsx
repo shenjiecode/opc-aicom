@@ -111,11 +111,10 @@ const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 // A shared function to process message arrays
 const processMessages = (messagesData: any[]): ChatMessage[] => {
+
+  console.log('======  processMessages ======', messagesData);
   
-  if (!Array.isArray(messagesData)) {
-    console.error('processMessages expected an array but got:', typeof messagesData, messagesData);
-    return [];
-  }
+
   
   return messagesData.map((msg: any) => {
     if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
@@ -284,7 +283,7 @@ const AiBit: React.FC = () => {
               res.data
             ];
           }
-
+          console.log('====== messagesToProcess processMessages ======', messagesToProcess);
           if (messagesToProcess.length > 0) {
              return processMessages(messagesToProcess);
           }
