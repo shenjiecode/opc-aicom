@@ -477,7 +477,7 @@ const AiBit: React.FC = () => {
   // 滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   // ============================================
   // Phase 3: 发送消息
@@ -582,40 +582,24 @@ const AiBit: React.FC = () => {
   const displayMessages = messages.length > 0 ? messages : [defaultMessage];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] w-full flex flex-col">
-      {/* Header Area */}
-      <div className="bg-white border-b border-slate-100 px-8 py-5 shrink-0 flex items-center justify-between">
-        <div className="flex flex-col">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-700 animate-pulse"></div>
-            <h1 className="text-xl font-bold text-emerald-900 tracking-tight">AI比特 · OPC-AI协作平台</h1>
-          </div>
-          <div className="flex items-center text-xs font-medium text-slate-500 mt-2 space-x-2">
-            <span className="text-slate-700">B2B多智能体</span>
-            <span className="text-slate-300">|</span>
-            <span>需求</span>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span>AI管家撮合</span>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span>契约签约</span>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span>资金启动</span>
-          </div>
+    <div className="h-[calc(100vh-theme(spacing.16))] w-full bg-slate-50 flex flex-col relative overflow-hidden">
+      
+      {/* 顶部导航 / Header Area */}
+      <div className="shrink-0 w-full px-6 py-4 flex items-center justify-between z-10 bg-slate-50">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">AI比特</h1>
+          <p className="text-sm text-slate-500 mt-1">您的专属智能助理与服务管家</p>
         </div>
-        
-        <button className="flex items-center space-x-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full text-sm font-semibold transition-colors border border-indigo-100/50">
-          <span>比特 智能体 配置</span>
-        </button>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full">
-        
-        {/* Left Column: Chat Interface */}
-        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-[600px] relative">
+        <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-hidden">
           
-          {/* Chat Header */}
-          <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-white/50 backdrop-blur-sm z-10">
+          {/* Left Column: Chat Interface */}
+          <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-full relative">
+            
+            {/* Chat Header */}
+            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-white/50 backdrop-blur-sm z-10 shrink-0">
             <div className="flex items-center space-x-2">
               <Info className="w-4 h-4 text-slate-400" />
               <h2 className="text-base font-bold text-slate-800">与AI管家「比特」沟通</h2>
@@ -627,7 +611,7 @@ const AiBit: React.FC = () => {
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 p-6 overflow-y-auto bg-slate-50/30 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
             {displayMessages.map((msg, index) => {
               const isUser = msg.info.role === 'user';
               const timeString = msg.info.createdAt ? new Date(msg.info.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
