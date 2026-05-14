@@ -849,26 +849,26 @@ const AiBit: React.FC = () => {
             <div className="flex items-center space-x-3 bg-white border border-slate-200 rounded-full p-2 pl-4 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all shadow-sm">
               {/* Model Selector */}
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-sm text-slate-600 transition-colors shrink-0">
+                <DropdownMenuTrigger className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-sm text-slate-600 transition-colors shrink-0 outline-none">
                   <Bot className="w-4 h-4" />
                   <span className="truncate max-w-[100px]">{selectedModel?.split('/').pop() || '选择模型'}</span>
                   <ChevronDown className="w-3 h-3" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64">
+                <DropdownMenuContent className="w-64 bg-slate-900/95 backdrop-blur-md border-slate-800 text-slate-100 shadow-xl max-h-[400px] overflow-y-auto z-[100] outline-none">
                   {providers.map((provider) => (
                     <DropdownMenuGroup key={provider.id}>
-                      <DropdownMenuLabel>{provider.name}</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-400 font-medium text-xs px-2 py-1.5">{provider.name}</DropdownMenuLabel>
                       {provider.models?.map((model) => (
                         <DropdownMenuItem
                           key={`${provider.id}/${model.id}`}
                           onClick={() => setSelectedModel(`${provider.id}/${model.id}`)}
-                          className={selectedModel === `${provider.id}/${model.id}` ? 'bg-emerald-50' : ''}
+                          className={`flex items-center px-2 py-1.5 cursor-pointer rounded-sm outline-none transition-colors ${selectedModel === `${provider.id}/${model.id}` ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-slate-800 text-slate-200 focus:bg-slate-800 focus:text-slate-200'}`}
                         >
-                          {model.name}
-                          {selectedModel === `${provider.id}/${model.id}` && <Check className="w-4 h-4 ml-auto text-emerald-600" />}
+                          <span className="truncate flex-1">{model.name}</span>
+                          {selectedModel === `${provider.id}/${model.id}` && <Check className="w-4 h-4 ml-2 shrink-0 text-emerald-400" />}
                         </DropdownMenuItem>
                       ))}
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="bg-slate-800 my-1" />
                     </DropdownMenuGroup>
                   ))}
                 </DropdownMenuContent>
