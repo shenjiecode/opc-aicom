@@ -25,7 +25,7 @@ const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [modelStatus, setModelStatus] = useState<{name: string, status: string} | null>(null);
+  const [modelStatus, setModelStatus] = useState<{status: 'connected' | 'error' | 'disconnected', version?: string, url?: string} | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,7 +47,7 @@ const AiBit: React.FC = () => {
         // Fetch existing sessions
         const res = await axios.get(`${OPENCODE_BASE_URL}/session`);
         if (res.data && Array.isArray(res.data)) {
-          const existingSession = res.data.find((s: any) => s.title === 'bit-chat');
+          const existingSession = res.data.find((s: {id: string, title: string}) => s.title === 'bit-chat');
           if (existingSession && existingSession.id) {
             setSessionId(existingSession.id);
             localStorage.setItem('opencode_bit_session_id', existingSession.id);
@@ -88,19 +88,24 @@ const AiBit: React.FC = () => {
     const fetchStatus = async () => {
       try {
         const res = await axios.get(`${OPENCODE_BASE_URL}/global/health`);
-        if (res.status === 200) {
-          setModelStatus({ name: 'deepseek-v4-flash', status: 'connected' });
+        if (res.status === 200 && res.data.healthy) {
+          setModelStatus({ status: 'connected', version: res.data.version, url: OPENCODE_BASE_URL });
         } else {
-          setModelStatus({ name: 'deepseek-v4-flash', status: 'error' });
+          setModelStatus({ status: 'error' });
         }
       } catch (error) {
         console.error('Failed to fetch status:', error);
-        setModelStatus({ name: 'deepseek-v4-flash', status: 'disconnected' });
+        setModelStatus({ status: 'disconnected' });
       }
     };
 
     fetchMessages();
     fetchStatus();
+
+    // Set up polling for connection status
+    const statusInterval = setInterval(fetchStatus, 10000);
+
+    return () => clearInterval(statusInterval);
   }, [sessionId]);
 
   useEffect(() => {
@@ -312,10 +317,20 @@ const AiBit: React.FC = () => {
                   <span className="text-slate-500 mr-2">&gt;</span>
                   <span className="text-slate-400 mr-2">[{new Date().toLocaleTimeString('en-US', {hour12: false})}]</span>
                   <span className="flex-1">
-                    <span className="mr-1">✅</span>
-                    <span className="text-slate-300">平台已就绪。比特管家已连接大模型：</span>
-                    <span className="text-emerald-400 font-semibold">{modelStatus ? modelStatus.name : 'deepseek-v4-flash'}</span>
-                    <span className="text-slate-500 ml-1">(状态：{modelStatus ? modelStatus.status : 'connected'})</span>
+                    {modelStatus?.status === 'connected' ? (
+                      <>
+                        <span className="mr-1">✅</span>
+                        <span className="text-slate-300">平台已就绪。已经连接到URL：</span>
+                        <span className="text-emerald-400 font-semibold">{modelStatus.url}</span>
+                        <span className="text-slate-500 ml-1">，当前版本 {modelStatus.version}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-1">❌</span>
+                        <span className="text-red-400 font-semibold">连接失败</span>
+                        <span className="text-slate-500 ml-1">（状态：{modelStatus?.status || 'disconnected'}，正在重连...）</span>
+                      </>
+                    )}
                   </span>
                 </div>
                 {/* Blinking cursor */}
