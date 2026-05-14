@@ -274,7 +274,7 @@ export default function CreateEvent() {
                 type="button"
                 variant="outline"
                 onClick={() => navigate(-1)}
-                className="flex-1 h-12 text-slate-600 bg-white shadow-sm border-slate-200"
+                className="flex-1 h-12 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border-slate-300 font-medium"
               >
                 取消
               </Button>
