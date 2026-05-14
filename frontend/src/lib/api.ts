@@ -21,20 +21,51 @@ interface UserInfoResponse {
 }
 
 const API_BASE = '/api';
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
-// Helper function for API calls with credentials
+// Fetch with timeout and abort controller
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeout = DEFAULT_TIMEOUT
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('请求超时，请检查网络连接后重试');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Helper function for API calls with credentials and timeout
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeout?: number
 ): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    credentials: 'include', // Include cookies for httpOnly cookie auth
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
+  const response = await fetchWithTimeout(
+    `${API_BASE}${endpoint}`,
+    {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
     },
-  });
+    timeout
+  );
 
   const data = await response.json();
 
@@ -42,7 +73,7 @@ async function apiRequest<T>(
     throw new Error(data.message || 'Request failed');
   }
 
-  return data;
+  return data.data;
 }
 
 export async function login(
@@ -75,7 +106,7 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const response = await fetch(`${API_BASE}/user/info`, {
+    const response = await fetchWithTimeout(`${API_BASE}/user/info`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -104,4 +135,20 @@ export async function refreshToken(): Promise<{ expiresIn: number } | null> {
   } catch {
     return null;
   }
+}
+
+// Generic fetch helper for pages that need custom API calls
+export async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  timeout?: number
+): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  }, timeout);
 }

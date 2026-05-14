@@ -9,6 +9,7 @@ import {
   Bell,
   Sun,
   Moon,
+  Circle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +68,17 @@ export function Header({ className, onMenuClick }: HeaderProps) {
             OPC
           </span>
         </Link>
+
+        {/* Current User Status - More prominent display */}
+        {isAuthenticated && user && (
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-muted)] border border-[var(--border-default)]">
+            <Circle className="w-2.5 h-2.5 fill-green-500 text-green-500" />
+            <span className="text-sm font-medium text-[var(--text-primary)]">
+              {user.username}
+            </span>
+            <span className="text-xs text-green-500 font-medium">在线</span>
+          </div>
+        )}
       </div>
 
       {/* Right Section - Theme Toggle + Notifications + User */}
@@ -105,9 +117,13 @@ export function Header({ className, onMenuClick }: HeaderProps) {
                 variant="ghost"
                 className="flex items-center gap-2 px-2 py-1.5 h-auto hover:bg-[var(--bg-muted)]"
               >
-                {/* Avatar */}
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
-                  {user.username.charAt(0).toUpperCase()}
+                {/* Avatar with online indicator */}
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  {/* Online indicator dot */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[var(--header-bg)]" />
                 </div>
 
                 {/* User Info - Hidden on mobile */}
@@ -115,8 +131,9 @@ export function Header({ className, onMenuClick }: HeaderProps) {
                   <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">
                     {user.username}
                   </span>
-                  <span className="text-xs text-[var(--text-muted)] leading-tight">
-                    {user.role === 'user' ? '普通用户' : user.role}
+                  <span className="text-xs text-[var(--text-muted)] leading-tight flex items-center gap-1">
+                    <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                    在线
                   </span>
                 </div>
 
@@ -129,13 +146,17 @@ export function Header({ className, onMenuClick }: HeaderProps) {
               className="w-56 bg-[var(--bg-elevated)] border-[var(--border-default)] text-[var(--text-primary)]"
             >
               <div className="flex items-center gap-3 px-3 py-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white font-medium">
-                  {user.username.charAt(0).toUpperCase()}
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white font-medium">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[var(--bg-elevated)]" />
                 </div>
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">{user.username}</span>
-                  <span className="text-xs text-[var(--text-muted)]">
-                    {user.role === 'user' ? '普通用户' : user.role}
+                  <span className="text-xs text-green-500 flex items-center gap-1">
+                    <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                    当前在线
                   </span>
                 </div>
               </div>

@@ -20,6 +20,32 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE = '/api';
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
+
+// Fetch with timeout
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeout = DEFAULT_TIMEOUT
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('请求超时，请检查网络连接后重试');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -29,9 +55,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch current user info
   const refreshUser = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/user/info`, {
+      const response = await fetchWithTimeout(`${API_BASE}/user/info`, {
         method: 'POST',
-        credentials: 'include', // Include cookies
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -70,9 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Login function
   const login = useCallback(async (username: string, password: string) => {
-    const response = await fetch(`${API_BASE}/user/login`, {
+    const response = await fetchWithTimeout(`${API_BASE}/user/login`, {
       method: 'POST',
-      credentials: 'include', // Include cookies
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -99,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Logout function
   const logout = useCallback(async () => {
     try {
-      await fetch(`${API_BASE}/user/logout`, {
+      await fetchWithTimeout(`${API_BASE}/user/logout`, {
         method: 'POST',
         credentials: 'include',
       });

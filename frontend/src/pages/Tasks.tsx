@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface Task {
   id: number;
@@ -49,9 +50,8 @@ export default function Tasks() {
   const fetchTasks = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/tasks/list", {
+      const result = await apiFetch<TaskListResponse>("/tasks/list", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           page: 1,
           pageSize: 20,
@@ -59,14 +59,7 @@ export default function Tasks() {
           level: activeLevel === "全部" ? "" : activeLevel,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch tasks");
-      }
-
-      const result = await response.json();
-      const data: TaskListResponse = result.data;
-      setTasks(data.list || []);
+      setTasks(result.list || []);
     } catch (err) {
       console.error("Failed to load tasks", err);
     } finally {

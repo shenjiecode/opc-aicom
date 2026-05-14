@@ -12,6 +12,7 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface Post {
   id: number;
@@ -93,24 +94,15 @@ export default function Community() {
   const fetchPosts = async (category: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/community/list", {
+      const result = await apiFetch<PostListResponse>("/community/list", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           page: 1,
           pageSize: 20,
           category: category === "全部" ? "" : category,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch posts");
-      }
-
-      const result = await response.json();
-      const data: PostListResponse = result.data;
-
-      setPosts(data.list || []);
+      setPosts(result.list || []);
     } catch (err) {
       console.error("Failed to load posts", err);
     } finally {
@@ -121,24 +113,15 @@ export default function Community() {
   const fetchEvents = async (category: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/community/events", {
+      const result = await apiFetch<EventListResponse>("/community/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           page: 1,
           pageSize: 20,
           category: category === "全部活动" ? "" : category,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch events");
-      }
-
-      const result = await response.json();
-      const data: EventListResponse = result.data;
-
-      setEvents(data.list || []);
+      setEvents(result.list || []);
     } catch (err) {
       console.error("Failed to load events", err);
     } finally {

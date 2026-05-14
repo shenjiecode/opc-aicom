@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,46 +50,6 @@ interface UserInfo {
   appliedTasks: Task[];
 }
 
-const API_BASE = "/api";
-
-async function fetchUserInfo(token: string): Promise<UserInfo> {
-  const response = await fetch(`${API_BASE}/user/info`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch user info");
-  }
-
-  const result = await response.json();
-  return result.data;
-}
-
-async function fetchUserPosts(token: string): Promise<Post[]> {
-  const response = await fetch(`${API_BASE}/community/list`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ page: 1, pageSize: 10 }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch posts");
-  }
-
-  const result = await response.json();
-  return result.data.posts || [];
-}
-
 function getStatusBadge(status: Task["status"]) {
   const config: Record<
     Task["status"],
@@ -130,18 +91,19 @@ export default function MyOPC() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error("Please login to view this page");
-        }
-
-        const [info, posts] = await Promise.all([
-          fetchUserInfo(token),
-          fetchUserPosts(token),
+        const [infoResult, postsResult] = await Promise.all([
+          apiFetch<UserInfo>("/user/info", {
+            method: "POST",
+            body: JSON.stringify({}),
+          }),
+          apiFetch<{ list: Post[] }>("/community/list", {
+            method: "POST",
+            body: JSON.stringify({ page: 1, pageSize: 10 }),
+          }),
         ]);
 
-        setUserInfo(info);
-        const myPosts = posts.filter((post) => post.author === info.username);
+        setUserInfo(infoResult);
+        const myPosts = postsResult.list?.filter((post) => post.author === infoResult.username) || [];
         setUserPosts(myPosts);
       } catch (err) {
         setError(

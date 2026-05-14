@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Globe,
@@ -12,9 +12,21 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
-  Zap
+  Zap,
+  Circle,
+  LogOut,
+  Settings,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Navigation item type
 interface NavItem {
@@ -110,6 +122,8 @@ export function Sidebar({
   onCollapseChange,
 }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
 
   // Support both controlled and uncontrolled collapsed state
@@ -127,6 +141,10 @@ export function Sidebar({
       return location.pathname === "/";
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -262,6 +280,145 @@ export function Sidebar({
           </div>
         ))}
       </nav>
+
+      {/* User Section - Bottom of sidebar */}
+      {isAuthenticated && user && (
+        <div className="border-t border-[var(--sidebar-border)] p-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "w-full flex items-center gap-3 p-2 rounded-lg",
+                  "hover:bg-[var(--bg-muted)] transition-colors cursor-pointer",
+                  collapsed && "justify-center",
+                )}
+              >
+                {/* Avatar with online indicator */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  {/* Online indicator */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[var(--sidebar-bg)]" />
+                </div>
+
+                {/* User info - Hidden when collapsed */}
+                {!collapsed && (
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-[var(--text-primary)] truncate">
+                        {user.username}
+                      </span>
+                      <ChevronUp className="w-4 h-4 text-[var(--text-muted)] ml-auto" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                      <span className="text-xs text-green-500">在线</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tooltip for collapsed state */}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                    {user.username}
+                    <span className="ml-2 text-xs text-green-500">在线</span>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side="top"
+              align={collapsed ? "start" : "end"}
+              className="w-56 bg-[var(--bg-elevated)] border-[var(--border-default)] text-[var(--text-primary)] mb-2"
+            >
+              {/* User Info Header */}
+              <div className="flex items-center gap-3 px-3 py-2">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white font-medium">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[var(--bg-elevated)]" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">{user.username}</span>
+                  <div className="flex items-center gap-1">
+                    <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                    <span className="text-xs text-green-500">当前在线</span>
+                  </div>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator className="bg-[var(--border-default)]" />
+
+              {/* User Stats */}
+              <div className="px-3 py-2 text-xs text-[var(--text-muted)]">
+                <div className="flex justify-between mb-1">
+                  <span>角色</span>
+                  <span className="text-[var(--text-secondary)]">
+                    {user.role === 'user' ? '普通用户' : user.role}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>VIP等级</span>
+                  <span className="text-[var(--text-secondary)]">
+                    {user.vipLevel > 0 ? `VIP ${user.vipLevel}` : '普通会员'}
+                  </span>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator className="bg-[var(--border-default)]" />
+
+              <DropdownMenuItem
+                className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
+                onClick={() => navigate("/my-opc")}
+              >
+                <User className="w-4 h-4 mr-2" />
+                个人中心
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                设置
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="bg-[var(--border-default)]" />
+
+              <DropdownMenuItem
+                className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {/* Login Button - When not authenticated */}
+      {!isAuthenticated && (
+        <div className="border-t border-[var(--sidebar-border)] p-3">
+          <button
+            onClick={() => navigate("/login")}
+            className={cn(
+              "w-full flex items-center gap-3 p-2 rounded-lg",
+              "hover:bg-[var(--bg-muted)] transition-colors cursor-pointer",
+              "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+              collapsed && "justify-center",
+            )}
+          >
+            <User className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-sm font-medium">登录</span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Collapse Toggle Button on the boundary */}
       <button

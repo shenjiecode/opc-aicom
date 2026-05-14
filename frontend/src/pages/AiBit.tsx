@@ -629,7 +629,7 @@ const AiBit: React.FC = () => {
     try {
       const requestBody = {
         parts: [{ type: 'text', text: userMessage.parts[0].text }],
-        model: selectedModel,
+        model: selectedModel ? { providerID: selectedModel.split('/')[0], modelID: selectedModel.split('/').slice(1).join('/') } : undefined,
       };
 
       logger.log('MESSAGE', '发送 API 请求', {
@@ -648,7 +648,7 @@ const AiBit: React.FC = () => {
       
       addUILog(`📥 收到响应 (${res.status})`);
 
-      if (res.data) {
+      if (res.data && (Array.isArray(res.data) || res.data.data || res.data.info)) {
         // 分析响应结构
         const hasInfo = !!res.data.info;
         const hasParts = !!res.data.parts;
@@ -665,17 +665,26 @@ const AiBit: React.FC = () => {
         setMessages((prev) => {
           let messagesToProcess: any[] = [];
           
-          if (res.data.info && res.data.parts) {
+          let responseData = res.data;
+          // Handle { data: [...] } wrapper if exists
+          if (!Array.isArray(responseData) && responseData.data && Array.isArray(responseData.data)) {
+            responseData = responseData.data;
+          }
+          
+          if (Array.isArray(responseData)) {
+            // The API returned the full history
+            messagesToProcess = responseData;
+          } else if (responseData.info && responseData.parts) {
             // API 返回了完整的消息对象
             messagesToProcess = [
               ...prev.slice(0, -1), 
               { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: messageText }] }, 
-              res.data
+              responseData
             ];
             
             logger.log('MESSAGE', '构建处理队列', {
               queueLength: messagesToProcess.length,
-              lastMessageRole: res.data.info.role
+              lastMessageRole: responseData.info.role
             });
           }
           
@@ -685,6 +694,8 @@ const AiBit: React.FC = () => {
           }
           return prev;
         });
+      } else {
+        throw new Error('收到空响应或无效的会话，请尝试新建对话');
       }
     } catch (error) {
       logger.error('MESSAGE', '发送消息失败', error);
@@ -710,7 +721,7 @@ const AiBit: React.FC = () => {
   const displayMessages = messages.length > 0 ? messages : [defaultMessage];
 
   return (
-    <div className="h-full w-full bg-slate-50 flex flex-col relative overflow-hidden flex-1">
+    <div className="absolute inset-0 bg-slate-50 flex flex-col overflow-hidden">
       
       {/* 顶部导航 / Header Area */}
       <div className="shrink-0 w-full px-6 py-4 flex items-center justify-between z-10 bg-slate-50 border-b border-slate-200">
@@ -748,7 +759,7 @@ const AiBit: React.FC = () => {
             </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth scrollbar-thin">
             {displayMessages.map((msg, index) => {
               const isUser = msg.info.role === 'user';
               const timeString = msg.info.createdAt ? new Date(msg.info.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -883,7 +894,7 @@ const AiBit: React.FC = () => {
         </div>
 
         {/* Right Column: PRD & Status */}
-        <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6 min-h-0">
+        <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col gap-6 min-h-0">
           
           {/* PRD Artifact - Directory View */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-0">
@@ -980,7 +991,7 @@ const AiBit: React.FC = () => {
                 <Terminal className="w-4 h-4 text-slate-400" />
               </div>
             </div>
-            <div className="flex-1 p-4 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl">
+            <div className="flex-1 p-4 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl scrollbar-dark">
               <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
               
               <div className="space-y-1 relative z-0">
