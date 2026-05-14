@@ -99,8 +99,13 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
 const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 // A shared function to process message arrays
-const processMessages = (messagesData: ChatMessage[]) => {
-  return messagesData.map((msg: ChatMessage) => {
+const processMessages = (messagesData: any[]): ChatMessage[] => {
+  if (!Array.isArray(messagesData)) {
+    console.error('processMessages expected an array but got:', typeof messagesData, messagesData);
+    return [];
+  }
+  
+  return messagesData.map((msg: any) => {
     if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
       // Per user request: use parts[2] if available, otherwise fallback
       let targetText = '';
@@ -110,6 +115,8 @@ const processMessages = (messagesData: ChatMessage[]) => {
         // Fallback to combining everything if parts[2] is not what we expect
         targetText = msg.parts.map((p) => p.text || '').join('\n');
       }
+
+       console.log('====== PARSED PARTS targetText  ======', targetText);
 
       const { text, options, rawParsed } = parseModelResponse(targetText);
       
@@ -188,10 +195,20 @@ const AiBit: React.FC = () => {
       try {
         const res = await axios.get(`${OPENCODE_BASE_URL}/session/${sessionId}/message`);
         console.log('====== API HISTORY RESPONSE ======', res.data);
-        if (res.data && Array.isArray(res.data)) {
-          // Parse historical messages just in case they contain JSON
-          const processedHistory = processMessages(res.data);
-          setMessages(processedHistory);
+        if (res.data) {
+          let historyData = res.data;
+          
+          // Some API versions might return { data: [...] } instead of directly the array
+          if (!Array.isArray(historyData) && historyData.data && Array.isArray(historyData.data)) {
+            historyData = historyData.data;
+          }
+          
+          if (Array.isArray(historyData)) {
+            // Parse historical messages just in case they contain JSON
+            console.log('====== processMessages ======', historyData);
+            const processedHistory = processMessages(historyData);
+            setMessages(processedHistory);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch messages:', error);
@@ -244,10 +261,28 @@ const AiBit: React.FC = () => {
 
       console.log('====== API RESPONSE ======', res.data);
 
-      if (res.data && Array.isArray(res.data)) {
-        setMessages(() => {
-          // Remove the user message we optimistically added, and replace with actual history
-          return processMessages(res.data);
+      if (res.data) {
+        setMessages((prev) => {
+          let messagesToProcess: any[] = [];
+          
+          let responseData = res.data;
+          // Handle { data: [...] } wrapper if exists
+          if (!Array.isArray(responseData) && responseData.data && Array.isArray(responseData.data)) {
+            responseData = responseData.data;
+          }
+          
+          if (Array.isArray(responseData)) {
+            // The API returned the full history
+            messagesToProcess = responseData;
+          } else if (responseData.info && responseData.parts) {
+            // The API returned just the new message
+            messagesToProcess = [...prev.slice(0, -1), { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: userMessage.parts[0].text as string }] }, responseData];
+          }
+
+          if (messagesToProcess.length > 0) {
+             return processMessages(messagesToProcess);
+          }
+          return prev;
         });
       }
     } catch (error) {
