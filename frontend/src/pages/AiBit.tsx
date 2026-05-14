@@ -723,7 +723,7 @@ const AiBit: React.FC = () => {
         <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6">
           
           {/* PRD Artifact */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-0">
             <div className="px-8 py-5 flex items-center justify-between">
               <div className="flex items-center">
                 <FileText className="w-5 h-5 text-emerald-600 mr-2" />
@@ -773,6 +773,64 @@ const AiBit: React.FC = () => {
                   <p className="text-xs mt-1.5 text-slate-400">请在左侧与比特管家沟通需求</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* AI Workflow Event Log */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-0">
+            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between shrink-0">
+              <h2 className="text-base font-bold text-slate-800">AI协作事件流</h2>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={handleExportLogs}
+                  className="p-1 hover:bg-slate-100 rounded transition-colors"
+                  title="导出完整日志"
+                >
+                  <Download className="w-4 h-4 text-slate-400" />
+                </button>
+                <Terminal className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+            <div className="flex-1 p-4 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl">
+              <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
+              
+              <div className="space-y-1 relative z-0">
+                {/* 状态行 */}
+                <div className="flex items-start">
+                  <span className="text-slate-500 mr-2">&gt;</span>
+                  <span className="text-slate-400 mr-2">[{new Date().toLocaleTimeString('en-US', {hour12: false})}]</span>
+                  <span className="flex-1">
+                    {modelStatus?.status === 'connected' ? (
+                      <>
+                        <span className="mr-1">✅</span>
+                        <span className="text-slate-300">平台已就绪。</span>
+                        <span className="text-emerald-400 font-semibold">{modelStatus.url}</span>
+                        <span className="text-slate-500 ml-1">v{modelStatus.version}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-1">❌</span>
+                        <span className="text-red-400 font-semibold">连接失败</span>
+                        <span className="text-slate-500 ml-1">({modelStatus?.status || 'disconnected'})</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                
+                {/* 日志行 */}
+                {uiLogLines.map((line, i) => (
+                  <div key={i} className="flex items-start">
+                    <span className="text-slate-500 mr-2">&gt;</span>
+                    <span className="flex-1 text-slate-300">{line.split('] ')[1]}</span>
+                  </div>
+                ))}
+                
+                {/* 闪烁光标 */}
+                <div className="flex items-start mt-2">
+                  <span className="text-slate-500 mr-2">&gt;</span>
+                  <span className="w-2 h-3 bg-emerald-500 animate-pulse mt-[2px]"></span>
+                </div>
+              </div>
             </div>
           </div>
 
