@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText } from 'lucide-react';
+import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 
 // ============================================
@@ -284,6 +284,9 @@ const AiBit: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<{status: 'connected' | 'error' | 'disconnected', version?: string, url?: string} | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [uiLogLines, setUiLogLines] = useState<string[]>([]);
+  const [prdFiles, setPrdFiles] = useState<{name: string, size: number, modTime: string}[]>([]);
+  const [selectedPrd, setSelectedPrd] = useState<string | null>(null);
+  const [prdContent, setPrdContent] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 添加 UI 日志行
@@ -303,6 +306,58 @@ const AiBit: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // 加载 PRD 文件列表
+  const fetchPrdFiles = async () => {
+    try {
+      const res = await axios.get('/api/prds');
+      if (res.data && Array.isArray(res.data)) {
+        setPrdFiles(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch PRDs:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrdFiles();
+  }, []);
+
+  const handleSelectPrd = async (filename: string) => {
+    try {
+      const res = await axios.get(`/api/prds/${filename}`);
+      setPrdContent(res.data);
+      setSelectedPrd(filename);
+    } catch (err) {
+      console.error('Failed to load PRD content:', err);
+    }
+  };
+
+  // 生成测试 PRD 文件（模拟后台自动生成）
+  const generateMockPrd = async () => {
+    try {
+      const mockContent = `# 项目需求文档 (PRD)
+
+### 1. 项目概述
+本项目旨在根据甲方沟通的初步意向，设计并开发相关产物。目前正在进行需求边界的界定与确认。
+
+### 2. 核心需求清单
+* 受众定位：精准投放目标用户群体
+* 风格偏好：按照沟通确认的基调执行
+* 交付标准：符合平台及行业规范
+* 内容素材：需进一步确认由哪方提供
+
+### 3. 预算与周期预估
+根据当前需求复杂度，系统正在智能评估开发周期与所需积分，待需求完全明确后生成最终报价单。
+`;
+      await axios.post('/api/prds', {
+        content: mockContent
+      });
+      fetchPrdFiles();
+    } catch (err) {
+      console.error('Failed to generate PRD:', err);
+    }
   };
 
   // Default welcome message
@@ -722,57 +777,83 @@ const AiBit: React.FC = () => {
         {/* Right Column: PRD & Status */}
         <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6">
           
-          {/* PRD Artifact */}
+          {/* PRD Artifact - Directory View */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-0">
-            <div className="px-8 py-5 flex items-center justify-between">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
               <div className="flex items-center">
-                <FileText className="w-5 h-5 text-emerald-600 mr-2" />
-                <h2 className="text-lg font-bold text-slate-800">需求PRD产物</h2>
+                <Folder className="w-5 h-5 text-emerald-600 mr-2" />
+                <h2 className="text-base font-bold text-slate-800">项目产物目录</h2>
               </div>
-              <button className="text-slate-400 hover:text-emerald-600 transition-colors" title="下载文档">
-                <Download className="w-5 h-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {messages.length > 2 && prdFiles.length === 0 && (
+                  <button 
+                    onClick={generateMockPrd}
+                    className="text-xs px-2 py-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors"
+                  >
+                    生成文档
+                  </button>
+                )}
+                <button className="text-slate-400 hover:text-emerald-600 transition-colors" title="下载所有">
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 px-8 pb-8 overflow-y-auto bg-white">
-              {messages.length > 0 ? (
-                <div className="prose prose-slate max-w-none">
-                  <h1 className="text-2xl font-bold text-slate-800 mb-6 border-b border-slate-800 pb-4">项目需求文档 (PRD)</h1>
-                  
-                  <h3 className="text-base font-bold text-slate-600 mb-3">1. 项目概述</h3>
-                  <p className="text-slate-600 mb-8 leading-relaxed">
-                    本项目旨在根据甲方沟通的初步意向，设计并开发相关产物。目前正在进行需求边界的界定与确认。
-                  </p>
-                  
-                  <h3 className="text-base font-bold text-slate-600 mb-3">2. 核心需求清单</h3>
-                  <ul className="list-disc pl-5 mb-8 text-slate-600 space-y-2">
-                    <li>受众定位：精准投放目标用户群体</li>
-                    <li>风格偏好：按照沟通确认的基调执行</li>
-                    <li>交付标准：符合平台及行业规范</li>
-                    <li>内容素材：需进一步确认由哪方提供</li>
-                  </ul>
-
-                  <h3 className="text-base font-bold text-slate-600 mb-3">3. 预算与周期预估</h3>
-                  <p className="text-slate-600 mb-8 leading-relaxed">
-                    根据当前需求复杂度，系统正在智能评估开发周期与所需积分，待需求完全明确后生成最终报价单。
-                  </p>
-                  
-                  <div className="mt-8 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-start">
-                    <Sparkles className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-medium text-emerald-800 text-sm">文档实时生成中</h4>
-                      <p className="text-xs text-emerald-600/80 mt-1.5 leading-relaxed">
-                        随着您与「比特」的对话深入，这份需求文档将自动完善，最终生成可供开发执行的标准PRD。
-                      </p>
+            
+            <div className="flex-1 flex overflow-hidden">
+              {/* Directory Sidebar */}
+              <div className="w-1/3 min-w-[160px] max-w-[200px] border-r border-slate-100 bg-slate-50/50 overflow-y-auto p-3">
+                <div className="flex items-center text-sm font-semibold text-slate-700 mb-3 px-2">
+                  <ChevronDown className="w-4 h-4 mr-1 text-slate-400" />
+                  PRD_Documents
+                </div>
+                <div className="space-y-1">
+                  {prdFiles.map((file, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectPrd(file.name)}
+                      className={`w-full flex items-center text-left px-2 py-2 rounded-lg text-sm transition-colors ${
+                        selectedPrd === file.name 
+                          ? 'bg-emerald-100 text-emerald-800 font-medium' 
+                          : 'text-slate-600 hover:bg-slate-200/50'
+                      }`}
+                    >
+                      <File className={`w-4 h-4 mr-2 shrink-0 ${selectedPrd === file.name ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span className="truncate" title={file.name}>{file.name}</span>
+                    </button>
+                  ))}
+                  {prdFiles.length === 0 && (
+                    <div className="px-2 py-4 text-xs text-slate-400 text-center">
+                      暂无文件生成
                     </div>
+                  )}
+                </div>
+              </div>
+
+              {/* File Content Preview */}
+              <div className="flex-1 overflow-y-auto bg-white p-6">
+                {selectedPrd ? (
+                  <div className="prose prose-sm prose-slate max-w-none">
+                    <div className="flex items-center text-sm text-slate-400 mb-6 border-b pb-4">
+                      <FileText className="w-4 h-4 mr-2" />
+                      {selectedPrd}
+                    </div>
+                    {/* Render raw markdown as simple text for now, or could use react-markdown if installed */}
+                    <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700 leading-relaxed bg-transparent p-0">
+                      {prdContent}
+                    </pre>
                   </div>
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                  <FileText className="w-12 h-12 mb-3 text-slate-200" />
-                  <p className="text-sm font-medium text-slate-500">需求尚未明确</p>
-                  <p className="text-xs mt-1.5 text-slate-400">请在左侧与比特管家沟通需求</p>
-                </div>
-              )}
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                    <FileText className="w-12 h-12 mb-3 text-slate-200" />
+                    <p className="text-sm font-medium text-slate-500">
+                      {prdFiles.length > 0 ? '请选择左侧文件查看' : '需求尚未明确'}
+                    </p>
+                    <p className="text-xs mt-1.5 text-slate-400">
+                      {prdFiles.length > 0 ? '预览区域' : '请在左侧与比特管家沟通需求'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

@@ -42,11 +42,13 @@ func main() {
 			user.POST("/register", handler.Register(db))
 			user.POST("/login", handler.Login(db, cfg))
 			user.POST("/logout", handler.Logout(cfg))
+			user.POST("/online", handler.GetOnlineUsers(db))
 		}
 
 		// User routes (auth required)
 		userAuth := api.Group("/user")
 		userAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		userAuth.Use(middleware.ActivityTracker(db))
 		{
 			userAuth.POST("/info", handler.GetUserInfo(db))
 			userAuth.POST("/refresh", handler.RefreshToken(cfg))
@@ -89,6 +91,7 @@ func main() {
 		// Community routes (auth required)
 		communityAuth := api.Group("/community")
 		communityAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		communityAuth.Use(middleware.ActivityTracker(db))
 		{
 			communityAuth.POST("/create", handler.CreatePost(db))
 			communityAuth.POST("/like", handler.LikePost(db))
@@ -104,10 +107,16 @@ func main() {
 		// Task routes (auth required)
 		taskAuth := api.Group("/task")
 		taskAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		taskAuth.Use(middleware.ActivityTracker(db))
 		{
 			taskAuth.POST("/create", handler.CreateTask(db))
 			taskAuth.POST("/apply", handler.ApplyTask(db))
 		}
+
+		// PRD 文档管理路由
+		api.GET("/prds", handler.ListPRDs)
+		api.POST("/prds", handler.SavePRD)
+		api.GET("/prds/:filename", handler.GetPRD)
 	}
 
 	// Start server
