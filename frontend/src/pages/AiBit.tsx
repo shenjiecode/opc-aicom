@@ -44,12 +44,11 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
             rawParsed: parsed
           };
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
         // Fallback: If it's wrapped in extra quotes and escaped (like in the screenshot: " {\"msg\": ...}")
         // Or if it contains literal unescaped newlines
         let cleaned = jsonStr;
-        console.log(cleaned)
+        
         // Remove surrounding quotes if they exist
         if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
           cleaned = cleaned.substring(1, cleaned.length - 1);
@@ -107,13 +106,21 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
   
   return messagesData.map((msg: any) => {
     if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
-      // Per user request: use parts[2] if available, otherwise fallback
       let targetText = '';
-      if (msg.parts.length > 2 && msg.parts[2].text) {
-        targetText = msg.parts[2].text;
+      
+      // If parts has more than 1 item, try to find the actual response which is usually the last part
+      // The earlier parts are often thought processes
+      if (msg.parts.length > 1) {
+        // Look for the part that contains the JSON structure {"msg": ..., "options": ...}
+        const jsonPart = msg.parts.find((p: any) => p.text && p.text.includes('"msg"') && p.text.includes('"options"'));
+        if (jsonPart) {
+          targetText = jsonPart.text;
+        } else {
+          // If no explicit JSON part found, default to the last part (often parts[2] or parts[1])
+          targetText = msg.parts[msg.parts.length - 1].text;
+        }
       } else {
-        // Fallback to combining everything if parts[2] is not what we expect
-        targetText = msg.parts.map((p) => p.text || '').join('\n');
+        targetText = msg.parts[0].text;
       }
 
        console.log('====== PARSED PARTS targetText  ======', targetText);
@@ -121,10 +128,9 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
       const { text, options, rawParsed } = parseModelResponse(targetText);
       
       if (rawParsed) {
-        console.log('====== PARSED PARTS[2] JSON ======', rawParsed);
+        console.log('====== PARSED TARGET JSON ======', rawParsed);
       }
       
-      // We replace the original parts with our parsed format to avoid duplicate rendering
       return {
         ...msg,
         parts: [{ type: 'text', text, options }]
