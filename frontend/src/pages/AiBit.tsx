@@ -33,7 +33,28 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
     
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
       jsonStr = rawText.substring(startIndex, endIndex + 1);
-      const parsed = JSON.parse(jsonStr);
+      
+      // Sanitize unescaped newlines and control characters inside JSON strings
+      // LLMs often output literal newlines instead of \n
+      let inString = false;
+      let cleaned = '';
+      for (let i = 0; i < jsonStr.length; i++) {
+        const c = jsonStr[i];
+        if (c === '"' && (i === 0 || jsonStr[i - 1] !== '\\')) {
+          inString = !inString;
+        }
+        if (c === '\n') {
+          cleaned += inString ? '\\n' : '';
+        } else if (c === '\r') {
+          cleaned += inString ? '\\r' : '';
+        } else if (c === '\t') {
+          cleaned += inString ? '\\t' : '';
+        } else {
+          cleaned += c;
+        }
+      }
+      
+      const parsed = JSON.parse(cleaned);
       
       if (parsed && typeof parsed.msg === 'string') {
         return { 
@@ -113,11 +134,15 @@ const AiBit: React.FC = () => {
         if (res.data && Array.isArray(res.data)) {
           // Parse historical messages just in case they contain JSON
           const processedMessages = res.data.map((msg: any) => {
-            if (msg.info?.role === 'model' && msg.parts?.[0]?.text) {
-              const { text, options } = parseModelResponse(msg.parts[0].text);
+            if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
+              // Combine all parts' text in case the response is split into multiple parts
+              const fullText = msg.parts.map((p: any) => p.text || '').join('\n');
+              const { text, options } = parseModelResponse(fullText);
+              
+              // We replace the original parts with our parsed format to avoid duplicate rendering
               return {
                 ...msg,
-                parts: [{ ...msg.parts[0], text, options }]
+                parts: [{ type: 'text', text, options }]
               };
             }
             return msg;
@@ -174,23 +199,15 @@ const AiBit: React.FC = () => {
       });
 
       if (res.data && Array.isArray(res.data)) {
-        // The API returns the entire conversation history, so we just take the last message
-        const lastMsg = res.data[res.data.length - 1];
-        
-        if (lastMsg && lastMsg.info?.role === 'model' && lastMsg.parts?.[0]?.text) {
-          const { text, options } = parseModelResponse(lastMsg.parts[0].text);
-          lastMsg.parts[0].text = text;
-          lastMsg.parts[0].options = options;
-        }
-
         setMessages(() => {
           // Remove the user message we optimistically added, and replace with actual history
           const processedMessages = res.data.map((msg: any) => {
-            if (msg.info?.role === 'model' && msg.parts?.[0]?.text) {
-              const { text, options } = parseModelResponse(msg.parts[0].text);
+            if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
+              const fullText = msg.parts.map((p: any) => p.text || '').join('\n');
+              const { text, options } = parseModelResponse(fullText);
               return {
                 ...msg,
-                parts: [{ ...msg.parts[0], text, options }]
+                parts: [{ type: 'text', text, options }]
               };
             }
             return msg;
