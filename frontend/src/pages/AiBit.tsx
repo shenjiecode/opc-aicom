@@ -3,7 +3,9 @@ import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User } from '
 import axios from 'axios';
 
 interface Part {
-  text: string;
+  type?: string;
+  text?: string;
+  [key: string]: unknown;
 }
 
 interface MessageInfo {
@@ -32,7 +34,7 @@ const AiBit: React.FC = () => {
   // Default welcome message
   const defaultMessage: ChatMessage = {
     info: { role: 'model' },
-    parts: [{ text: 'Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。' }]
+    parts: [{ type: 'text', text: 'Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。' }]
   };
 
   useEffect(() => {
@@ -117,7 +119,7 @@ const AiBit: React.FC = () => {
 
     const userMessage: ChatMessage = {
       info: { role: 'user', createdAt: new Date().toISOString() },
-      parts: [{ text: inputValue }]
+      parts: [{ type: 'text', text: inputValue }]
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -126,7 +128,7 @@ const AiBit: React.FC = () => {
 
     try {
       const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, {
-        parts: [{ text: userMessage.parts[0].text }]
+        parts: [{ type: 'text', text: userMessage.parts[0].text }]
       });
       if (res.data && res.data.info) {
         setMessages(prev => [...prev, res.data]);
@@ -136,7 +138,7 @@ const AiBit: React.FC = () => {
       // Fallback message for demo if API is not available
       const fallbackMsg: ChatMessage = {
         info: { role: 'model', createdAt: new Date().toISOString() },
-        parts: [{ text: '抱歉，我现在无法连接到服务器。请稍后再试。' }]
+        parts: [{ type: 'text', text: '抱歉，我现在无法连接到服务器。请稍后再试。' }]
       };
       setMessages(prev => [...prev, fallbackMsg]);
     } finally {
