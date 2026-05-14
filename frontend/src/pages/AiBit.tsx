@@ -21,7 +21,7 @@ interface ChatMessage {
 }
 
 // Helper to clean and parse the response from the model
-const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[], rawParsed?: unknown } => {
+const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[], rawParsed?: any } => {
   if (!rawText) return { text: '' };
   
   try {
@@ -46,16 +46,24 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
         }
       } catch (parseError) {
         // Fallback: If it's wrapped in extra quotes and escaped (like in the screenshot: " {\"msg\": ...}")
-        // Or if it contains literal unescaped newlines
-        let cleaned = jsonStr;
-        
-        // Remove surrounding quotes if they exist
-        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
-          cleaned = cleaned.substring(1, cleaned.length - 1);
-        }
-        
-        // Unescape escaped quotes and newlines
-        cleaned = cleaned.replace(/\\"/g, '"').replace(/\\\\n/g, '\\n');
+      // Or if it contains literal unescaped newlines
+      let cleaned = jsonStr;
+      
+      // Look for the actual JSON payload within the string
+      // Sometimes LLMs wrap it in extra text or markdown
+      const innerStart = cleaned.indexOf('{"msg":');
+      const innerEnd = cleaned.lastIndexOf('}');
+      if (innerStart !== -1 && innerEnd !== -1 && innerEnd > innerStart) {
+         cleaned = cleaned.substring(innerStart, innerEnd + 1);
+      }
+      
+      // Remove surrounding quotes if they exist
+      if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+        cleaned = cleaned.substring(1, cleaned.length - 1);
+      }
+      
+      // Unescape escaped quotes and newlines
+      cleaned = cleaned.replace(/\\"/g, '"').replace(/\\\\n/g, '\\n');
         
         // Sanitize any remaining unescaped literal newlines
         let inString = false;
@@ -76,13 +84,17 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
           }
         }
         
-        const parsed = JSON.parse(sanitized);
-        if (parsed && typeof parsed.msg === 'string') {
-          return { 
-            text: parsed.msg, 
-            options: Array.isArray(parsed.options) ? parsed.options : undefined,
-            rawParsed: parsed
-          };
+        try {
+          const parsed = JSON.parse(sanitized);
+          if (parsed && typeof parsed.msg === 'string') {
+            return { 
+              text: parsed.msg, 
+              options: Array.isArray(parsed.options) ? parsed.options : undefined,
+              rawParsed: parsed
+            };
+          }
+        } catch (innerErr) {
+           console.error("Inner parse failed:", innerErr)
         }
       }
     }
@@ -99,6 +111,7 @@ const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 // A shared function to process message arrays
 const processMessages = (messagesData: any[]): ChatMessage[] => {
+  
   if (!Array.isArray(messagesData)) {
     console.error('processMessages expected an array but got:', typeof messagesData, messagesData);
     return [];
@@ -115,8 +128,6 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
         // If there's no parts[2], fallback to the last part available
         targetText = msg.parts[msg.parts.length - 1].text;
       }
-
-       console.log('====== PARSED PARTS targetText  ======', targetText);
 
       const { text, options, rawParsed } = parseModelResponse(targetText);
       
@@ -264,18 +275,14 @@ const AiBit: React.FC = () => {
         setMessages((prev) => {
           let messagesToProcess: any[] = [];
           
-          let responseData = res.data;
-          // Handle { data: [...] } wrapper if exists
-          if (!Array.isArray(responseData) && responseData.data && Array.isArray(responseData.data)) {
-            responseData = responseData.data;
-          }
-          
-          if (Array.isArray(responseData)) {
-            // The API returned the full history
-            messagesToProcess = responseData;
-          } else if (responseData.info && responseData.parts) {
-            // The API returned just the new message
-            messagesToProcess = [...prev.slice(0, -1), { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: userMessage.parts[0].text as string }] }, responseData];
+          if (res.data.info && res.data.parts) {
+            // The API returned just the new message object
+            // Remove the optimistic user message, replace with confirmed user message and append model response
+            messagesToProcess = [
+              ...prev.slice(0, -1), 
+              { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: userMessage.parts[0].text as string }] }, 
+              res.data
+            ];
           }
 
           if (messagesToProcess.length > 0) {
