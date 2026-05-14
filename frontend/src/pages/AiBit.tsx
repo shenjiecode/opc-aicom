@@ -724,35 +724,35 @@ const AiBit: React.FC = () => {
           
           {/* PRD Artifact */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+            <div className="px-8 py-5 flex items-center justify-between">
               <div className="flex items-center">
-                <FileText className="w-4 h-4 text-emerald-600 mr-2" />
-                <h2 className="text-base font-bold text-slate-800">需求PRD产物</h2>
+                <FileText className="w-5 h-5 text-emerald-600 mr-2" />
+                <h2 className="text-lg font-bold text-slate-800">需求PRD产物</h2>
               </div>
               <button className="text-slate-400 hover:text-emerald-600 transition-colors" title="下载文档">
-                <Download className="w-4 h-4" />
+                <Download className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 p-6 overflow-y-auto bg-white">
+            <div className="flex-1 px-8 pb-8 overflow-y-auto bg-white">
               {messages.length > 0 ? (
-                <div className="prose prose-sm prose-slate max-w-none">
-                  <h1 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">项目需求文档 (PRD)</h1>
+                <div className="prose prose-slate max-w-none">
+                  <h1 className="text-2xl font-bold text-slate-800 mb-6 border-b border-slate-800 pb-4">项目需求文档 (PRD)</h1>
                   
-                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">1. 项目概述</h3>
-                  <p className="text-slate-600 mb-6 leading-relaxed">
+                  <h3 className="text-base font-bold text-slate-600 mb-3">1. 项目概述</h3>
+                  <p className="text-slate-600 mb-8 leading-relaxed">
                     本项目旨在根据甲方沟通的初步意向，设计并开发相关产物。目前正在进行需求边界的界定与确认。
                   </p>
                   
-                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">2. 核心需求清单</h3>
-                  <ul className="list-disc pl-5 mb-6 text-slate-600 space-y-2">
+                  <h3 className="text-base font-bold text-slate-600 mb-3">2. 核心需求清单</h3>
+                  <ul className="list-disc pl-5 mb-8 text-slate-600 space-y-2">
                     <li>受众定位：精准投放目标用户群体</li>
                     <li>风格偏好：按照沟通确认的基调执行</li>
                     <li>交付标准：符合平台及行业规范</li>
                     <li>内容素材：需进一步确认由哪方提供</li>
                   </ul>
 
-                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">3. 预算与周期预估</h3>
-                  <p className="text-slate-600 mb-6 leading-relaxed">
+                  <h3 className="text-base font-bold text-slate-600 mb-3">3. 预算与周期预估</h3>
+                  <p className="text-slate-600 mb-8 leading-relaxed">
                     根据当前需求复杂度，系统正在智能评估开发周期与所需积分，待需求完全明确后生成最终报价单。
                   </p>
                   
