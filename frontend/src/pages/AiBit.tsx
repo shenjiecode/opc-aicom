@@ -18,6 +18,7 @@ interface ChatMessage {
 }
 
 const SESSION_ID = 'bit-chat';
+const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -35,7 +36,7 @@ const AiBit: React.FC = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await axios.get(`/session/${SESSION_ID}/message`);
+        const res = await axios.get(`${OPENCODE_BASE_URL}/session/${SESSION_ID}/message`);
         if (res.data && Array.isArray(res.data)) {
           setMessages(res.data);
         }
@@ -46,14 +47,15 @@ const AiBit: React.FC = () => {
     
     const fetchStatus = async () => {
       try {
-        // According to documentation, we can get agent or model status.
-        // The screenshot shows deepseek-v4-flash status.
-        // We simulate this or fetch from an endpoint if available.
-        // Let's use the event stream or a simple mock since the actual endpoint
-        // for model status might be /agent or /event.
-        setModelStatus({ name: 'deepseek-v4-flash', status: 'connected' });
+        const res = await axios.get(`${OPENCODE_BASE_URL}/global/health`);
+        if (res.status === 200) {
+          setModelStatus({ name: 'deepseek-v4-flash', status: 'connected' });
+        } else {
+          setModelStatus({ name: 'deepseek-v4-flash', status: 'error' });
+        }
       } catch (error) {
         console.error('Failed to fetch status:', error);
+        setModelStatus({ name: 'deepseek-v4-flash', status: 'disconnected' });
       }
     };
 
@@ -78,7 +80,7 @@ const AiBit: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(`/session/${SESSION_ID}/message`, {
+      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${SESSION_ID}/message`, {
         parts: [{ text: userMessage.parts[0].text }]
       });
       if (res.data && res.data.info) {
