@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle } from 'lucide-react';
+import { Info, Send, Bot, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle, Check } from 'lucide-react';
 import axios from 'axios';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 
 // ============================================
 // 日志系统 - 记录完整流程到 localStorage
@@ -101,6 +102,18 @@ interface MessageInfo {
   role: string;
   createdAt?: string;
   [key: string]: unknown;
+}
+
+interface OpenCodeProvider {
+  id: string;
+  name: string;
+  models: { id: string; name: string }[];
+}
+
+interface ProviderResponse {
+  all: { id: string; name: string; models: Record<string, { id: string; name: string }> }[];
+  default: { [category: string]: string };
+  connected: string[];
 }
 
 interface ChatMessage {
@@ -279,6 +292,8 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
 // ============================================
 const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
+  const [providers, setProviders] = useState<OpenCodeProvider[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [modelStatus, setModelStatus] = useState<{status: 'connected' | 'error' | 'disconnected', version?: string, url?: string} | null>(null);
@@ -558,6 +573,39 @@ const AiBit: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Fetch available providers and models
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const res = await axios.get<ProviderResponse>(`${OPENCODE_BASE_URL}/provider`);
+        if (res.data && res.data.all) {
+          // Convert models from object to array format
+          const providersWithModels = res.data.all.map(p => ({
+            ...p,
+            models: Object.values(p.models || {})
+          }));
+          setProviders(providersWithModels);
+          // Set default model from connected providers
+          if (providersWithModels.length > 0) {
+            // Get first default model from the default object (format: { providerId: modelId })
+            const defaultEntries = Object.entries(res.data.default || {});
+            if (defaultEntries.length > 0) {
+              const [providerId, modelId] = defaultEntries[0];
+              setSelectedModel(`${providerId}/${modelId}`);
+            } else if (providersWithModels[0]?.models?.[0]) {
+              setSelectedModel(`${providersWithModels[0].id}/${providersWithModels[0].models[0].id}`);
+            }
+          }
+          addUILog(`✅ 加载了 ${providersWithModels.length} 个模型提供商`);
+        }
+      } catch (err) {
+        console.error('Failed to fetch providers:', err);
+        addUILog('❌ 获取模型列表失败');
+      }
+    };
+    fetchProviders();
+  }, []);
+
   // ============================================
   // Phase 3: 发送消息
   // ============================================
@@ -580,14 +628,15 @@ const AiBit: React.FC = () => {
 
     try {
       const requestBody = {
-        parts: [{ type: 'text', text: userMessage.parts[0].text }]
+        parts: [{ type: 'text', text: userMessage.parts[0].text }],
+        model: selectedModel,
       };
-      
+
       logger.log('MESSAGE', '发送 API 请求', {
         url: `${OPENCODE_BASE_URL}/session/${sessionId}/message`,
         body: requestBody
       });
-      
+
       const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, requestBody);
 
       logger.log('MESSAGE', 'API 响应接收', {
@@ -661,10 +710,10 @@ const AiBit: React.FC = () => {
   const displayMessages = messages.length > 0 ? messages : [defaultMessage];
 
   return (
-    <div className="h-[calc(100vh-theme(spacing.16))] w-full bg-slate-50 flex flex-col relative overflow-hidden">
+    <div className="h-full w-full bg-slate-50 flex flex-col relative overflow-hidden flex-1">
       
       {/* 顶部导航 / Header Area */}
-      <div className="shrink-0 w-full px-6 py-4 flex items-center justify-between z-10 bg-slate-50">
+      <div className="shrink-0 w-full px-6 py-4 flex items-center justify-between z-10 bg-slate-50 border-b border-slate-200">
         <div>
           <h1 className="text-xl font-bold text-slate-800">AI比特</h1>
           <p className="text-sm text-slate-500 mt-1">您的专属智能助理与服务管家</p>
@@ -672,10 +721,10 @@ const AiBit: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-hidden">
+      <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full min-h-0 overflow-hidden">
           
           {/* Left Column: Chat Interface */}
-          <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-full relative">
+          <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 relative">
             
             {/* Chat Header */}
             <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-white/50 backdrop-blur-sm z-10 shrink-0">
@@ -787,6 +836,32 @@ const AiBit: React.FC = () => {
           {/* Chat Input */}
           <div className="p-4 bg-white border-t border-slate-100">
             <div className="flex items-center space-x-3 bg-white border border-slate-200 rounded-full p-2 pl-4 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all shadow-sm">
+              {/* Model Selector */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-sm text-slate-600 transition-colors shrink-0">
+                  <Bot className="w-4 h-4" />
+                  <span className="truncate max-w-[100px]">{selectedModel?.split('/').pop() || '选择模型'}</span>
+                  <ChevronDown className="w-3 h-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-64">
+                  {providers.map((provider) => (
+                    <DropdownMenuGroup key={provider.id}>
+                      <DropdownMenuLabel>{provider.name}</DropdownMenuLabel>
+                      {provider.models?.map((model) => (
+                        <DropdownMenuItem
+                          key={`${provider.id}/${model.id}`}
+                          onClick={() => setSelectedModel(`${provider.id}/${model.id}`)}
+                          className={selectedModel === `${provider.id}/${model.id}` ? 'bg-emerald-50' : ''}
+                        >
+                          {model.name}
+                          {selectedModel === `${provider.id}/${model.id}` && <Check className="w-4 h-4 ml-auto text-emerald-600" />}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                    </DropdownMenuGroup>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <input
                 type="text"
                 value={inputValue}
@@ -808,7 +883,7 @@ const AiBit: React.FC = () => {
         </div>
 
         {/* Right Column: PRD & Status */}
-        <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6">
+        <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col space-y-6 min-h-0">
           
           {/* PRD Artifact - Directory View */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-0">

@@ -58,9 +58,9 @@ export function Layout({ className }: LayoutProps) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 h-full overflow-hidden">
-        <main className="h-full overflow-y-auto bg-[var(--bg-surface)]">
-          <div className="p-0 min-h-full">
+      <div className="flex-1 h-full overflow-hidden flex flex-col">
+        <main className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex flex-col">
+          <div className="p-0 flex-1 flex flex-col">
             <Outlet />
           </div>
         </main>
