@@ -21,7 +21,7 @@ interface ChatMessage {
 }
 
 // Helper to clean and parse the response from the model
-const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[] } => {
+const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[], rawParsed?: unknown } => {
   if (!rawText) return { text: '' };
   
   try {
@@ -33,7 +33,6 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
     
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
       jsonStr = rawText.substring(startIndex, endIndex + 1);
-      
       // Attempt to clean JSON. Sometimes LLMs output escaped strings within JSON, or literal newlines
       // First, try standard parse
       try {
@@ -41,14 +40,16 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
         if (parsed && typeof parsed.msg === 'string') {
           return { 
             text: parsed.msg, 
-            options: Array.isArray(parsed.options) ? parsed.options : undefined 
+            options: Array.isArray(parsed.options) ? parsed.options : undefined,
+            rawParsed: parsed
           };
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
         // Fallback: If it's wrapped in extra quotes and escaped (like in the screenshot: " {\"msg\": ...}")
         // Or if it contains literal unescaped newlines
         let cleaned = jsonStr;
-        
+        console.log(cleaned)
         // Remove surrounding quotes if they exist
         if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
           cleaned = cleaned.substring(1, cleaned.length - 1);
@@ -80,7 +81,8 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
         if (parsed && typeof parsed.msg === 'string') {
           return { 
             text: parsed.msg, 
-            options: Array.isArray(parsed.options) ? parsed.options : undefined 
+            options: Array.isArray(parsed.options) ? parsed.options : undefined,
+            rawParsed: parsed
           };
         }
       }
@@ -92,9 +94,38 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
   // If parsing fails completely, just show the raw text
   // Clean up any escaped newlines for display
   const displayText = rawText.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-  return { text: displayText };
+  return { text: displayText, rawParsed: null };
 };
 const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
+
+// A shared function to process message arrays
+const processMessages = (messagesData: ChatMessage[]) => {
+  return messagesData.map((msg: ChatMessage) => {
+    if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
+      // Per user request: use parts[2] if available, otherwise fallback
+      let targetText = '';
+      if (msg.parts.length > 2 && msg.parts[2].text) {
+        targetText = msg.parts[2].text;
+      } else {
+        // Fallback to combining everything if parts[2] is not what we expect
+        targetText = msg.parts.map((p) => p.text || '').join('\n');
+      }
+
+      const { text, options, rawParsed } = parseModelResponse(targetText);
+      
+      if (rawParsed) {
+        console.log('====== PARSED PARTS[2] JSON ======', rawParsed);
+      }
+      
+      // We replace the original parts with our parsed format to avoid duplicate rendering
+      return {
+        ...msg,
+        parts: [{ type: 'text', text, options }]
+      };
+    }
+    return msg;
+  });
+};
 
 const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -156,23 +187,11 @@ const AiBit: React.FC = () => {
     const fetchMessages = async () => {
       try {
         const res = await axios.get(`${OPENCODE_BASE_URL}/session/${sessionId}/message`);
+        console.log('====== API HISTORY RESPONSE ======', res.data);
         if (res.data && Array.isArray(res.data)) {
           // Parse historical messages just in case they contain JSON
-          const processedMessages = res.data.map((msg: any) => {
-            if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
-              // Combine all parts' text in case the response is split into multiple parts
-              const fullText = msg.parts.map((p: any) => p.text || '').join('\n');
-              const { text, options } = parseModelResponse(fullText);
-              
-              // We replace the original parts with our parsed format to avoid duplicate rendering
-              return {
-                ...msg,
-                parts: [{ type: 'text', text, options }]
-              };
-            }
-            return msg;
-          });
-          setMessages(processedMessages);
+          const processedHistory = processMessages(res.data);
+          setMessages(processedHistory);
         }
       } catch (error) {
         console.error('Failed to fetch messages:', error);
@@ -223,21 +242,12 @@ const AiBit: React.FC = () => {
         parts: [{ type: 'text', text: userMessage.parts[0].text }]
       });
 
+      console.log('====== API RESPONSE ======', res.data);
+
       if (res.data && Array.isArray(res.data)) {
         setMessages(() => {
           // Remove the user message we optimistically added, and replace with actual history
-          const processedMessages = res.data.map((msg: any) => {
-            if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
-              const fullText = msg.parts.map((p: any) => p.text || '').join('\n');
-              const { text, options } = parseModelResponse(fullText);
-              return {
-                ...msg,
-                parts: [{ type: 'text', text, options }]
-              };
-            }
-            return msg;
-          });
-          return processedMessages;
+          return processMessages(res.data);
         });
       }
     } catch (error) {
