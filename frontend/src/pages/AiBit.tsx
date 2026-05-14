@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown } from 'lucide-react';
+import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle } from 'lucide-react';
 import axios from 'axios';
 
 // ============================================
@@ -360,6 +360,30 @@ const AiBit: React.FC = () => {
     }
   };
 
+  // 创建新会话
+  const createNewSession = async () => {
+    setIsLoading(true);
+    try {
+      addUILog('🆕 手动创建新会话...');
+      logger.log('SESSION', '手动创建新会话', { title: 'bit-chat' });
+      
+      const createRes = await axios.post(`${OPENCODE_BASE_URL}/session`, { title: 'bit-chat' });
+      
+      if (createRes.data && createRes.data.id) {
+        const newId = createRes.data.id;
+        setSessionId(newId);
+        localStorage.setItem('opencode_bit_session_id', newId);
+        setMessages([]); // 清空当前消息列表
+        addUILog(`✅ 新会话创建成功: ${newId.substring(0, 12)}...`);
+      }
+    } catch (error) {
+      logger.error('SESSION', '手动创建会话失败', error);
+      addUILog(`❌ 创建会话失败: ${String(error)}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Default welcome message
   const defaultMessage: ChatMessage = {
     info: { role: 'model' },
@@ -655,15 +679,24 @@ const AiBit: React.FC = () => {
             
             {/* Chat Header */}
             <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-white/50 backdrop-blur-sm z-10 shrink-0">
-            <div className="flex items-center space-x-2">
-              <Info className="w-4 h-4 text-slate-400" />
-              <h2 className="text-base font-bold text-slate-800">与AI管家「比特」沟通</h2>
+              <div className="flex items-center space-x-2">
+                <Info className="w-4 h-4 text-slate-400" />
+                <h2 className="text-base font-bold text-slate-800">与AI管家「比特」沟通</h2>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={createNewSession}
+                  className="flex items-center text-slate-500 hover:text-emerald-600 transition-colors"
+                  title="新建对话"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                </button>
+                <div className="flex items-center px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full border border-emerald-100">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  智能需求转译
+                </div>
+              </div>
             </div>
-            <div className="flex items-center px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full border border-emerald-100">
-              <Sparkles className="w-3 h-3 mr-1" />
-              智能需求转译
-            </div>
-          </div>
 
           {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
