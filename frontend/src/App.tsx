@@ -16,6 +16,11 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import MyOPC from "./pages/MyOPC";
 import OPCWorkbench from "./pages/OPCWorkbench";
 import AiBit from './pages/AiBit';
+import CreateEvent from './pages/CreateEvent';
+import EventDetail from './pages/EventDetail';
+import EventShare from './pages/EventShare';
+
+import MyEvents from './pages/MyEvents';
 
 function App() {
   return (
@@ -27,6 +32,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/opc-workbench" element={<OPCWorkbench />} />
+            {/* Event share page - fullscreen, no layout */}
+            <Route path="/event/share/:code" element={<EventShare />} />
 
             {/* Routes with Layout */}
             <Route element={<Layout />}>
@@ -37,6 +44,7 @@ function App() {
               <Route path="/ai-resources" element={<AiResources />} />
               <Route path="/service-center" element={<ServiceCenter />} />
               <Route path="/aibit" element={<AiBit />} />
+              <Route path="/event/:id" element={<EventDetail />} />
 
               {/* Protected pages - require authentication */}
               <Route element={<ProtectedRoute />}>
@@ -44,6 +52,8 @@ function App() {
                 <Route path="/my-agents" element={<MyAgents />} />
                 <Route path="/my-workflows" element={<MyWorkflows />} />
                 <Route path="/points-mall" element={<PointsMall />} />
+                <Route path="/my-events" element={<MyEvents />} />
+                <Route path="/event/create" element={<CreateEvent />} />
               </Route>
             </Route>
           </Routes>

@@ -17,6 +17,7 @@ import {
   LogOut,
   Settings,
   ChevronUp,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -99,6 +100,12 @@ const navigationGroups: NavGroup[] = [
         path: "/opc-workbench",
         icon: Briefcase,
         label: "OPC工作台",
+      },
+      {
+        id: "my-events",
+        path: "/my-events",
+        icon: Calendar,
+        label: "我的活动",
       },
       {
         id: "points-mall",

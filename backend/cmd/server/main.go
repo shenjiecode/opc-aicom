@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Auto migrate database models
-	if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.Resource{}, &model.Service{}); err != nil {
+	if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
@@ -117,6 +117,19 @@ func main() {
 		api.GET("/prds", handler.ListPRDs)
 		api.POST("/prds", handler.SavePRD)
 		api.GET("/prds/:filename", handler.GetPRD)
+
+		// Event routes (public)
+		api.GET("/event/:id", handler.GetEvent(db))
+		api.GET("/event/share/:code", handler.GetEventByShareCode(db))
+
+		// Event routes (auth required)
+		eventAuth := api.Group("/event")
+		eventAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		eventAuth.Use(middleware.ActivityTracker(db))
+		{
+			eventAuth.POST("/create", handler.CreateEvent(db))
+			eventAuth.POST("/join", handler.JoinEvent(db))
+		}
 	}
 
 	// Start server
