@@ -1,8 +1,94 @@
-import React, { useState } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User } from 'lucide-react';
+import axios from 'axios';
+
+interface Part {
+  text: string;
+}
+
+interface MessageInfo {
+  role: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+interface ChatMessage {
+  info: MessageInfo;
+  parts: Part[];
+}
+
+const SESSION_ID = 'bit-chat';
 
 const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Default welcome message
+  const defaultMessage: ChatMessage = {
+    info: { role: 'model' },
+    parts: [{ text: 'Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。' }]
+  };
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const res = await axios.get(`/session/${SESSION_ID}/message`);
+        if (res.data && Array.isArray(res.data)) {
+          setMessages(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch messages:', error);
+      }
+    };
+    fetchMessages();
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      info: { role: 'user', createdAt: new Date().toISOString() },
+      parts: [{ text: inputValue }]
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      const res = await axios.post(`/session/${SESSION_ID}/message`, {
+        parts: [{ text: userMessage.parts[0].text }]
+      });
+      if (res.data && res.data.info) {
+        setMessages(prev => [...prev, res.data]);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Fallback message for demo if API is not available
+      const fallbackMsg: ChatMessage = {
+        info: { role: 'model', createdAt: new Date().toISOString() },
+        parts: [{ text: '抱歉，我现在无法连接到服务器。请稍后再试。' }]
+      };
+      setMessages(prev => [...prev, fallbackMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const displayMessages = messages.length > 0 ? messages : [defaultMessage];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] w-full flex flex-col">
@@ -50,26 +136,68 @@ const AiBit: React.FC = () => {
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 p-6 overflow-y-auto bg-slate-50/30">
-            <div className="flex items-start space-x-4 max-w-[85%]">
-              <div className="w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center shrink-0 shadow-sm relative">
-                <span className="text-white text-sm font-bold">比特</span>
-                <div className="absolute -top-1 -right-1 bg-white rounded-full p-[2px] shadow-sm">
-                  <Crown className="w-3 h-3 text-amber-500" />
+          <div className="flex-1 p-6 overflow-y-auto bg-slate-50/30 space-y-6">
+            {displayMessages.map((msg, index) => {
+              const isUser = msg.info.role === 'user';
+              const timeString = msg.info.createdAt ? new Date(msg.info.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              
+              return (
+                <div key={index} className={`flex items-start space-x-4 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse space-x-reverse' : ''}`}>
+                  {!isUser ? (
+                    <div className="w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center shrink-0 shadow-sm relative">
+                      <span className="text-white text-sm font-bold">比特</span>
+                      <div className="absolute -top-1 -right-1 bg-white rounded-full p-[2px] shadow-sm">
+                        <Crown className="w-3 h-3 text-amber-500" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shrink-0 shadow-sm">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  
+                  <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                    <div className="flex items-center space-x-2 mb-1 px-1">
+                      <span className="text-xs font-medium text-slate-500 flex items-center">
+                        {!isUser && <Bot className="w-3 h-3 mr-1" />}
+                        {isUser ? '我' : '比特管家'}
+                      </span>
+                    </div>
+                    <div className={`border shadow-sm p-4 text-sm leading-relaxed relative ${
+                      isUser 
+                        ? 'bg-emerald-50 border-emerald-100 text-emerald-900 rounded-2xl rounded-tr-sm' 
+                        : 'bg-white border-slate-100 text-slate-700 rounded-2xl rounded-tl-sm'
+                    }`}>
+                      {msg.parts.map((p, i) => (
+                        <div key={i}>{p.text}</div>
+                      ))}
+                    </div>
+                    <span className="text-[11px] text-slate-400 mt-2 px-1">{timeString}</span>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {isLoading && (
+              <div className="flex items-start space-x-4 max-w-[85%]">
+                <div className="w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center shrink-0 shadow-sm relative">
+                  <span className="text-white text-sm font-bold">比特</span>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center space-x-2 mb-1 px-1">
+                    <span className="text-xs font-medium text-slate-500 flex items-center">
+                      <Bot className="w-3 h-3 mr-1" /> 比特管家
+                    </span>
+                  </div>
+                  <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center space-x-2 mb-1 px-1">
-                  <span className="text-xs font-medium text-slate-500 flex items-center">
-                    <Bot className="w-3 h-3 mr-1" /> 比特管家
-                  </span>
-                </div>
-                <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700 leading-relaxed relative">
-                  Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。
-                </div>
-                <span className="text-[11px] text-slate-400 mt-2 px-1">23:15</span>
-              </div>
-            </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Chat Input */}
@@ -79,10 +207,16 @@ const AiBit: React.FC = () => {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
                 placeholder="例如：我需要一套科技感小红书海报，3张..."
                 className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                disabled={isLoading}
               />
-              <button className="w-9 h-9 rounded-full bg-slate-100 hover:bg-emerald-500 hover:text-white text-slate-400 flex items-center justify-center transition-colors shrink-0">
+              <button 
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isLoading}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-emerald-500 hover:text-white text-slate-400 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-400"
+              >
                 <Send className="w-4 h-4" />
               </button>
             </div>
