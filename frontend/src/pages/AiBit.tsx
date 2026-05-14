@@ -17,7 +17,8 @@ interface ChatMessage {
   parts: Part[];
 }
 
-const SESSION_ID = 'bit-chat';
+// You can remove SESSION_ID constant if you like, or keep it as a fallback
+// const SESSION_ID = 'bit-chat';
 const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 const AiBit: React.FC = () => {
@@ -25,6 +26,7 @@ const AiBit: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [modelStatus, setModelStatus] = useState<{name: string, status: string} | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Default welcome message
@@ -34,9 +36,47 @@ const AiBit: React.FC = () => {
   };
 
   useEffect(() => {
+    const initSession = async () => {
+      try {
+        const storedSessionId = localStorage.getItem('opencode_bit_session_id');
+        if (storedSessionId) {
+          setSessionId(storedSessionId);
+          return;
+        }
+
+        // Fetch existing sessions
+        const res = await axios.get(`${OPENCODE_BASE_URL}/session`);
+        if (res.data && Array.isArray(res.data)) {
+          const existingSession = res.data.find((s: any) => s.title === 'bit-chat');
+          if (existingSession && existingSession.id) {
+            setSessionId(existingSession.id);
+            localStorage.setItem('opencode_bit_session_id', existingSession.id);
+            return;
+          }
+        }
+        
+        // Create new session
+        const createRes = await axios.post(`${OPENCODE_BASE_URL}/session`, { title: 'bit-chat' });
+        if (createRes.data && createRes.data.id) {
+          setSessionId(createRes.data.id);
+          localStorage.setItem('opencode_bit_session_id', createRes.data.id);
+        }
+      } catch (error) {
+        console.error('Failed to init session:', error);
+        // Fallback
+        setSessionId('bit-chat');
+      }
+    };
+    
+    initSession();
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
     const fetchMessages = async () => {
       try {
-        const res = await axios.get(`${OPENCODE_BASE_URL}/session/${SESSION_ID}/message`);
+        const res = await axios.get(`${OPENCODE_BASE_URL}/session/${sessionId}/message`);
         if (res.data && Array.isArray(res.data)) {
           setMessages(res.data);
         }
@@ -61,14 +101,14 @@ const AiBit: React.FC = () => {
 
     fetchMessages();
     fetchStatus();
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || !sessionId) return;
 
     const userMessage: ChatMessage = {
       info: { role: 'user', createdAt: new Date().toISOString() },
@@ -80,7 +120,7 @@ const AiBit: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${SESSION_ID}/message`, {
+      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, {
         parts: [{ text: userMessage.parts[0].text }]
       });
       if (res.data && res.data.info) {
