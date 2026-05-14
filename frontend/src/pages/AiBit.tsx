@@ -34,40 +34,65 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
       jsonStr = rawText.substring(startIndex, endIndex + 1);
       
-      // Sanitize unescaped newlines and control characters inside JSON strings
-      // LLMs often output literal newlines instead of \n
-      let inString = false;
-      let cleaned = '';
-      for (let i = 0; i < jsonStr.length; i++) {
-        const c = jsonStr[i];
-        if (c === '"' && (i === 0 || jsonStr[i - 1] !== '\\')) {
-          inString = !inString;
+      // Attempt to clean JSON. Sometimes LLMs output escaped strings within JSON, or literal newlines
+      // First, try standard parse
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && typeof parsed.msg === 'string') {
+          return { 
+            text: parsed.msg, 
+            options: Array.isArray(parsed.options) ? parsed.options : undefined 
+          };
         }
-        if (c === '\n') {
-          cleaned += inString ? '\\n' : '';
-        } else if (c === '\r') {
-          cleaned += inString ? '\\r' : '';
-        } else if (c === '\t') {
-          cleaned += inString ? '\\t' : '';
-        } else {
-          cleaned += c;
+      } catch (parseError) {
+        // Fallback: If it's wrapped in extra quotes and escaped (like in the screenshot: " {\"msg\": ...}")
+        // Or if it contains literal unescaped newlines
+        let cleaned = jsonStr;
+        
+        // Remove surrounding quotes if they exist
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          cleaned = cleaned.substring(1, cleaned.length - 1);
         }
-      }
-      
-      const parsed = JSON.parse(cleaned);
-      
-      if (parsed && typeof parsed.msg === 'string') {
-        return { 
-          text: parsed.msg, 
-          options: Array.isArray(parsed.options) ? parsed.options : undefined 
-        };
+        
+        // Unescape escaped quotes and newlines
+        cleaned = cleaned.replace(/\\"/g, '"').replace(/\\\\n/g, '\\n');
+        
+        // Sanitize any remaining unescaped literal newlines
+        let inString = false;
+        let sanitized = '';
+        for (let i = 0; i < cleaned.length; i++) {
+          const c = cleaned[i];
+          if (c === '"' && (i === 0 || cleaned[i - 1] !== '\\')) {
+            inString = !inString;
+          }
+          if (c === '\n') {
+            sanitized += inString ? '\\n' : '';
+          } else if (c === '\r') {
+            sanitized += inString ? '\\r' : '';
+          } else if (c === '\t') {
+            sanitized += inString ? '\\t' : '';
+          } else {
+            sanitized += c;
+          }
+        }
+        
+        const parsed = JSON.parse(sanitized);
+        if (parsed && typeof parsed.msg === 'string') {
+          return { 
+            text: parsed.msg, 
+            options: Array.isArray(parsed.options) ? parsed.options : undefined 
+          };
+        }
       }
     }
   } catch (e) {
-    // console.error('Parse error:', e);
+    console.error('Parse error:', e, rawText);
   }
   
-  return { text: rawText };
+  // If parsing fails completely, just show the raw text
+  // Clean up any escaped newlines for display
+  const displayText = rawText.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  return { text: displayText };
 };
 const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
