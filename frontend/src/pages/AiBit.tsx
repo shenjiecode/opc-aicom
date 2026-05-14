@@ -5,6 +5,7 @@ import axios from 'axios';
 interface Part {
   type?: string;
   text?: string;
+  options?: string[];
   [key: string]: unknown;
 }
 
@@ -19,8 +20,34 @@ interface ChatMessage {
   parts: Part[];
 }
 
-// You can remove SESSION_ID constant if you like, or keep it as a fallback
-// const SESSION_ID = 'bit-chat';
+// Helper to clean and parse the response from the model
+const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[] } => {
+  if (!rawText) return { text: '' };
+  
+  try {
+    let jsonStr = rawText;
+    
+    // Look for JSON object in the string
+    const startIndex = rawText.indexOf('{');
+    const endIndex = rawText.lastIndexOf('}');
+    
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      jsonStr = rawText.substring(startIndex, endIndex + 1);
+      const parsed = JSON.parse(jsonStr);
+      
+      if (parsed && typeof parsed.msg === 'string') {
+        return { 
+          text: parsed.msg, 
+          options: Array.isArray(parsed.options) ? parsed.options : undefined 
+        };
+      }
+    }
+  } catch (e) {
+    // console.error('Parse error:', e);
+  }
+  
+  return { text: rawText };
+};
 const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
 const AiBit: React.FC = () => {
@@ -34,7 +61,11 @@ const AiBit: React.FC = () => {
   // Default welcome message
   const defaultMessage: ChatMessage = {
     info: { role: 'model' },
-    parts: [{ type: 'text', text: 'Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。' }]
+    parts: [{
+      type: 'text',
+      text: 'Hi! 我是您的AI服务管家「比特」。请简单描述项目需求（如：海报/短视频/软件开发/短剧等），我会帮您生成标准需求文档并智能定价，然后为您匹配OPC服务方。',
+      options: ['我想做一部短剧', '帮我写个前端代码', '帮我生成几张海报']
+    }]
   };
 
   useEffect(() => {
@@ -80,7 +111,18 @@ const AiBit: React.FC = () => {
       try {
         const res = await axios.get(`${OPENCODE_BASE_URL}/session/${sessionId}/message`);
         if (res.data && Array.isArray(res.data)) {
-          setMessages(res.data);
+          // Parse historical messages just in case they contain JSON
+          const processedMessages = res.data.map((msg: any) => {
+            if (msg.info?.role === 'model' && msg.parts?.[0]?.text) {
+              const { text, options } = parseModelResponse(msg.parts[0].text);
+              return {
+                ...msg,
+                parts: [{ ...msg.parts[0], text, options }]
+              };
+            }
+            return msg;
+          });
+          setMessages(processedMessages);
         }
       } catch (error) {
         console.error('Failed to fetch messages:', error);
@@ -130,8 +172,31 @@ const AiBit: React.FC = () => {
       const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, {
         parts: [{ type: 'text', text: userMessage.parts[0].text }]
       });
-      if (res.data && res.data.info) {
-        setMessages(prev => [...prev, res.data]);
+
+      if (res.data && Array.isArray(res.data)) {
+        // The API returns the entire conversation history, so we just take the last message
+        const lastMsg = res.data[res.data.length - 1];
+        
+        if (lastMsg && lastMsg.info?.role === 'model' && lastMsg.parts?.[0]?.text) {
+          const { text, options } = parseModelResponse(lastMsg.parts[0].text);
+          lastMsg.parts[0].text = text;
+          lastMsg.parts[0].options = options;
+        }
+
+        setMessages(() => {
+          // Remove the user message we optimistically added, and replace with actual history
+          const processedMessages = res.data.map((msg: any) => {
+            if (msg.info?.role === 'model' && msg.parts?.[0]?.text) {
+              const { text, options } = parseModelResponse(msg.parts[0].text);
+              return {
+                ...msg,
+                parts: [{ ...msg.parts[0], text, options }]
+              };
+            }
+            return msg;
+          });
+          return processedMessages;
+        });
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -234,7 +299,23 @@ const AiBit: React.FC = () => {
                         : 'bg-white border-slate-100 text-slate-700 rounded-2xl rounded-tl-sm'
                     }`}>
                       {msg.parts.map((p, i) => (
-                        <div key={i}>{p.text}</div>
+                        <div key={i}>
+                          <div className="whitespace-pre-wrap">{p.text}</div>
+                          
+                          {p.options && p.options.length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {p.options.map((opt: string, optIdx: number) => (
+                                <button
+                                  key={optIdx}
+                                  onClick={() => setInputValue(opt)}
+                                  className="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white border border-emerald-100 hover:border-emerald-500 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                     <span className="text-[11px] text-slate-400 mt-2 px-1">{timeString}</span>
