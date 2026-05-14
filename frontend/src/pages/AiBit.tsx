@@ -1,7 +1,95 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User } from 'lucide-react';
+import { Info, Send, Bot, ChevronRight, Terminal, Sparkles, Crown, User, Download } from 'lucide-react';
 import axios from 'axios';
 
+// ============================================
+// 日志系统 - 记录完整流程到 localStorage
+// ============================================
+interface LogEntry {
+  timestamp: string;
+  phase: 'CONNECTION' | 'SESSION' | 'MESSAGE' | 'RENDER' | 'ERROR' | 'PARSE';
+  action: string;
+  data?: unknown;
+  error?: string;
+}
+
+const LOG_STORAGE_KEY = 'aibit_debug_logs';
+const MAX_LOG_ENTRIES = 500;
+
+const logger = {
+  logs: [] as LogEntry[],
+  
+  init() {
+    // 从 localStorage 恢复日志
+    try {
+      const stored = localStorage.getItem(LOG_STORAGE_KEY);
+      if (stored) {
+        this.logs = JSON.parse(stored);
+      }
+    } catch (e) {
+      this.logs = [];
+    }
+  },
+  
+  log(phase: LogEntry['phase'], action: string, data?: unknown) {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      phase,
+      action,
+      data
+    };
+    this.logs.push(entry);
+    
+    // 限制日志条数
+    if (this.logs.length > MAX_LOG_ENTRIES) {
+      this.logs = this.logs.slice(-MAX_LOG_ENTRIES);
+    }
+    
+    // 同步到 localStorage
+    try {
+      localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(this.logs));
+    } catch (e) {
+      console.error('Failed to save logs:', e);
+    }
+    
+    // 同时输出到控制台
+    console.log(`[${phase}] ${action}`, data !== undefined ? data : '');
+  },
+  
+  error(phase: LogEntry['phase'], action: string, error: unknown) {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      phase,
+      action,
+      error: String(error)
+    };
+    this.logs.push(entry);
+    
+    try {
+      localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(this.logs));
+    } catch (e) {
+      console.error('Failed to save logs:', e);
+    }
+    
+    console.error(`[${phase}] ${action}`, error);
+  },
+  
+  export(): string {
+    return JSON.stringify(this.logs, null, 2);
+  },
+  
+  clear() {
+    this.logs = [];
+    localStorage.removeItem(LOG_STORAGE_KEY);
+  }
+};
+
+// 初始化日志系统
+logger.init();
+
+// ============================================
+// 类型定义
+// ============================================
 interface Part {
   type?: string;
   text?: string;
@@ -20,24 +108,42 @@ interface ChatMessage {
   parts: Part[];
 }
 
-// Helper to clean and parse the response from the model
-const parseModelResponse = (rawText: string | undefined): { text: string, options?: string[], rawParsed?: any } => {
-  if (!rawText) return { text: '' };
+const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
+
+// ============================================
+// JSON 解析器 - 带详细日志
+// ============================================
+const parseModelResponse = (rawText: string | undefined, msgIndex: number): { text: string, options?: string[], rawParsed?: any } => {
+  logger.log('PARSE', `开始解析消息 #${msgIndex}`, { 
+    rawTextLength: rawText?.length || 0,
+    rawTextPreview: rawText?.substring(0, 200) 
+  });
+  
+  if (!rawText) {
+    logger.log('PARSE', `消息 #${msgIndex} 为空，返回空文本`);
+    return { text: '' };
+  }
   
   try {
     let jsonStr = rawText;
     
-    // Look for JSON object in the string
+    // 查找 JSON 对象
     const startIndex = rawText.indexOf('{');
     const endIndex = rawText.lastIndexOf('}');
     
+    logger.log('PARSE', `JSON 边界检测`, { startIndex, endIndex });
+    
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
       jsonStr = rawText.substring(startIndex, endIndex + 1);
-      // Attempt to clean JSON. Sometimes LLMs output escaped strings within JSON, or literal newlines
-      // First, try standard parse
+      logger.log('PARSE', `提取 JSON 片段`, { jsonStrPreview: jsonStr.substring(0, 100) });
+      
+      // 尝试标准解析
       try {
         const parsed = JSON.parse(jsonStr);
+        logger.log('PARSE', `标准解析成功`, { parsed });
+        
         if (parsed && typeof parsed.msg === 'string') {
+          logger.log('PARSE', `提取 msg 字段成功`, { msg: parsed.msg, options: parsed.options });
           return { 
             text: parsed.msg, 
             options: Array.isArray(parsed.options) ? parsed.options : undefined,
@@ -45,27 +151,28 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
           };
         }
       } catch (parseError) {
-        // Fallback: If it's wrapped in extra quotes and escaped (like in the screenshot: " {\"msg\": ...}")
-      // Or if it contains literal unescaped newlines
-      let cleaned = jsonStr;
-      
-      // Look for the actual JSON payload within the string
-      // Sometimes LLMs wrap it in extra text or markdown
-      const innerStart = cleaned.indexOf('{"msg":');
-      const innerEnd = cleaned.lastIndexOf('}');
-      if (innerStart !== -1 && innerEnd !== -1 && innerEnd > innerStart) {
-         cleaned = cleaned.substring(innerStart, innerEnd + 1);
-      }
-      
-      // Remove surrounding quotes if they exist
-      if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
-        cleaned = cleaned.substring(1, cleaned.length - 1);
-      }
-      
-      // Unescape escaped quotes and newlines
-      cleaned = cleaned.replace(/\\"/g, '"').replace(/\\\\n/g, '\\n');
+        logger.log('PARSE', `标准解析失败，尝试清理`, { error: String(parseError) });
         
-        // Sanitize any remaining unescaped literal newlines
+        let cleaned = jsonStr;
+        
+        // 查找内部 JSON
+        const innerStart = cleaned.indexOf('{"msg":');
+        const innerEnd = cleaned.lastIndexOf('}');
+        if (innerStart !== -1 && innerEnd !== -1 && innerEnd > innerStart) {
+          cleaned = cleaned.substring(innerStart, innerEnd + 1);
+          logger.log('PARSE', `提取内部 JSON`, { cleanedPreview: cleaned.substring(0, 100) });
+        }
+        
+        // 移除包裹的引号
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          cleaned = cleaned.substring(1, cleaned.length - 1);
+          logger.log('PARSE', `移除外层引号`);
+        }
+        
+        // 反转义
+        cleaned = cleaned.replace(/\\"/g, '"').replace(/\\\\n/g, '\\n');
+        
+        // 清理未转义的换行符
         let inString = false;
         let sanitized = '';
         for (let i = 0; i < cleaned.length; i++) {
@@ -86,6 +193,8 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
         
         try {
           const parsed = JSON.parse(sanitized);
+          logger.log('PARSE', `清理后解析成功`, { parsed });
+          
           if (parsed && typeof parsed.msg === 'string') {
             return { 
               text: parsed.msg, 
@@ -94,45 +203,69 @@ const parseModelResponse = (rawText: string | undefined): { text: string, option
             };
           }
         } catch (innerErr) {
-           console.error("Inner parse failed:", innerErr)
+          logger.error('PARSE', `清理后解析仍失败`, innerErr);
         }
       }
     }
   } catch (e) {
-    console.error('Parse error:', e, rawText);
+    logger.error('PARSE', `解析过程异常`, e);
   }
   
-  // If parsing fails completely, just show the raw text
-  // Clean up any escaped newlines for display
+  // 解析失败，返回原始文本
   const displayText = rawText.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  logger.log('PARSE', `解析失败，返回清理后的原始文本`, { displayText: displayText.substring(0, 100) });
   return { text: displayText, rawParsed: null };
 };
-const OPENCODE_BASE_URL = 'https://ai.sjtyy.top';
 
-// A shared function to process message arrays
+// ============================================
+// 消息处理器 - 带详细日志
+// ============================================
 const processMessages = (messagesData: any[]): ChatMessage[] => {
-
-  console.log('======  processMessages ======', messagesData);
+  logger.log('RENDER', `开始处理消息数组`, { 
+    messageCount: messagesData.length,
+    firstMessageRole: messagesData[0]?.info?.role 
+  });
   
-
-  
-  return messagesData.map((msg: any) => {
-    if (msg.info?.role === 'model' && msg.parts && msg.parts.length > 0) {
+  return messagesData.map((msg: any, index: number) => {
+    logger.log('RENDER', `处理消息 #${index}`, {
+      role: msg.info?.role,
+      partsCount: msg.parts?.length,
+      partsTypes: msg.parts?.map((p: any) => p.type)
+    });
+    
+    if (msg.info?.role === 'assistant' && msg.parts && msg.parts.length > 0) {
       let targetText = '';
       
-      // User explicitly requested to fixate on parts[2] if available
+      // 记录所有 parts 的详细信息
+      msg.parts.forEach((p: any, i: number) => {
+        logger.log('RENDER', `消息 #${index} Part[${i}]`, {
+          type: p.type,
+          textPreview: p.text?.substring(0, 100),
+          hasOptions: !!p.options
+        });
+      });
+      
+      // 用户明确要求优先使用 parts[2]
       if (msg.parts.length > 2 && msg.parts[2].text) {
         targetText = msg.parts[2].text;
+        logger.log('RENDER', `消息 #${index} 使用 parts[2]`, { textPreview: targetText.substring(0, 100) });
       } else {
-        // If there's no parts[2], fallback to the last part available
+        // 回退到最后一个 part
         targetText = msg.parts[msg.parts.length - 1].text;
+        logger.log('RENDER', `消息 #${index} 使用最后一个 part`, { 
+          partsIndex: msg.parts.length - 1,
+          textPreview: targetText?.substring(0, 100) 
+        });
       }
 
-      const { text, options, rawParsed } = parseModelResponse(targetText);
+      const { text, options, rawParsed } = parseModelResponse(targetText, index);
       
-      if (rawParsed) {
-        console.log('====== PARSED TARGET JSON ======', rawParsed);
-      }
+      logger.log('RENDER', `消息 #${index} 解析完成`, {
+        finalTextPreview: text.substring(0, 100),
+        hasOptions: !!options,
+        optionsCount: options?.length,
+        parseSuccess: !!rawParsed
+      });
       
       return {
         ...msg,
@@ -143,13 +276,36 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
   });
 };
 
+// ============================================
+// 主组件
+// ============================================
 const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [modelStatus, setModelStatus] = useState<{status: 'connected' | 'error' | 'disconnected', version?: string, url?: string} | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [uiLogLines, setUiLogLines] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 添加 UI 日志行
+  const addUILog = (line: string) => {
+    setUiLogLines(prev => [...prev.slice(-50), `[${new Date().toLocaleTimeString('en-US', {hour12: false})}] ${line}`]);
+  };
+
+  // 导出日志文件
+  const handleExportLogs = () => {
+    const logData = logger.export();
+    const blob = new Blob([logData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aibit_logs_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Default welcome message
   const defaultMessage: ChatMessage = {
@@ -161,34 +317,68 @@ const AiBit: React.FC = () => {
     }]
   };
 
+  // ============================================
+  // Phase 1: 初始化会话
+  // ============================================
   useEffect(() => {
+    logger.log('SESSION', '开始初始化会话');
+    addUILog('🚀 开始初始化会话...');
+    
     const initSession = async () => {
       try {
+        // 检查本地存储的 sessionId
         const storedSessionId = localStorage.getItem('opencode_bit_session_id');
+        logger.log('SESSION', '检查本地存储', { storedSessionId });
+        
         if (storedSessionId) {
+          logger.log('SESSION', '使用本地存储的 sessionId', { sessionId: storedSessionId });
+          addUILog(`✅ 使用本地会话: ${storedSessionId.substring(0, 12)}...`);
           setSessionId(storedSessionId);
           return;
         }
 
-        // Fetch existing sessions
+        // 获取现有会话列表
+        addUILog('📡 获取远程会话列表...');
+        logger.log('SESSION', '请求会话列表', { url: `${OPENCODE_BASE_URL}/session` });
+        
         const res = await axios.get(`${OPENCODE_BASE_URL}/session`);
+        logger.log('SESSION', '会话列表响应', { 
+          status: res.status,
+          sessionCount: res.data?.length,
+          sessions: res.data?.map((s: any) => ({ id: s.id, title: s.title }))
+        });
+        
         if (res.data && Array.isArray(res.data)) {
           const existingSession = res.data.find((s: {id: string, title: string}) => s.title === 'bit-chat');
+          
           if (existingSession && existingSession.id) {
+            logger.log('SESSION', '找到现有 bit-chat 会话', { sessionId: existingSession.id });
+            addUILog(`✅ 找到现有会话: ${existingSession.id.substring(0, 12)}...`);
             setSessionId(existingSession.id);
             localStorage.setItem('opencode_bit_session_id', existingSession.id);
             return;
           }
         }
         
-        // Create new session
+        // 创建新会话
+        addUILog('🆕 创建新会话...');
+        logger.log('SESSION', '创建新会话', { title: 'bit-chat' });
+        
         const createRes = await axios.post(`${OPENCODE_BASE_URL}/session`, { title: 'bit-chat' });
+        logger.log('SESSION', '新会话创建成功', { 
+          sessionId: createRes.data?.id,
+          response: createRes.data
+        });
+        
+        addUILog(`✅ 新会话创建成功: ${createRes.data?.id?.substring(0, 12)}...`);
+        
         if (createRes.data && createRes.data.id) {
           setSessionId(createRes.data.id);
           localStorage.setItem('opencode_bit_session_id', createRes.data.id);
         }
       } catch (error) {
-        console.error('Failed to init session:', error);
+        logger.error('SESSION', '初始化会话失败', error);
+        addUILog(`❌ 会话初始化失败: ${String(error)}`);
         // Fallback
         setSessionId('bit-chat');
       }
@@ -197,66 +387,113 @@ const AiBit: React.FC = () => {
     initSession();
   }, []);
 
+  // ============================================
+  // Phase 2: 健康检查 + 加载历史消息
+  // ============================================
   useEffect(() => {
     if (!sessionId) return;
 
+    logger.log('CONNECTION', '开始连接检查和消息加载', { sessionId });
+    addUILog(`🔗 开始连接检查 (sessionId: ${sessionId.substring(0, 12)}...)`);
+
+    // 加载历史消息
     const fetchMessages = async () => {
       try {
+        addUILog('📥 加载历史消息...');
+        logger.log('MESSAGE', '请求历史消息', { url: `${OPENCODE_BASE_URL}/session/${sessionId}/message` });
+        
         const res = await axios.get(`${OPENCODE_BASE_URL}/session/${sessionId}/message`);
-        console.log('====== API HISTORY RESPONSE ======', res.data);
+        
+        logger.log('MESSAGE', '历史消息响应', {
+          status: res.status,
+          dataType: typeof res.data,
+          isArray: Array.isArray(res.data),
+          dataLength: Array.isArray(res.data) ? res.data.length : 'N/A',
+          dataPreview: JSON.stringify(res.data).substring(0, 500)
+        });
+        
         if (res.data) {
           let historyData = res.data;
           
-          // Some API versions might return { data: [...] } instead of directly the array
+          // 处理可能的嵌套数据
           if (!Array.isArray(historyData) && historyData.data && Array.isArray(historyData.data)) {
             historyData = historyData.data;
+            logger.log('MESSAGE', '解包嵌套数据', { unpackedLength: historyData.length });
           }
           
           if (Array.isArray(historyData)) {
-            // Parse historical messages just in case they contain JSON
-            console.log('====== processMessages ======', historyData);
+            addUILog(`✅ 加载了 ${historyData.length} 条历史消息`);
+            logger.log('MESSAGE', '处理历史消息数组', { messageCount: historyData.length });
+            
             const processedHistory = processMessages(historyData);
             setMessages(processedHistory);
+            
+            logger.log('RENDER', '历史消息渲染完成', { 
+              processedCount: processedHistory.length,
+              messages: processedHistory.map(m => ({ role: m.info.role, partsCount: m.parts.length }))
+            });
           }
         }
       } catch (error) {
-        console.error('Failed to fetch messages:', error);
+        logger.error('MESSAGE', '加载历史消息失败', error);
+        addUILog(`❌ 加载历史消息失败: ${String(error)}`);
       }
     };
     
+    // 健康检查
     const fetchStatus = async () => {
       try {
+        logger.log('CONNECTION', '健康检查请求', { url: `${OPENCODE_BASE_URL}/global/health` });
+        
         const res = await axios.get(`${OPENCODE_BASE_URL}/global/health`);
+        
+        logger.log('CONNECTION', '健康检查响应', {
+          status: res.status,
+          healthy: res.data?.healthy,
+          version: res.data?.version
+        });
+        
         if (res.status === 200 && res.data.healthy) {
           setModelStatus({ status: 'connected', version: res.data.version, url: OPENCODE_BASE_URL });
+          addUILog(`✅ 连接正常 (v${res.data.version})`);
         } else {
           setModelStatus({ status: 'error' });
+          addUILog(`⚠️ 服务异常`);
         }
       } catch (error) {
-        console.error('Failed to fetch status:', error);
+        logger.error('CONNECTION', '健康检查失败', error);
         setModelStatus({ status: 'disconnected' });
+        addUILog(`❌ 连接失败`);
       }
     };
 
     fetchMessages();
     fetchStatus();
 
-    // Set up polling for connection status
+    // 定期健康检查
     const statusInterval = setInterval(fetchStatus, 10000);
 
     return () => clearInterval(statusInterval);
   }, [sessionId]);
 
+  // 滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ============================================
+  // Phase 3: 发送消息
+  // ============================================
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading || !sessionId) return;
 
+    const messageText = inputValue.trim();
+    logger.log('MESSAGE', '用户发送消息', { text: messageText, sessionId });
+    addUILog(`📤 发送消息: "${messageText.substring(0, 30)}..."`);
+
     const userMessage: ChatMessage = {
       info: { role: 'user', createdAt: new Date().toISOString() },
-      parts: [{ type: 'text', text: inputValue }]
+      parts: [{ type: 'text', text: messageText }]
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -264,35 +501,68 @@ const AiBit: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, {
+      const requestBody = {
         parts: [{ type: 'text', text: userMessage.parts[0].text }]
+      };
+      
+      logger.log('MESSAGE', '发送 API 请求', {
+        url: `${OPENCODE_BASE_URL}/session/${sessionId}/message`,
+        body: requestBody
       });
+      
+      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, requestBody);
 
-      console.log('====== API RESPONSE ======', res.data);
+      logger.log('MESSAGE', 'API 响应接收', {
+        status: res.status,
+        responseType: typeof res.data,
+        responseKeys: res.data ? Object.keys(res.data) : [],
+        responseData: JSON.stringify(res.data).substring(0, 1000)
+      });
+      
+      addUILog(`📥 收到响应 (${res.status})`);
 
       if (res.data) {
+        // 分析响应结构
+        const hasInfo = !!res.data.info;
+        const hasParts = !!res.data.parts;
+        const partsLength = res.data.parts?.length || 0;
+        
+        logger.log('MESSAGE', '响应结构分析', {
+          hasInfo,
+          hasParts,
+          partsLength,
+          infoRole: res.data.info?.role,
+          partsTypes: res.data.parts?.map((p: any) => p.type)
+        });
+        
         setMessages((prev) => {
           let messagesToProcess: any[] = [];
           
           if (res.data.info && res.data.parts) {
-            // The API returned just the new message object
-            // Remove the optimistic user message, replace with confirmed user message and append model response
+            // API 返回了完整的消息对象
             messagesToProcess = [
               ...prev.slice(0, -1), 
-              { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: userMessage.parts[0].text as string }] }, 
+              { info: { role: 'user', createdAt: new Date().toISOString() }, parts: [{ text: messageText }] }, 
               res.data
             ];
+            
+            logger.log('MESSAGE', '构建处理队列', {
+              queueLength: messagesToProcess.length,
+              lastMessageRole: res.data.info.role
+            });
           }
-          console.log('====== messagesToProcess processMessages ======', messagesToProcess);
+          
           if (messagesToProcess.length > 0) {
-             return processMessages(messagesToProcess);
+            addUILog(`🔄 处理 ${messagesToProcess.length} 条消息`);
+            return processMessages(messagesToProcess);
           }
           return prev;
         });
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
-      // Fallback message for demo if API is not available
+      logger.error('MESSAGE', '发送消息失败', error);
+      addUILog(`❌ 发送失败: ${String(error)}`);
+      
       const fallbackMsg: ChatMessage = {
         info: { role: 'model', createdAt: new Date().toISOString() },
         parts: [{ type: 'text', text: '抱歉，我现在无法连接到服务器。请稍后再试。' }]
@@ -482,12 +752,22 @@ const AiBit: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col">
             <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-800">AI协作事件流</h2>
-              <Terminal className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={handleExportLogs}
+                  className="p-1 hover:bg-slate-100 rounded transition-colors"
+                  title="导出完整日志"
+                >
+                  <Download className="w-4 h-4 text-slate-400" />
+                </button>
+                <Terminal className="w-4 h-4 text-slate-400" />
+              </div>
             </div>
-            <div className="flex-1 p-6 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl">
+            <div className="flex-1 p-4 bg-[#0f172a] text-emerald-400 font-mono text-xs overflow-y-auto leading-relaxed relative rounded-b-2xl">
               <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
               
-              <div className="space-y-2 relative z-0">
+              <div className="space-y-1 relative z-0">
+                {/* 状态行 */}
                 <div className="flex items-start">
                   <span className="text-slate-500 mr-2">&gt;</span>
                   <span className="text-slate-400 mr-2">[{new Date().toLocaleTimeString('en-US', {hour12: false})}]</span>
@@ -495,20 +775,29 @@ const AiBit: React.FC = () => {
                     {modelStatus?.status === 'connected' ? (
                       <>
                         <span className="mr-1">✅</span>
-                        <span className="text-slate-300">平台已就绪。已经连接到URL：</span>
+                        <span className="text-slate-300">平台已就绪。</span>
                         <span className="text-emerald-400 font-semibold">{modelStatus.url}</span>
-                        <span className="text-slate-500 ml-1">，当前版本 {modelStatus.version}</span>
+                        <span className="text-slate-500 ml-1">v{modelStatus.version}</span>
                       </>
                     ) : (
                       <>
                         <span className="mr-1">❌</span>
                         <span className="text-red-400 font-semibold">连接失败</span>
-                        <span className="text-slate-500 ml-1">（状态：{modelStatus?.status || 'disconnected'}，正在重连...）</span>
+                        <span className="text-slate-500 ml-1">({modelStatus?.status || 'disconnected'})</span>
                       </>
                     )}
                   </span>
                 </div>
-                {/* Blinking cursor */}
+                
+                {/* 日志行 */}
+                {uiLogLines.map((line, i) => (
+                  <div key={i} className="flex items-start">
+                    <span className="text-slate-500 mr-2">&gt;</span>
+                    <span className="flex-1 text-slate-300">{line.split('] ')[1]}</span>
+                  </div>
+                ))}
+                
+                {/* 闪烁光标 */}
                 <div className="flex items-start mt-2">
                   <span className="text-slate-500 mr-2">&gt;</span>
                   <span className="w-2 h-3 bg-emerald-500 animate-pulse mt-[2px]"></span>
