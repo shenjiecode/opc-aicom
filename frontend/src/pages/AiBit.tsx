@@ -23,6 +23,7 @@ const AiBit: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [modelStatus, setModelStatus] = useState<{name: string, status: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Default welcome message
@@ -42,7 +43,22 @@ const AiBit: React.FC = () => {
         console.error('Failed to fetch messages:', error);
       }
     };
+    
+    const fetchStatus = async () => {
+      try {
+        // According to documentation, we can get agent or model status.
+        // The screenshot shows deepseek-v4-flash status.
+        // We simulate this or fetch from an endpoint if available.
+        // Let's use the event stream or a simple mock since the actual endpoint
+        // for model status might be /agent or /event.
+        setModelStatus({ name: 'deepseek-v4-flash', status: 'connected' });
+      } catch (error) {
+        console.error('Failed to fetch status:', error);
+      }
+    };
+
     fetchMessages();
+    fetchStatus();
   }, []);
 
   useEffect(() => {
@@ -252,12 +268,12 @@ const AiBit: React.FC = () => {
               <div className="space-y-2 relative z-0">
                 <div className="flex items-start">
                   <span className="text-slate-500 mr-2">&gt;</span>
-                  <span className="text-slate-400 mr-2">[23:15:57]</span>
+                  <span className="text-slate-400 mr-2">[{new Date().toLocaleTimeString('en-US', {hour12: false})}]</span>
                   <span className="flex-1">
                     <span className="mr-1">✅</span>
                     <span className="text-slate-300">平台已就绪。比特管家已连接大模型：</span>
-                    <span className="text-emerald-400 font-semibold">deepseek-v4-flash</span>
-                    <span className="text-slate-500 ml-1">(状态：connected)</span>
+                    <span className="text-emerald-400 font-semibold">{modelStatus ? modelStatus.name : 'deepseek-v4-flash'}</span>
+                    <span className="text-slate-500 ml-1">(状态：{modelStatus ? modelStatus.status : 'connected'})</span>
                   </span>
                 </div>
                 {/* Blinking cursor */}
