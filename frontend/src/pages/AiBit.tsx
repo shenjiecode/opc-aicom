@@ -776,20 +776,6 @@ const AiBit: React.FC = () => {
             </div>
           </div>
 
-          {/* OPC Match Source */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden shrink-0">
-            <div className="px-6 py-4 border-b border-slate-50">
-              <h2 className="text-base font-bold text-slate-800">OPC 匹配源</h2>
-            </div>
-            <div className="p-6">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  等待甲方生成需求单后，小O将自动匹配最佳OPC服务方，并推送收款信息。
-                </p>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
