@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "email_skill": {
+      "command": "docker",
+      "args": ["exec", "-i", "email-sender-mcp", "node", "index.js"]
+    },
+    "xhs_skill": {
+      "command": "docker",
+      "args": ["exec", "-i", "xhs-publisher-mcp", "node", "index.js"]
+    }
+  }
+}

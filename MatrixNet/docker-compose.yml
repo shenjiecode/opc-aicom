@@ -70,3 +70,33 @@ services:
       - COMMAND_ROOM_ALIAS=#command_center:localhost
     depends_on:
       - dendrite
+
+  light-agent:
+    image: ghcr.io/puruboard-droid/light-agent:latest
+    container_name: light-agent
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    volumes:
+      - ./light-agent-config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  email-sender-mcp:
+    build: ./mcp-skills/email-sender
+    container_name: email-sender-mcp
+    restart: unless-stopped
+    environment:
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+
+  xhs-publisher-mcp:
+    build: ./mcp-skills/xhs-publisher
+    container_name: xhs-publisher-mcp
+    restart: unless-stopped
+    volumes:
+      - ./xhs-cookies.json:/app/cookies.json
+      - ./shared-images:/app/images
