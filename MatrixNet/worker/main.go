@@ -19,16 +19,20 @@ import (
 
 var llmConfigured bool = false
 var llmApiKey string = ""
+var llmBaseUrl string = ""
+var llmModel string = ""
 
-func askLightAgent(message string) string {
+func askLightAgent(query string) string {
 	lightAgentURL := os.Getenv("LIGHT_AGENT_URL")
 	if lightAgentURL == "" {
-		lightAgentURL = "http://light-agent:3000/api/chat"
+		lightAgentURL = "http://localhost:3000/api/chat"
 	}
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
-		"message": message,
+		"query":   query,
 		"apiKey":  llmApiKey,
+		"baseUrl": llmBaseUrl,
+		"model":   llmModel,
 	})
 
 	resp, err := http.Post(lightAgentURL, "application/json", bytes.NewBuffer(reqBody))
@@ -150,7 +154,12 @@ func main() {
 					if key, ok := config["apiKey"]; ok && key != "" {
 						llmApiKey = key
 						llmConfigured = true
-						// Here you could also extract baseUrl and model if light-agent API requires them
+					}
+					if baseUrl, ok := config["baseUrl"]; ok {
+						llmBaseUrl = baseUrl
+					}
+					if model, ok := config["model"]; ok {
+						llmModel = model
 					}
 					replyBody = fmt.Sprintf("%s，大模型参数配置成功！", evt.Sender)
 				} else {

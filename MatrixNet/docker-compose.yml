@@ -72,7 +72,7 @@ services:
       - dendrite
 
   light-agent:
-    image: ghcr.io/puruboard-droid/light-agent:latest
+    build: ./light-agent-server
     container_name: light-agent
     restart: unless-stopped
     ports:
