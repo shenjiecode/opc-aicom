@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,6 +16,41 @@ import (
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 )
+
+var llmConfigured bool = false
+var llmApiKey string = ""
+
+func askLightAgent(message string) string {
+	lightAgentURL := os.Getenv("LIGHT_AGENT_URL")
+	if lightAgentURL == "" {
+		lightAgentURL = "http://light-agent:3000/api/chat"
+	}
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"message": message,
+		"apiKey":  llmApiKey,
+	})
+
+	resp, err := http.Post(lightAgentURL, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return fmt.Sprintf("调用 light-agent 失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var jsonResp map[string]interface{}
+	if err := json.Unmarshal(body, &jsonResp); err == nil {
+		if text, ok := jsonResp["response"].(string); ok {
+			return text
+		}
+		if reply, ok := jsonResp["reply"].(string); ok {
+			return reply
+		}
+	}
+
+	return string(body)
+}
 
 func main() {
 	workerID := os.Getenv("WORKER_ID")
@@ -102,10 +141,33 @@ func main() {
 
 			// Extract the actual message content
 			xxx := strings.TrimSpace(strings.Replace(msg.Body, mention, "", 1))
-			replyBody := fmt.Sprintf("%s，已收到你的信息 %s", evt.Sender, xxx)
+			
+			var replyBody string
+			if strings.HasPrefix(xxx, "CONFIG_JSON:") {
+				jsonStr := strings.TrimSpace(strings.TrimPrefix(xxx, "CONFIG_JSON:"))
+				var config map[string]string
+				if err := json.Unmarshal([]byte(jsonStr), &config); err == nil {
+					if key, ok := config["apiKey"]; ok && key != "" {
+						llmApiKey = key
+						llmConfigured = true
+						// Here you could also extract baseUrl and model if light-agent API requires them
+					}
+					replyBody = fmt.Sprintf("%s，大模型参数配置成功！", evt.Sender)
+				} else {
+					replyBody = fmt.Sprintf("%s，大模型配置失败，JSON格式错误。", evt.Sender)
+				}
+			} else if strings.HasPrefix(xxx, "配置模型 ") {
+				llmApiKey = strings.TrimSpace(strings.TrimPrefix(xxx, "配置模型 "))
+				llmConfigured = true
+				replyBody = fmt.Sprintf("%s，大模型配置成功！", evt.Sender)
+			} else if !llmConfigured {
+				replyBody = fmt.Sprintf("%s，还没有配置大模型，你可以发【配置模型 你的API_KEY】给我配置大模型", evt.Sender)
+			} else {
+				// Call light-agent
+				agentResponse := askLightAgent(xxx)
+				replyBody = fmt.Sprintf("%s，已收到你的信息 %s\n[LightAgent回复]: %s", evt.Sender, xxx, agentResponse)
+			}
 
-			// Optional: if the commander was mentioned in the command, mention them back,
-			// or just reply in the room
 			_, err := client.SendMessageEvent(context.Background(), evt.RoomID, event.EventMessage, &event.MessageEventContent{
 				MsgType: event.MsgText,
 				Body:    replyBody,

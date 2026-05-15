@@ -19,8 +19,16 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showMentionMenu, setShowMentionMenu] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [currentSender, setCurrentSender] = useState("commander");
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [currentSender, setCurrentSender] = useState('commander')
+  
+  // LightAgent config modal state
+  const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [configWorkerId, setConfigWorkerId] = useState('')
+  const [llmApiKey, setLlmApiKey] = useState('')
+  const [llmBaseUrl, setLlmBaseUrl] = useState('')
+  const [llmModel, setLlmModel] = useState('')
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -97,6 +105,33 @@ function App() {
     }, 0);
   };
 
+  const handleSaveConfig = async () => {
+    if (!configWorkerId) return
+    
+    // We send a specific JSON command to the worker to configure its LLM
+    const configPayload = {
+      apiKey: llmApiKey,
+      baseUrl: llmBaseUrl,
+      model: llmModel
+    };
+    
+    const configCommand = `@${configWorkerId} CONFIG_JSON:${JSON.stringify(configPayload)}`
+    
+    try {
+      await fetch(`${API_BASE}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: configCommand, sender: "commander" }),
+      });
+      setConfigModalOpen(false)
+      setLlmApiKey('')
+      setLlmBaseUrl('')
+      setLlmModel('')
+    } catch (error) {
+      console.error("Failed to send config command", error);
+    }
+  }
+
   const filteredWorkers = workers.filter((w) =>
     w.id.toLowerCase().includes(mentionQuery.toLowerCase()),
   );
@@ -131,9 +166,21 @@ function App() {
           </h2>
           <ul className="space-y-2">
             {workers.map((w) => (
-              <li key={w.id} className="flex items-center space-x-2 text-sm">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                <span>{w.id}</span>
+              <li key={w.id} className="flex items-center justify-between text-sm group">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span>{w.id}</span>
+                </div>
+                <button 
+                  className="text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    setConfigWorkerId(w.id)
+                    setConfigModalOpen(true)
+                  }}
+                  title="Configure LightAgent"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinelinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
               </li>
             ))}
             {workers.length === 0 && (
@@ -241,6 +288,67 @@ function App() {
           </form>
         </div>
       </div>
+
+      {/* LightAgent Config Modal */}
+      {configModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full shadow-xl">
+            <h3 className="text-lg font-bold mb-4">Configure LightAgent for {configWorkerId}</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <input 
+                  type="password" 
+                  value={llmApiKey}
+                  onChange={(e) => setLlmApiKey(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="sk-..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Base URL (Optional)</label>
+                <input 
+                  type="text" 
+                  value={llmBaseUrl}
+                  onChange={(e) => setLlmBaseUrl(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="https://api.openai.com/v1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Model Name (Optional)</label>
+                <input 
+                  type="text" 
+                  value={llmModel}
+                  onChange={(e) => setLlmModel(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="gpt-4"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button 
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={() => setConfigModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                onClick={handleSaveConfig}
+                disabled={!llmApiKey}
+              >
+                Save Configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
