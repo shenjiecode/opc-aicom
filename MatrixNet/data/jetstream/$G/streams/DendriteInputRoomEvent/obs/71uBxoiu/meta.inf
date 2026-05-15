@@ -1,0 +1,1 @@
+{"Created":"2026-05-14T23:09:34.596411836Z","Name":"71uBxoiu","name":"71uBxoiu","deliver_policy":"all","ack_policy":"explicit","ack_wait":30000000000,"max_deliver":-1,"replay_policy":"instant","max_ack_pending":1000,"headers_only":true,"deliver_subject":"_INBOX.gZ2Acko10a0v4puYMG6jBC","num_replicas":0,"metadata":{"_nats.req.level":"0"}}

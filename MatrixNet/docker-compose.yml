@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  dendrite:
+    image: matrixdotorg/dendrite-monolith:latest
+    container_name: dendrite
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+      - "8448:8448"
+    volumes:
+      - ./config:/etc/dendrite
+      - ./data:/var/dendrite
+    depends_on:
+      - postgres
+    environment:
+      - DENDRITE_CONFIG=/etc/dendrite/dendrite.yaml
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: dendrite-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dendrite
+      POSTGRES_PASSWORD: itsasecret
+      POSTGRES_DB: dendrite
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+  worker-001:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: worker-001
+    restart: unless-stopped
+    environment:
+      - WORKER_ID=worker-001
+      - WORKER_PASSWORD=password
+      - HOMESERVER_URL=http://dendrite:8008
+      - COMMAND_ROOM_ALIAS=#command_center:localhost
+    depends_on:
+      - dendrite
+
+  worker-002:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: worker-002
+    restart: unless-stopped
+    environment:
+      - WORKER_ID=worker-002
+      - WORKER_PASSWORD=password
+      - HOMESERVER_URL=http://dendrite:8008
+      - COMMAND_ROOM_ALIAS=#command_center:localhost
+    depends_on:
+      - dendrite
+
+  commander-backend:
+    build:
+      context: ./commander/backend
+      dockerfile: Dockerfile
+    container_name: commander-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - COMMANDER_ID=commander
+      - COMMANDER_PASSWORD=password
+      - HOMESERVER_URL=http://dendrite:8008
+      - COMMAND_ROOM_ALIAS=#command_center:localhost
+    depends_on:
+      - dendrite
