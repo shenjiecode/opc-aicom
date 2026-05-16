@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useMatrix } from "@/contexts/MatrixContext";
+import type { MatrixWorker } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { WorkerConfigDialog } from "./WorkerConfigDialog";
+import type { WorkerConfig } from "./WorkerConfigDialog";
 import {
   Bot,
   Hash,
   LogIn,
   CheckCircle2,
   Circle,
+  Settings,
 } from "lucide-react";
 
 interface WorkerStatusPanelProps {
@@ -16,11 +20,13 @@ interface WorkerStatusPanelProps {
 }
 
 export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
-  const { workers, refreshWorkers, rooms, joinWorkerToRoom, accessToken, allRooms } = useMatrix();
+  const { workers, refreshWorkers, rooms, joinWorkerToRoom, accessToken, allRooms, sendMessageToRoom, client } = useMatrix();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
   const [isJoining, setIsJoining] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configWorker, setConfigWorker] = useState<MatrixWorker | null>(null);
 
   // Fetch workers on mount and when accessToken changes
   useEffect(() => {
@@ -48,6 +54,42 @@ export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
   const openJoinModal = (workerId: string) => {
     setSelectedWorker(workerId);
     setShowJoinModal(true);
+  };
+
+  const openConfigModal = (worker: MatrixWorker) => {
+    setConfigWorker(worker);
+    setShowConfigModal(true);
+  };
+
+  const handleSaveConfig = async (config: WorkerConfig) => {
+    if (!configWorker) return;
+    
+    const configJson = JSON.stringify({
+      apiKey: config.llm.apiKey,
+      baseUrl: config.llm.baseUrl,
+      model: config.llm.model,
+      smtpHost: config.smtp.host,
+      smtpPort: config.smtp.port,
+      smtpUser: config.smtp.user,
+      smtpPass: config.smtp.pass,
+    });
+    
+    // Find a room that the worker is in
+    const workerRoom = configWorker.rooms[0];
+    if (!workerRoom) {
+      console.error("Worker has no rooms");
+      throw new Error("Worker has no rooms");
+    }
+    
+    try {
+      // Send config message to worker via Matrix
+      const configMessage = `@${configWorker.workerId} CONFIG_JSON:${configJson}`;
+      await sendMessageToRoom(workerRoom, configMessage);
+      console.log('[WorkerConfig] Config sent to', configWorker.workerId);
+    } catch (error) {
+      console.error('[WorkerConfig] Failed to send config:', error);
+      throw error;
+    }
   };
 
   // Get room name from room ID
@@ -105,16 +147,27 @@ export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
                     )}
                   </div>
                 </div>
-                {/* Join Room button per worker */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 shrink-0"
-                  onClick={() => openJoinModal(worker.workerId)}
-                >
-                  <LogIn className="w-3 h-3 mr-1" />
-                  加入房间
-                </Button>
+                {/* Settings and Join Room buttons per worker */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-slate-400 hover:text-white hover:bg-slate-700"
+                    onClick={() => openConfigModal(worker)}
+                    title="配置"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    onClick={() => openJoinModal(worker.workerId)}
+                  >
+                    <LogIn className="w-3 h-3 mr-1" />
+                    加入房间
+                  </Button>
+                </div>
               </div>
 
               {/* Worker's rooms */}
@@ -196,6 +249,22 @@ export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Config Modal */}
+      {showConfigModal && configWorker && (
+<WorkerConfigDialog
+worker={configWorker}
+roomId={configWorker.rooms[0] || ""}
+client={client}
+sendMessageToRoom={sendMessageToRoom}
+isOpen={showConfigModal}
+onClose={() => {
+setShowConfigModal(false);
+setConfigWorker(null);
+}}
+onSave={handleSaveConfig}
+/>
       )}
     </Card>
   );

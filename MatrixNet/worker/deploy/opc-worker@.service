@@ -1,0 +1,57 @@
+[Unit]
+Description=OPC Matrix Worker %i
+Documentation=https://github.com/opc-aicom
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+
+# Working directory and binary
+WorkingDirectory=/opt/opc/MatrixNet/worker
+ExecStart=/opt/opc/MatrixNet/worker/worker \
+    -worker-id %i \
+    -homeserver http://localhost:8008 \
+    -password password \
+    -room "#command_center:localhost" \
+    -pid-dir /run/opc-worker \
+    -health-port 0
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Environment
+Environment=WORKER_ID=%i
+Environment=HOMESERVER_URL=http://localhost:8008
+Environment=LIGHT_AGENT_URL=http://localhost:3000/api/chat
+EnvironmentFile=-/etc/opc/worker-%i.conf
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=opc-worker-%i
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run/opc-worker /tmp
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65535
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target

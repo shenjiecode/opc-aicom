@@ -26,6 +26,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - dendrite
+
   postgres:
     image: postgres:15-alpine
     container_name: dendrite-postgres
@@ -48,9 +49,11 @@ services:
       - WORKER_PASSWORD=password
       - HOMESERVER_URL=http://dendrite:8008
       - COMMAND_ROOM_ALIAS=#command_center:localhost
+      - LIGHT_AGENT_URL=http://host.docker.internal:3000/api/chat
+    volumes:
+      - ./worker-config/worker-001:/app/config
     depends_on:
       - dendrite
-
   worker-002:
     build:
       context: ./worker
@@ -62,9 +65,11 @@ services:
       - WORKER_PASSWORD=password
       - HOMESERVER_URL=http://dendrite:8008
       - COMMAND_ROOM_ALIAS=#command_center:localhost
+      - LIGHT_AGENT_URL=http://host.docker.internal:3000/api/chat
+    volumes:
+      - ./worker-config/worker-002:/app/config
     depends_on:
       - dendrite
-
   commander-backend:
     build:
       context: ./commander/backend

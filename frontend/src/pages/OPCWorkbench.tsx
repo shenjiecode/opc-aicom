@@ -36,10 +36,10 @@ const {
 
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 lg:p-6 overflow-y-auto">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+    <div className="h-screen bg-[#0a0a0f] p-4 lg:p-6 flex flex-col overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 min-h-0 h-full">
         {/* Left Panel: AI Team & Rooms */}
-        <div className="w-full lg:w-72 flex flex-col gap-6">
+        <div className="w-full lg:w-72 flex flex-col gap-6 overflow-y-auto scrollbar-thin shrink-0 pb-4">
           {/* Header Card */}
           <Card className="bg-[#1a1b26] border-slate-800">
             <CardHeader className="pb-3">
@@ -132,7 +132,7 @@ const {
         </div>
 
         {/* Right Panel: Status & Analytics */}
-        <div className="w-full lg:w-80 flex flex-col gap-6">
+        <div className="w-full lg:w-80 flex flex-col gap-6 overflow-y-auto scrollbar-thin shrink-0 pb-4">
           {/* Current Room Info */}
           {currentRoom && (
             <Card className="bg-[#1a1b26] border-slate-800">
@@ -174,7 +174,7 @@ const {
           )}
 
           {/* Server Log Terminal */}
-          <ServerLogTerminal className="flex-1 min-h-0" />
+          <ServerLogTerminal className="h-[300px] shrink-0" />
         </div>
       </div>
     </div>

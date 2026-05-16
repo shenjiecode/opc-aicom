@@ -21,13 +21,14 @@ interface MatrixMessage {
   isOwn: boolean;
 }
 
-interface MatrixWorker {
+export interface MatrixWorker {
   workerId: string;
   userId: string;
   name: string;
   isOnline: boolean;
   rooms: string[];
 }
+
 interface MatrixContextType {
   // Client state
   client: matrixSdk.MatrixClient | null;
@@ -61,6 +62,9 @@ interface MatrixContextType {
   workers: MatrixWorker[];
   refreshWorkers: () => Promise<void>;
   joinWorkerToRoom: (workerId: string, roomId: string) => Promise<void>;
+  
+  // Direct message to specific room
+  sendMessageToRoom: (roomId: string, text: string) => Promise<void>;
 }
 
 const MatrixContext = createContext<MatrixContextType | undefined>(undefined);
@@ -101,7 +105,13 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   const [workers, setWorkers] = useState<MatrixWorker[]>([]);
 
   const clientRef = useRef<matrixSdk.MatrixClient | null>(null);
+  const workerStatusRef = useRef<Map<string, boolean>>(new Map());
+  const currentRoomRef = useRef<MatrixRoom | null>(null);
 
+  // Keep currentRoomRef in sync with currentRoom state
+  useEffect(() => {
+    currentRoomRef.current = currentRoom;
+  }, [currentRoom]);
 // Convert Matrix room to our format
   const convertRoom = useCallback((room: Room): MatrixRoom => {
     const members = room.getJoinedMembers().map(m => m.userId);
@@ -193,13 +203,74 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
           const convertedRooms = matrixRooms.map(convertRoom);
           setRooms(convertedRooms);
           
+          // Scan all rooms for worker status messages
+          matrixRooms.forEach(room => {
+            const timeline = room.getLiveTimeline();
+            const events = timeline.getEvents();
+            events.forEach((event: MatrixEvent) => {
+              if (event.getType() === 'm.room.message') {
+                const content = event.getContent();
+                const body = content?.body || ''; 
+                if (body.startsWith('STATUS:') && body.includes('|')) {
+                  const parts = body.split('|');
+                  const status = parts[0].replace('STATUS:', '');
+                  const workerId = parts[1];
+                  if (status === 'ONLINE' || status === 'OFFLINE') {
+                    workerStatusRef.current.set(workerId, status === 'ONLINE');
+                    console.log(`[Matrix] Initial scan: Worker ${workerId} is ${status}`);
+                  }
+                }
+              }
+            });
+          });
+          
           setIsInitialized(true);
           setIsLoading(false);
         }
       });
       
-      matrixClient.on(RoomEvent.Timeline, (_event: MatrixEvent, room: Room | undefined) => {
+      matrixClient.on(RoomEvent.Timeline, (event: MatrixEvent, room: Room | undefined) => {
         if (!room) return;
+        
+        // Check for worker status messages (m.notice with STATUS:)
+        if (event.getType() === 'm.room.message') {
+          const content = event.getContent();
+          const sender = event.getSender();
+          const body = content?.body || '';
+          
+          // Parse STATUS:ONLINE|worker-xxx or STATUS:OFFLINE|worker-xxx
+          if (body.startsWith('STATUS:') && sender) {
+            const parts = body.split('|');
+            if (parts.length >= 2) {
+              const status = parts[0].replace('STATUS:', '');
+              const workerId = parts[1];
+              const isOnline = status === 'ONLINE';
+              
+              console.log(`[Matrix] Worker ${workerId} status: ${status}`);
+              
+              // Update worker status ref
+              workerStatusRef.current.set(workerId, isOnline);
+              
+              // Update workers state
+              setWorkers(prev => {
+                const index = prev.findIndex(w => w.workerId === workerId);
+                if (index >= 0) {
+                  const updated = [...prev];
+                  updated[index] = { ...updated[index], isOnline };
+                  return updated;
+                }
+                // Add new worker if not exists
+                return [...prev, {
+                  workerId,
+                  userId: sender,
+                  name: workerId,
+                  isOnline,
+                  rooms: [room.roomId],
+                }];
+              });
+            }
+          }
+        }
         
         // Update rooms list
         const convertedRoom = convertRoom(room);
@@ -214,7 +285,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
         });
         
         // Update messages if this is the current room
-        if (currentRoom?.roomId === room.roomId) {
+        if (currentRoomRef.current?.roomId === room.roomId) {
           loadRoomMessages(room);
         }
       });
@@ -245,7 +316,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       setError(err instanceof Error ? err.message : 'Failed to initialize Matrix');
       setIsLoading(false);
     }
-  }, [convertRoom, loadRoomMessages, currentRoom]);
+  }, [convertRoom, loadRoomMessages]);
 
   // Disconnect Matrix client
   const disconnect = useCallback(() => {
@@ -287,8 +358,36 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       throw new Error('Not connected to Matrix or no room selected');
     }
     
-    await clientRef.current.sendTextMessage(currentRoom.roomId, text);
-  }, [currentRoom]);
+    // Optimistic update: add message to UI immediately
+    const optimisticMsg: MatrixMessage = {
+      id: `local-${Date.now()}`,
+      sender: clientRef.current.getUserId() || '',
+      senderName: '你',
+      content: text,
+      timestamp: Date.now(),
+      isOwn: true,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    
+    try {
+      await clientRef.current.sendTextMessage(currentRoom.roomId, text);
+    } finally {
+      // Refresh messages from server (replaces optimistic message with real one)
+      const room = clientRef.current?.getRoom(currentRoom.roomId);
+      if (room) {
+        loadRoomMessages(room);
+      }
+    }
+  }, [currentRoom, loadRoomMessages]);
+
+  // Send message to a specific room (without switching current room)
+  const sendMessageToRoom = useCallback(async (roomId: string, text: string) => {
+    if (!clientRef.current) {
+      throw new Error('Not connected to Matrix');
+    }
+    
+    await clientRef.current.sendTextMessage(roomId, text);
+  }, []);
 
   // Create a new room
   const createRoom = useCallback(async (name: string, topic?: string, isPublic = false): Promise<string> => {
@@ -414,7 +513,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
   }, [accessToken]);
 
-  // Refresh workers list
+  // Refresh workers list - combines API data with real-time status
   const refreshWorkers = useCallback(async () => {
     const response = await fetchApi(`${API_BASE}/matrix/workers`, {
       headers: {
@@ -423,7 +522,15 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     });
     const data = await response.json();
     if (data.code === 0 && data.data?.workers) {
-      setWorkers(data.data.workers);
+      // Map API snake_case fields to frontend camelCase
+      const apiWorkers: MatrixWorker[] = data.data.workers.map((w: any) => ({
+        workerId: w.worker_id,
+        userId: w.user_id,
+        name: w.name,
+        isOnline: workerStatusRef.current.get(w.worker_id) ?? w.is_online ?? false,
+        rooms: w.rooms,
+      }));
+      setWorkers(apiWorkers);
     }
   }, [accessToken]);
 
@@ -484,6 +591,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     workers,
     refreshWorkers,
     joinWorkerToRoom,
+    sendMessageToRoom,
   };
 
   return <MatrixContext.Provider value={value}>{children}</MatrixContext.Provider>;

@@ -57,21 +57,22 @@ export function ServerLogTerminal({ className }: ServerLogTerminalProps) {
       setLogs((prev) => [...prev.slice(-99), entry]); // Keep last 100 entries
     };
 
-    // Listen to room member events
-    const handleRoomEvent = (event: unknown) => {
+    // Listen to timeline events for messages
+    const handleTimelineEvent = (event: unknown, room: unknown) => {
       const evt = event as {
         getType: () => string;
         getSender: () => string;
-        getRoomId: () => string;
-        getContent: () => { membership?: string };
+        getContent: () => { body?: string; msgtype?: string; membership?: string };
         getTs: () => number;
       };
+      const roomObj = room as { roomId: string } | undefined;
+      if (!roomObj) return;
 
       const type = evt.getType();
 
       if (type === "m.room.member") {
         const sender = evt.getSender();
-        const roomId = evt.getRoomId();
+        const roomId = roomObj.roomId;
         const content = evt.getContent();
         const membership = content.membership;
 
@@ -80,17 +81,26 @@ export function ServerLogTerminal({ className }: ServerLogTerminalProps) {
         } else if (membership === "leave") {
           addLog("leave", sender, roomId, "离开房间");
         }
+      } else if (type === "m.room.message") {
+        const sender = evt.getSender();
+        const roomId = roomObj.roomId;
+        const content = evt.getContent();
+        const body = content.body || "";
+        // Skip STATUS messages (they're system internal)
+        if (body.startsWith("STATUS:")) return;
+        // Truncate long messages
+        const displayBody = body.length > 50 ? body.slice(0, 50) + "..." : body;
+        addLog("message", sender, roomId, `说: ${displayBody}`);
       }
     };
 
-    // Listen to timeline events
-    client.on("Room.timeline" as never, handleRoomEvent as never);
+    client.on("Room.timeline" as never, handleTimelineEvent as never);
 
     // Add initial system log
     addLog("system", "@system", "system", "日志终端已启动");
 
     return () => {
-      client.removeListener("Room.timeline" as never, handleRoomEvent as never);
+      client.removeListener("Room.timeline" as never, handleTimelineEvent as never);
     };
   }, [client, isInitialized, rooms]);
 
@@ -160,7 +170,7 @@ export function ServerLogTerminal({ className }: ServerLogTerminalProps) {
       </CardHeader>
 
       {/* Log Terminal */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 font-mono text-xs">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 font-mono text-xs scrollbar-thin">
         <div className="bg-[#0d0e14] rounded-lg p-3 h-full">
           {logs.length === 0 ? (
             <div className="text-slate-500 text-center py-4">

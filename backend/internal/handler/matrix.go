@@ -1,15 +1,16 @@
 package handler
 
 import (
-	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
+    "bytes"
+    "crypto/hmac"
+    "crypto/sha1"
+    "encoding/hex"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "strings"
+    "time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/opc-aicom/backend/pkg/config"
@@ -909,12 +910,14 @@ func ListMatrixWorkers(matrixClient *MatrixClient) gin.HandlerFunc {
 		workers := make([]WorkerInfo, 0, len(matrixClient.config.Matrix.Workers))
 
 		for _, workerName := range matrixClient.config.Matrix.Workers {
+			rooms := getWorkerRooms(matrixClient, workerName)
+			isOnline := getWorkerOnlineStatus(matrixClient, workerName, rooms)
 			workerInfo := WorkerInfo{
 				WorkerID: workerName,
 				UserID:   fmt.Sprintf("@%s:%s", workerName, matrixClient.config.Matrix.ServerName),
 				Name:     workerName,
-				IsOnline: false,
-				Rooms:    getWorkerRooms(matrixClient, workerName),
+				IsOnline: isOnline,
+				Rooms:    rooms,
 			}
 			workers = append(workers, workerInfo)
 		}
@@ -927,6 +930,121 @@ func ListMatrixWorkers(matrixClient *MatrixClient) gin.HandlerFunc {
 			},
 		})
 	}
+}
+
+// getWorkerOnlineStatus checks if a worker is online by looking at recent STATUS messages
+// It finds the LATEST STATUS message from the worker and returns true if it's ONLINE
+func getWorkerOnlineStatus(matrixClient *MatrixClient, workerName string, rooms []string) bool {
+	if len(rooms) == 0 {
+		return false
+	}
+
+	// Login as the worker to get access token
+	loginURL := fmt.Sprintf("%s/_matrix/client/v3/login", matrixClient.config.Matrix.HomeserverURL)
+	loginBody := map[string]interface{}{
+		"type": "m.login.password",
+		"identifier": map[string]interface{}{
+			"type": "m.id.user",
+			"user": workerName,
+		},
+		"password":                    "password",
+		"device_id":                   "WORKER_STATUS_CHECK",
+		"initial_device_display_name": "Worker Status Check",
+	}
+
+	bodyBytes, _ := json.Marshal(loginBody)
+	httpReq, _ := http.NewRequest("POST", loginURL, bytes.NewBuffer(bodyBytes))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	var loginResult struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal(respBody, &loginResult); err != nil {
+		return false
+	}
+
+	workerUserID := fmt.Sprintf("@%s:%s", workerName, matrixClient.config.Matrix.ServerName)
+
+	// Track the latest status message from this worker
+	type statusInfo struct {
+		status    string
+		timestamp int64
+	}
+	var latestStatus *statusInfo
+
+	// Check messages in all rooms for STATUS messages
+	for _, roomID := range rooms {
+		messagesURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/messages?limit=50&dir=b", 
+			matrixClient.config.Matrix.HomeserverURL, roomID)
+
+		msgReq, _ := http.NewRequest("GET", messagesURL, nil)
+		msgReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", loginResult.AccessToken))
+
+		msgResp, err := client.Do(msgReq)
+		if err != nil {
+			continue
+		}
+		msgRespBody, _ := io.ReadAll(msgResp.Body)
+		msgResp.Body.Close()
+		
+		if msgResp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		var messagesResult struct {
+			Chunk []struct {
+				Type           string `json:"type"`
+				OriginServerTs int64  `json:"origin_server_ts"`
+				Content        struct {
+					Body    string `json:"body"`
+					MsgType string `json:"msgtype"`
+				} `json:"content"`
+				Sender string `json:"sender"`
+			} `json:"chunk"`
+		}
+		json.Unmarshal(msgRespBody, &messagesResult)
+
+		// Find STATUS messages from this worker
+		for _, msg := range messagesResult.Chunk {
+			if msg.Type == "m.room.message" && msg.Sender == workerUserID {
+				body := msg.Content.Body
+				if strings.HasPrefix(body, "STATUS:") && strings.Contains(body, "|") {
+					parts := strings.Split(body, "|")
+					if len(parts) >= 2 {
+						// Extract worker ID from message and validate
+						workerIDInMsg := strings.TrimSpace(parts[1])
+						if workerIDInMsg != workerName {
+							continue // Skip STATUS messages from other workers
+						}
+						status := strings.TrimPrefix(parts[0], "STATUS:")
+						
+						// Update latest status if this message is newer
+						if latestStatus == nil || msg.OriginServerTs > latestStatus.timestamp {
+							latestStatus = &statusInfo{
+								status:    status,
+								timestamp: msg.OriginServerTs,
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Return true only if the latest status is ONLINE
+	return latestStatus != nil && latestStatus.status == "ONLINE"
 }
 
 // getWorkerRooms returns the list of room IDs a worker has joined

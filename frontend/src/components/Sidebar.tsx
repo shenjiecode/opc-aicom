@@ -244,7 +244,7 @@ export function Sidebar({
                     {/* Label - Hidden when collapsed */}
                     <span
                       className={cn(
-                        "text-sm font-medium whitespace-nowrap transition-all duration-300",
+                        "text-xs font-medium whitespace-nowrap transition-all duration-300",
                         collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
                       )}
                     >
@@ -303,7 +303,7 @@ export function Sidebar({
               >
                 {/* Avatar with online indicator */}
                 <div className="relative flex-shrink-0">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-sm font-medium shadow-lg">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center text-white text-xs font-medium shadow-lg">
                     {user.username.charAt(0).toUpperCase()}
                   </div>
                   {/* Online indicator */}
@@ -314,7 +314,7 @@ export function Sidebar({
                 {!collapsed && (
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-[var(--text-primary)] truncate">
+                      <span className="text-xs font-medium text-[var(--text-primary)] truncate">
                         {user.username}
                       </span>
                       <ChevronUp className="w-4 h-4 text-[var(--text-muted)] ml-auto" />
@@ -328,7 +328,7 @@ export function Sidebar({
 
                 {/* Tooltip for collapsed state */}
                 {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
                     {user.username}
                     <span className="ml-2 text-xs text-green-500">在线</span>
                   </div>
