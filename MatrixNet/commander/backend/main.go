@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -28,9 +30,22 @@ type Message struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+type WorkerConfig struct {
+	ApiKey   string `json:"apiKey"`
+	BaseUrl  string `json:"baseUrl"`
+	Model    string `json:"model"`
+	SmtpHost string `json:"smtpHost"`
+	SmtpPort string `json:"smtpPort"`
+	SmtpUser string `json:"smtpUser"`
+	SmtpPass string `json:"smtpPass"`
+}
+
 var (
 	workers      = make(map[string]*Worker)
 	workersMutex sync.RWMutex
+
+	workerConfigs      = make(map[string]WorkerConfig)
+	workerConfigsMutex sync.RWMutex
 
 	messages      = make([]Message, 0)
 	messagesMutex sync.RWMutex
@@ -115,6 +130,8 @@ func main() {
 		api.GET("/workers", getWorkers)
 		api.POST("/send", sendMessage)
 		api.GET("/messages", getMessages)
+		api.GET("/workers/:id/config", getWorkerConfig)
+		api.POST("/workers/:id/config", setWorkerConfig)
 	}
 
 	fmt.Println("Starting Commander API on :8081")
@@ -143,11 +160,46 @@ func handleMessage(ctx context.Context, evt *event.Event) {
 					LastSeen: time.Now(),
 				}
 				fmt.Printf("Worker %s came online.\n", workerID)
+
+				// Resend config if exists
+				workerConfigsMutex.RLock()
+				cfg, exists := workerConfigs[workerID]
+				workerConfigsMutex.RUnlock()
+				if exists {
+					configJSON, _ := json.Marshal(cfg)
+					msgBody := fmt.Sprintf("@%s CONFIG_JSON:%s", workerID, string(configJSON))
+					go client.SendMessageEvent(context.Background(), roomID, event.EventMessage, &event.MessageEventContent{
+						MsgType: event.MsgText,
+						Body:    msgBody,
+					})
+				}
 			} else if status == "STATUS:OFFLINE" {
 				delete(workers, workerID)
 				fmt.Printf("Worker %s went offline.\n", workerID)
 			}
 			workersMutex.Unlock()
+		}
+	}
+
+	// Intercept CONFIG_JSON to keep Commander memory in sync
+	if strings.Contains(msg.Body, "CONFIG_JSON:") {
+		parts := strings.Split(msg.Body, " ")
+		for _, part := range parts {
+			if strings.HasPrefix(part, "@") {
+				workerID := strings.TrimPrefix(part, "@")
+				idx := strings.Index(msg.Body, "CONFIG_JSON:")
+				if idx != -1 {
+					jsonStr := strings.TrimSpace(msg.Body[idx+len("CONFIG_JSON:"):])
+					var config WorkerConfig
+					if err := json.Unmarshal([]byte(jsonStr), &config); err == nil {
+						workerConfigsMutex.Lock()
+						workerConfigs[workerID] = config
+						workerConfigsMutex.Unlock()
+						fmt.Printf("Intercepted and updated config for %s\n", workerID)
+					}
+				}
+				break
+			}
 		}
 	}
 
@@ -258,6 +310,104 @@ func sendMessage(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message to Matrix"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func getWorkerConfig(c *gin.Context) {
+	id := c.Param("id")
+	workerConfigsMutex.RLock()
+	config, exists := workerConfigs[id]
+	workerConfigsMutex.RUnlock()
+
+	// Read MCP config for default SMTP values
+	mcpConfigPath := "../../light-agent-server/mcp_servers.json"
+	mcpBytes, err := ioutil.ReadFile(mcpConfigPath)
+	if err == nil {
+		var mcpData map[string]interface{}
+		if json.Unmarshal(mcpBytes, &mcpData) == nil {
+			if mcpServers, ok := mcpData["mcpServers"].(map[string]interface{}); ok {
+				if emailSender, ok := mcpServers["email-sender"].(map[string]interface{}); ok {
+					if env, ok := emailSender["env"].(map[string]interface{}); ok {
+						if config.SmtpHost == "" {
+							config.SmtpHost, _ = env["SMTP_HOST"].(string)
+						}
+						if config.SmtpPort == "" {
+							config.SmtpPort, _ = env["SMTP_PORT"].(string)
+						}
+						if config.SmtpUser == "" {
+							config.SmtpUser, _ = env["SMTP_USER"].(string)
+						}
+						if config.SmtpPass == "" {
+							config.SmtpPass, _ = env["SMTP_PASS"].(string)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if !exists && config.SmtpHost == "" && config.SmtpPort == "" && config.SmtpUser == "" && config.SmtpPass == "" {
+		c.JSON(http.StatusOK, WorkerConfig{})
+		return
+	}
+	c.JSON(http.StatusOK, config)
+}
+
+func setWorkerConfig(c *gin.Context) {
+	id := c.Param("id")
+	var req WorkerConfig
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	workerConfigsMutex.Lock()
+	workerConfigs[id] = req
+	workerConfigsMutex.Unlock()
+
+	// Save to MCP config file
+	mcpConfigPath := "../../light-agent-server/mcp_servers.json"
+	mcpBytes, err := ioutil.ReadFile(mcpConfigPath)
+	if err == nil {
+		var mcpData map[string]interface{}
+		if json.Unmarshal(mcpBytes, &mcpData) == nil {
+			if mcpServers, ok := mcpData["mcpServers"].(map[string]interface{}); ok {
+				if emailSender, ok := mcpServers["email-sender"].(map[string]interface{}); ok {
+					if env, ok := emailSender["env"].(map[string]interface{}); ok {
+						if req.SmtpHost != "" {
+							env["SMTP_HOST"] = req.SmtpHost
+						}
+						if req.SmtpPort != "" {
+							env["SMTP_PORT"] = req.SmtpPort
+						}
+						if req.SmtpUser != "" {
+							env["SMTP_USER"] = req.SmtpUser
+						}
+						if req.SmtpPass != "" {
+							env["SMTP_PASS"] = req.SmtpPass
+						}
+
+						newMcpBytes, _ := json.MarshalIndent(mcpData, "", "  ")
+						ioutil.WriteFile(mcpConfigPath, newMcpBytes, 0644)
+					}
+				}
+			}
+		}
+	}
+
+	configJSON, _ := json.Marshal(req)
+	msgBody := fmt.Sprintf("@%s CONFIG_JSON:%s", id, string(configJSON))
+
+	_, err = client.SendMessageEvent(context.Background(), roomID, event.EventMessage, &event.MessageEventContent{
+		MsgType: event.MsgText,
+		Body:    msgBody,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send config to worker"})
 		return
 	}
 

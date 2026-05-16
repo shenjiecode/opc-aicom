@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "email-sender": {
+      "args": [
+        "../mcp-skills/email-sender/index.js"
+      ],
+      "command": "node",
+      "disabled": false,
+      "env": {
+        "SMTP_HOST": "smtp.qq.com",
+        "SMTP_PASS": "hyghatfrpvrbcabh",
+        "SMTP_PORT": "465",
+        "SMTP_USER": "5144931@qq.com"
+      }
+    }
+  }
+}

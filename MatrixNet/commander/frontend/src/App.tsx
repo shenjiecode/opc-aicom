@@ -28,6 +28,10 @@ function App() {
   const [llmApiKey, setLlmApiKey] = useState('')
   const [llmBaseUrl, setLlmBaseUrl] = useState('')
   const [llmModel, setLlmModel] = useState('')
+  const [smtpHost, setSmtpHost] = useState('')
+  const [smtpPort, setSmtpPort] = useState('')
+  const [smtpUser, setSmtpUser] = useState('')
+  const [smtpPass, setSmtpPass] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -105,30 +109,28 @@ function App() {
     }, 0);
   };
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = async (closeModal = true) => {
     if (!configWorkerId) return
     
-    // We send a specific JSON command to the worker to configure its LLM
     const configPayload = {
       apiKey: llmApiKey,
       baseUrl: llmBaseUrl,
-      model: llmModel
+      model: llmModel,
+      smtpHost: smtpHost,
+      smtpPort: smtpPort,
+      smtpUser: smtpUser,
+      smtpPass: smtpPass
     };
     
-    const configCommand = `@${configWorkerId} CONFIG_JSON:${JSON.stringify(configPayload)}`
-    
     try {
-      await fetch(`${API_BASE}/send`, {
+      await fetch(`${API_BASE}/workers/${configWorkerId}/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: configCommand, sender: "commander" }),
+        body: JSON.stringify(configPayload),
       });
-      setConfigModalOpen(false)
-      setLlmApiKey('')
-      setLlmBaseUrl('')
-      setLlmModel('')
+      if (closeModal) setConfigModalOpen(false)
     } catch (error) {
-      console.error("Failed to send config command", error);
+      console.error("Failed to save config via API", error);
     }
   }
 
@@ -172,14 +174,44 @@ function App() {
                   <span>{w.id}</span>
                 </div>
                 <button 
-                  className="text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => {
+                  className="text-gray-400 hover:text-gray-700 transition-colors"
+                  onClick={async () => {
                     setConfigWorkerId(w.id)
+                    try {
+                      const res = await fetch(`${API_BASE}/workers/${w.id}/config`);
+                      if (res.ok) {
+                        const cfg = await res.json();
+                        setLlmApiKey(cfg.apiKey || '');
+                        setLlmBaseUrl(cfg.baseUrl || '');
+                        setLlmModel(cfg.model || '');
+                        setSmtpHost(cfg.smtpHost || '');
+                        setSmtpPort(cfg.smtpPort || '');
+                        setSmtpUser(cfg.smtpUser || '');
+                        setSmtpPass(cfg.smtpPass || '');
+                      } else {
+                        setLlmApiKey('');
+                        setLlmBaseUrl('');
+                        setLlmModel('');
+                        setSmtpHost('');
+                        setSmtpPort('');
+                        setSmtpUser('');
+                        setSmtpPass('');
+                      }
+                    } catch (e) {
+                      console.error("Failed to fetch config", e);
+                      setLlmApiKey('');
+                      setLlmBaseUrl('');
+                      setLlmModel('');
+                      setSmtpHost('');
+                      setSmtpPort('');
+                      setSmtpUser('');
+                      setSmtpPass('');
+                    }
                     setConfigModalOpen(true)
                   }}
                   title="Configure LightAgent"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinelinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
               </li>
             ))}
@@ -292,10 +324,11 @@ function App() {
       {/* LightAgent Config Modal */}
       {configModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-full shadow-xl">
-            <h3 className="text-lg font-bold mb-4">Configure LightAgent for {configWorkerId}</h3>
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">Configure Worker: {configWorkerId}</h3>
             
             <div className="space-y-4">
+              <h4 className="font-semibold text-gray-800 border-b pb-1">LLM Configuration</h4>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                 <input 
@@ -328,21 +361,73 @@ function App() {
                   placeholder="gpt-4"
                 />
               </div>
+              <div className="flex justify-end">
+                <button 
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  onClick={() => handleSaveConfig(false)}
+                >
+                  Save LLM Config
+                </button>
+              </div>
+
+              <h4 className="font-semibold text-gray-800 border-b pb-1 mt-6">Email Skill Configuration</h4>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Host</label>
+                <input 
+                  type="text" 
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="smtp.example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Port</label>
+                <input 
+                  type="text" 
+                  value={smtpPort}
+                  onChange={(e) => setSmtpPort(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="465"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SMTP User</label>
+                <input 
+                  type="text" 
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Password</label>
+                <input 
+                  type="password" 
+                  value={smtpPass}
+                  onChange={(e) => setSmtpPass(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="password"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button 
+                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  onClick={() => handleSaveConfig(false)}
+                >
+                  Save Email Config
+                </button>
+              </div>
+
             </div>
 
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="mt-6 flex justify-end space-x-3 border-t pt-4">
               <button 
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
                 onClick={() => setConfigModalOpen(false)}
               >
-                Cancel
-              </button>
-              <button 
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                onClick={handleSaveConfig}
-                disabled={!llmApiKey}
-              >
-                Save Configuration
+                Close
               </button>
             </div>
           </div>

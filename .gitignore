@@ -43,3 +43,25 @@ backend/opc-aicom
 backend/server
 backend/bin/
 frontend/dist/
+
+# MatrixNet runtime data
+MatrixNet/data/
+MatrixNet/postgres-data/
+MatrixNet/light-agent-server/venv/
+MatrixNet/nginx/
+
+# MatrixNet binaries
+MatrixNet/commander/backend/commander-backend
+MatrixNet/worker/worker
+
+# Screenshots
+*.png
+
+# Mock/test scripts
+mock_light_agent.js
+test_parse.js
+test_parse2.js
+
+# Python cache
+__pycache__/
+*.pyc

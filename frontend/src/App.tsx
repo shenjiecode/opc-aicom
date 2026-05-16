@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { MatrixProvider } from "./contexts/MatrixContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
@@ -19,7 +20,6 @@ import AiBit from './pages/AiBit';
 import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import EventShare from './pages/EventShare';
-
 import MyEvents from './pages/MyEvents';
 
 function App() {
@@ -31,7 +31,7 @@ function App() {
             {/* Routes without Layout - Auth pages & Fullscreen pages */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/opc-workbench" element={<OPCWorkbench />} />
+            <Route path="/opc-workbench" element={<MatrixProvider><OPCWorkbench /></MatrixProvider>} />
             {/* Event share page - fullscreen, no layout */}
             <Route path="/event/share/:code" element={<EventShare />} />
 

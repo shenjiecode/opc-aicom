@@ -75,6 +75,7 @@ const navigationGroups: NavGroup[] = [
         badge: 12,
         badgeType: "hot",
       },
+
       {
         id: "service-center",
         path: "/service-center",

@@ -10,7 +10,6 @@ import {
   MapPin,
   Users,
   Tag,
-  Clock,
   Share2,
   QrCode,
   CheckCircle,

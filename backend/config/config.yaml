@@ -20,5 +20,13 @@ jwt:
     path: /
     domain: localhost
     secure: false      # 生产环境改为 true (HTTPS)
-    http_only: true
     max_age: 86400     # 24小时，单位秒
+
+matrix:
+  homeserver_url: http://localhost:8008
+  server_name: localhost
+  shared_secret: mysecret  # Dendrite registration_shared_secret
+  admin_api_url: http://localhost:8008/_matrix/admin
+  workers:
+    - worker-001
+    - worker-002

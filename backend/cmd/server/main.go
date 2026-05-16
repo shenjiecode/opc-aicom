@@ -25,13 +25,30 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Auto migrate database models
-	if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}); err != nil {
+if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// Initialize Matrix client
+	matrixClient := handler.NewMatrixClient(cfg)
+
 	// Initialize Gin router
 	router := gin.Default()
+
+	// CORS middleware for Matrix integration
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+c.Next()
+	})
 
 	// API routes
 	api := router.Group("/api")
@@ -130,7 +147,35 @@ func main() {
 			eventAuth.POST("/create", handler.CreateEvent(db))
 			eventAuth.POST("/join", handler.JoinEvent(db))
 		}
+
+		// Matrix routes (auth required)
+		matrix := api.Group("/matrix")
+		matrix.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			matrix.POST("/register", handler.RegisterMatrixUser(matrixClient))
+			matrix.POST("/login", handler.LoginMatrixUser(matrixClient))
+		}
+
+		// Matrix room routes
+		matrixRooms := api.Group("/matrix/rooms")
+		matrixRooms.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			matrixRooms.POST("", handler.CreateMatrixRoom(matrixClient))
+			matrixRooms.GET("", handler.ListMatrixRooms(matrixClient))
+			matrixRooms.POST("/:room_id/join", handler.JoinMatrixRoom(matrixClient))
+			matrixRooms.POST("/:room_id/leave", handler.LeaveMatrixRoom(matrixClient))
+			matrixRooms.POST("/:room_id/invite", handler.InviteToMatrixRoom(matrixClient))
+		}
+
+		// Matrix worker routes
+		matrixWorkers := api.Group("/matrix/workers")
+		matrixWorkers.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			matrixWorkers.GET("", handler.ListMatrixWorkers(matrixClient))
+			matrixWorkers.POST("/:worker_id/join", handler.JoinWorkerToRoom(matrixClient))
+		}
 	}
+
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

@@ -13,9 +13,18 @@ import (
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
+JWT      JWTConfig      `mapstructure:"jwt"`
+	Matrix   MatrixConfig   `mapstructure:"matrix"`
 }
 
+// MatrixConfig holds Matrix server configuration
+type MatrixConfig struct {
+	HomeserverURL string     `mapstructure:"homeserver_url"`
+	ServerName    string     `mapstructure:"server_name"`
+	SharedSecret  string     `mapstructure:"shared_secret"`
+	AdminAPIURL   string     `mapstructure:"admin_api_url"`
+	Workers       []string   `mapstructure:"workers"` // List of worker usernames (e.g., ["worker-001", "worker-002"])
+}
 // ServerConfig holds server configuration
 type ServerConfig struct {
 	Port int    `mapstructure:"port"`
@@ -114,8 +123,13 @@ func Load() (*Config, error) {
 
 	// JWT config
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
-	viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
+viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
 
+	// Matrix config
+	viper.BindEnv("matrix.homeserver_url", "MATRIX_HOMESERVER_URL")
+	viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
+	viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
+	viper.BindEnv("matrix.admin_api_url", "MATRIX_ADMIN_API_URL")
 	// Enable automatic environment variable detection
 	// This allows any environment variable to override config file values
 	// without explicit BindEnv calls
@@ -155,7 +169,14 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("jwt secret cannot be empty")
 	}
 	if cfg.JWT.ExpireHours <= 0 {
-		cfg.JWT.ExpireHours = 24
+cfg.JWT.ExpireHours = 24
+	}
+	// Matrix config defaults
+	if cfg.Matrix.HomeserverURL == "" {
+		cfg.Matrix.HomeserverURL = "http://localhost:8008"
+	}
+	if cfg.Matrix.ServerName == "" {
+		cfg.Matrix.ServerName = "localhost"
 	}
 	return nil
 }
