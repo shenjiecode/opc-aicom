@@ -23,6 +23,16 @@ import EventShare from './pages/EventShare';
 import MyEvents from './pages/MyEvents';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import UserManagement from "./pages/admin/UserManagement";
+import ContentReview from "./pages/admin/ContentReview";
+import TaskManagement from "./pages/admin/TaskManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
+import AgentSettings from "./pages/admin/AgentSettings";
+import OPCManagement from "./pages/admin/OPCManagement";
+import APIGateway from "./pages/admin/APIGateway";
+
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
@@ -35,6 +45,18 @@ function App() {
             <Route path="/opc-workbench" element={<MatrixProvider><OPCWorkbench /></MatrixProvider>} />
             {/* Event share page - fullscreen, no layout */}
             <Route path="/event/share/:code" element={<EventShare />} />
+
+            {/* Admin routes - Fullscreen with own layout */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+			  <Route path="users" element={<UserManagement />} />
+			  <Route path="review" element={<ContentReview />} />
+			  <Route path="tasks" element={<TaskManagement />} />
+			  <Route path="orders" element={<OrderManagement />} />
+			  <Route path="agents" element={<AgentSettings />} />
+			  <Route path="opc" element={<OPCManagement />} />
+			  <Route path="api-gateway" element={<APIGateway />} />
+			</Route>
 
             {/* Routes with Layout */}
             <Route element={<Layout />}>

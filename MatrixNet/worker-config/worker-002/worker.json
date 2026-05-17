@@ -1,0 +1,10 @@
+{
+  "llmApiKey": "",
+  "llmBaseUrl": "",
+  "llmModel": "",
+  "llmConfigured": false,
+  "smtpHost": "",
+  "smtpPort": "",
+  "smtpUser": "",
+  "smtpPass": ""
+}

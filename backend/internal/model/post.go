@@ -14,8 +14,9 @@ type Post struct {
 	Excerpt       string         `gorm:"size:500" json:"excerpt"`
 	Content       string         `gorm:"type:text;not null" json:"content"`
 	Tags          string         `gorm:"size:255" json:"tags"`
-	Badge         string         `gorm:"size:50" json:"badge"`
-	Category      string         `gorm:"size:50;index" json:"category"`
+Badge         string         `gorm:"size:50" json:"badge"`
+Category      string         `gorm:"size:50;index" json:"category"`
+Status        string         `gorm:"size:20;default:pending" json:"status"` // pending, approved, rejected
 	Views         int            `gorm:"default:0" json:"views"`
 	LikesCount    int            `gorm:"default:0" json:"likes_count"`
 	CommentsCount int            `gorm:"default:0" json:"comments_count"`

@@ -10,6 +10,8 @@ import (
 type ActivityLog struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
 	UserID      uint           `gorm:"not null;index" json:"user_id"`
+	Action      string         `gorm:"size:100;index" json:"action"`  // admin_ban_user, admin_unban_user, admin_change_role
+	Details     string         `gorm:"type:text" json:"details"`
 	Icon        string         `gorm:"size:100" json:"icon"`
 	Bg          string         `gorm:"size:50" json:"bg"`
 	ContentHTML string         `gorm:"type:text" json:"content_html"`

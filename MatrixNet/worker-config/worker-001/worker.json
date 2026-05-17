@@ -1,0 +1,10 @@
+{
+  "llmApiKey": "sk-KJF58uqvK9KjdWfmN0PHoLg1thsjGuLxTYLqip3B2W92Qb4e",
+  "llmBaseUrl": "https://api.openai-proxy.org/v1",
+  "llmModel": "deepseek-v4-flash",
+  "llmConfigured": true,
+  "smtpHost": "smtp.qq.com",
+  "smtpPort": "465",
+  "smtpUser": "5144931@qq.com",
+  "smtpPass": "hyghatfrpvrbcabh"
+}

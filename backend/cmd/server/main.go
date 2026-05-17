@@ -25,12 +25,13 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}); err != nil {
+if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}, &model.ReviewRecord{}, &model.SystemAgentConfig{}, &model.OPC{}, &model.APIEndpoint{}, &model.APIKey{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
 	// Initialize Matrix client
 	matrixClient := handler.NewMatrixClient(cfg)
+
 
 	// Initialize Gin router
 	router := gin.Default()
@@ -178,8 +179,66 @@ community.POST("/list", handler.ListPosts(db))
 			matrixWorkers.GET("", handler.ListMatrixWorkers(matrixClient))
 			matrixWorkers.POST("/:worker_id/join", handler.JoinWorkerToRoom(matrixClient))
 		}
-	}
+		// Admin login (public - no auth required)
+		api.POST("/admin/login", handler.AdminLogin(db, cfg))
 
+		// Admin routes (auth + admin role required)
+		admin := api.Group("/admin")
+		admin.Use(handler.AdminAuthMiddleware(db, cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			admin.POST("/dashboard", handler.GetAdminDashboard(db))
+
+			// User management
+			admin.POST("/users/list", handler.GetAdminUserList(db))
+			admin.POST("/users/:id/detail", handler.GetAdminUserDetail(db))
+			admin.POST("/users/:id/ban", handler.BanUser(db))
+			admin.POST("/users/:id/unban", handler.UnbanUser(db))
+			admin.POST("/users/:id/role", handler.ChangeUserRole(db))
+
+			// Content review
+			admin.POST("/posts/review/list", handler.GetReviewPostList(db))
+			admin.POST("/posts/review/approve", handler.ApprovePost(db))
+			admin.POST("/posts/review/reject", handler.RejectPost(db))
+
+			admin.POST("/events/review/list", handler.GetReviewEventList(db))
+			admin.POST("/events/review/approve", handler.ApproveEvent(db))
+
+			// Task management
+			admin.POST("/tasks/list", handler.GetAdminTaskList(db))
+			admin.POST("/tasks/:id", handler.GetAdminTaskDetail(db))
+			admin.POST("/tasks/:id/close", handler.CloseAdminTask(db))
+
+			// Order management
+			admin.POST("/orders/list", handler.GetAdminOrderList(db))
+			admin.POST("/orders/:id", handler.GetAdminOrderDetail(db))
+			admin.POST("/orders/:id/refund", handler.RefundAdminOrder(db))
+
+			// Agent config
+			admin.GET("/agents/bit/config", handler.GetBitAgentConfig(db))
+			admin.POST("/agents/bit/config", handler.UpdateBitAgentConfig(db))
+			admin.GET("/agents/little-o/config", handler.GetLittleOAgentConfig(db))
+			admin.POST("/agents/little-o/config", handler.UpdateLittleOAgentConfig(db))
+
+			// OPC management
+			admin.POST("/opc/stats", handler.GetOPCStats(db))
+			admin.POST("/opc/list", handler.GetOPCList(db))
+			admin.POST("/opc/:id/detail", handler.GetOPCDetail(db))
+			admin.POST("/opc/:id/approve", handler.ApproveOPC(db))
+			admin.POST("/opc/:id/reject", handler.RejectOPC(db))
+			admin.POST("/opc/:id/suspend", handler.SuspendOPC(db))
+			admin.POST("/opc/:id/quota", handler.UpdateOPCQuota(db))
+
+			// API Gateway
+			admin.POST("/api/stats", handler.GetAPIStats(db))
+			admin.POST("/api/list", handler.GetAPIList(db))
+			admin.POST("/api/create", handler.CreateAPIEndpoint(db))
+			admin.POST("/api/:id/update", handler.UpdateAPIEndpoint(db))
+			admin.POST("/api/:id/delete", handler.DeleteAPIEndpoint(db))
+			admin.POST("/api/keys/list", handler.GetAPIKeyList(db))
+			admin.POST("/api/keys/create", handler.CreateAPIKey(db))
+			admin.POST("/api/keys/:id/revoke", handler.RevokeAPIKey(db))
+		}
+	}
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
