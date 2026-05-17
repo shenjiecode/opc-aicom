@@ -30,3 +30,12 @@ matrix:
   workers:
     - worker-001
     - worker-002
+
+llm:
+  default_provider: openai
+  openai:
+    api_key: ""       # Set via OPENAI_API_KEY env var
+    base_url: ""
+  anthropic:
+    api_key: ""       # Set via ANTHROPIC_API_KEY env var
+    base_url: ""

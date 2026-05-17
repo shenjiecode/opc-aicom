@@ -139,7 +139,7 @@ export default function AgentBaba() {
               <Card
                 key={session.id}
                 className="group bg-[var(--bg-elevated)] border-[var(--border-default)] hover:border-[var(--primary-500)]/50 transition-all duration-300 cursor-pointer"
-                onClick={() => navigate(`/agentbaba/${session.id}`)}
+                onClick={() => navigate(`/agentbaba/${session.id}/edit`)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">

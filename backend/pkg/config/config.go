@@ -11,19 +11,39 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
+Server   ServerConfig   `mapstructure:"server"`
+Database DatabaseConfig `mapstructure:"database"`
 JWT      JWTConfig      `mapstructure:"jwt"`
 	Matrix   MatrixConfig   `mapstructure:"matrix"`
+	LLM      LLMConfig      `mapstructure:"llm"`
 }
 
 // MatrixConfig holds Matrix server configuration
 type MatrixConfig struct {
-	HomeserverURL string     `mapstructure:"homeserver_url"`
-	ServerName    string     `mapstructure:"server_name"`
-	SharedSecret  string     `mapstructure:"shared_secret"`
-	AdminAPIURL   string     `mapstructure:"admin_api_url"`
-	Workers       []string   `mapstructure:"workers"` // List of worker usernames (e.g., ["worker-001", "worker-002"])
+HomeserverURL string     `mapstructure:"homeserver_url"`
+ServerName    string     `mapstructure:"server_name"`
+SharedSecret  string     `mapstructure:"shared_secret"`
+AdminAPIURL   string     `mapstructure:"admin_api_url"`
+Workers       []string   `mapstructure:"workers"` // List of worker usernames (e.g., ["worker-001", "worker-002"])
+}
+
+// LLMConfig holds LLM provider configuration
+type LLMConfig struct {
+	DefaultProvider string             `mapstructure:"default_provider"`
+	OpenAI          OpenAIConfig       `mapstructure:"openai"`
+	Anthropic       AnthropicConfig    `mapstructure:"anthropic"`
+}
+
+// OpenAIConfig holds OpenAI configuration
+type OpenAIConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
+}
+
+// AnthropicConfig holds Anthropic configuration
+type AnthropicConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
 }
 // ServerConfig holds server configuration
 type ServerConfig struct {
@@ -125,15 +145,22 @@ func Load() (*Config, error) {
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
 
-	// Matrix config
-	viper.BindEnv("matrix.homeserver_url", "MATRIX_HOMESERVER_URL")
-	viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
-	viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
+// Matrix config
+viper.BindEnv("matrix.homeserver_url", "MATRIX_HOMESERVER_URL")
+viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
+viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
 	viper.BindEnv("matrix.admin_api_url", "MATRIX_ADMIN_API_URL")
-	// Enable automatic environment variable detection
-	// This allows any environment variable to override config file values
-	// without explicit BindEnv calls
-	viper.AutomaticEnv()
+
+	// LLM config
+	viper.BindEnv("llm.default_provider", "LLM_DEFAULT_PROVIDER")
+	viper.BindEnv("llm.openai.api_key", "OPENAI_API_KEY")
+	viper.BindEnv("llm.openai.base_url", "OPENAI_BASE_URL")
+	viper.BindEnv("llm.anthropic.api_key", "ANTHROPIC_API_KEY")
+	viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
+// Enable automatic environment variable detection
+// This allows any environment variable to override config file values
+// without explicit BindEnv calls
+viper.AutomaticEnv()
 
 	// Read configuration from file
 	if err := viper.ReadInConfig(); err != nil {
@@ -175,10 +202,14 @@ cfg.JWT.ExpireHours = 24
 	if cfg.Matrix.HomeserverURL == "" {
 		cfg.Matrix.HomeserverURL = "http://localhost:8008"
 	}
-	if cfg.Matrix.ServerName == "" {
-		cfg.Matrix.ServerName = "localhost"
+if cfg.Matrix.ServerName == "" {
+cfg.Matrix.ServerName = "localhost"
 	}
-	return nil
+	// LLM config defaults
+	if cfg.LLM.DefaultProvider == "" {
+		cfg.LLM.DefaultProvider = "openai"
+	}
+return nil
 }
 
 // GetConnMaxLifetime returns database connection max lifetime as duration

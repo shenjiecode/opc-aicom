@@ -518,3 +518,42 @@ export async function listSessions(offset = 0, limit = 20) {
     return res;
   }
 }
+
+
+export interface UpdateSessionRequest {
+  title: string;
+  description: string;
+  agent_config_json: string;
+}
+
+export async function updateSession(
+  sessionId: number,
+  data: UpdateSessionRequest
+): Promise<{ session: AgentBabaSession }> {
+  testLog("updateSession:request", { sessionId, data });
+  try {
+    const res = await apiFetch<{ session: AgentBabaSession }>(
+      `${API_BASE}/session/${sessionId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }
+    );
+    testLog("updateSession:success", { sessionId });
+    return res;
+  } catch (err) {
+    testLog("updateSession:fallback_to_mock", String(err));
+    const session = getMockSession(sessionId);
+    if (!session) throw err;
+    const updated: AgentBabaSession = {
+      ...session,
+      title: data.title,
+      description: data.description,
+      agent_config_json: data.agent_config_json,
+      updated_at: nowIso(),
+    };
+    upsertMockSession(updated);
+    testLog("updateSession:mock", { sessionId });
+    return { session: updated };
+  }
+}

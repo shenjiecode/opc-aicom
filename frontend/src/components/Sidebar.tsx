@@ -161,9 +161,11 @@ export function Sidebar({
         )}
       >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] flex items-center justify-center shadow-lg shadow-[var(--primary-500)]/20 flex-shrink-0">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src="/bitOcto.png" 
+            alt="BitOcto" 
+            className="w-9 h-9 rounded-xl object-contain flex-shrink-0"
+          />
           <div
             className={cn(
               "flex flex-col overflow-hidden transition-all duration-300",
@@ -171,7 +173,7 @@ export function Sidebar({
             )}
           >
             <span className="font-bold text-[var(--text-primary)] text-lg tracking-tight whitespace-nowrap">
-              BitBay OPC
+              BitOcto OPC
             </span>
             <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
               OPC协作平台

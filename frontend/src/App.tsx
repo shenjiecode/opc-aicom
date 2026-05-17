@@ -38,6 +38,7 @@ import SkillMatchPage from "./pages/agentbaba/SkillMatch";
 import ConfigPreviewPage from "./pages/agentbaba/ConfigPreview";
 import BuildProgressPage from "./pages/agentbaba/BuildProgress";
 import AgentChatPage from "./pages/agentbaba/AgentChat";
+import EditAgentPage from "./pages/agentbaba/EditAgent";
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
               <Route path="/post/:id" element={<PostDetail />} />
               <Route path="/agentbaba" element={<AgentBaba />} />
               <Route path="/agentbaba/create" element={<CreateAgentPage />} />
+<Route path="/agentbaba/:sessionId/edit" element={<EditAgentPage />} />
               <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
               <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
               <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />

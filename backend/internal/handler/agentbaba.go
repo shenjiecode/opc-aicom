@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +13,7 @@ import (
 	"github.com/opc-aicom/backend/internal/model"
 	"github.com/opc-aicom/backend/internal/repository"
 	"github.com/opc-aicom/backend/internal/service"
+	"github.com/opc-aicom/backend/pkg/config"
 	"gorm.io/gorm"
 )
 
@@ -22,17 +25,22 @@ type AgentBabaHandler struct {
 	mcpMgr      *service.MCPManager
 }
 
-func NewAgentBabaHandler(db *gorm.DB) *AgentBabaHandler {
+func NewAgentBabaHandler(db *gorm.DB, cfg *config.Config) *AgentBabaHandler {
 	sessionRepo := repository.NewAgentBabaSessionRepository(db)
 	skillRepo := repository.NewSkillRepository(db)
 	instanceRepo := repository.NewAgentInstanceRepository(db)
 	mcpRepo := repository.NewMCPServerRepository(db)
 
+	dockerMgr, err := service.NewDockerManager(instanceRepo, &cfg.LLM)
+	if err != nil {
+		panic("failed to create docker manager: " + err.Error())
+	}
+
 	return &AgentBabaHandler{
 		sessionRepo: sessionRepo,
 		dialogMgr:   service.NewDialogManager(sessionRepo, skillRepo),
 		skillReg:    service.NewSkillRegistry(skillRepo),
-		dockerMgr:   service.NewDockerManager(instanceRepo),
+		dockerMgr:   dockerMgr,
 		mcpMgr:      service.NewMCPManager(mcpRepo),
 	}
 }
@@ -381,6 +389,68 @@ func (h *AgentBabaHandler) ListSessions(c *gin.Context) {
 		"data": gin.H{
 			"list":  sessions,
 			"total": total,
+		},
+	})
+}
+
+
+type UpdateSessionRequest struct {
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	AgentConfigJSON string `json:"agent_config_json"`
+}
+
+func (h *AgentBabaHandler) UpdateSession(c *gin.Context) {
+	sessionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "无效的会话ID"})
+		return
+	}
+
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未登录"})
+		return
+	}
+
+	session, err := h.sessionRepo.GetByID(uint(sessionID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "会话不存在"})
+		return
+	}
+
+	if session.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "无权访问该会话"})
+		return
+	}
+
+	var req UpdateSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "参数错误: " + err.Error()})
+		return
+	}
+
+	if req.Title != "" {
+		session.Title = req.Title
+	}
+	if req.Description != "" {
+		session.Description = req.Description
+	}
+	if req.AgentConfigJSON != "" {
+		session.AgentConfigJSON = req.AgentConfigJSON
+	}
+	session.UpdatedAt = time.Now()
+
+	if err := h.sessionRepo.Update(session); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "更新会话失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"session": session,
 		},
 	})
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle, Check } from 'lucide-react';
+import { Info, Send, Bot, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle, Check, Square } from 'lucide-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 
 // ============================================
@@ -115,6 +116,50 @@ interface ProviderResponse {
   default: { [category: string]: string };
   connected: string[];
 }
+
+const GUZHUANG_DRAMA_PRD = `我已为你创建了完整的项目需求文档，文件已保存：
+
+📄 **古装贵女重生短剧_PRD_报价单.docx**
+
+---
+
+## 📋 文档内容概览
+
+### 一、项目基本信息
+- **项目名称**：古装贵女重生复仇短剧
+- **类型**：竖屏微短剧（9:16）
+- **规格**：30集 × 1-1.5分钟/集
+- **总预算**：**8-10万元**
+
+### 二、核心定位
+- **题材**：古装 / 重生 / 复仇 / 逆袭
+- **爽点**：重生预知、打脸仇人、智商在线、甜虐交织
+- **目标受众**：18-45岁女性用户
+
+### 三、制作方案
+| 项目 | 配置 |
+|------|------|
+| 拍摄地点 | 横店影视城 |
+| 场景数 | 4-5个（闺房、大堂、花园、街道等）|
+| 拍摄周期 | 7天 |
+| 演员配置 | 双主演+4-5配角 |
+| 服化道 | 精品古装+定制头饰 |
+
+### 四、费用明细（8-10万区间）
+- 导演：1.0-1.4万
+- 摄影灯光：1.0-1.4万
+- 双主演：1.4-2.1万
+- 配角群演：1.0-1.8万
+- 场地+服化道：1.0-1.6万
+- 后期制作：0.8-1.2万
+- 差旅杂费：1.1-1.4万
+
+### 五、时间规划
+- **筹备期**：2-3周
+- **拍摄期**：7天
+- **后期期**：2-3周
+- **交付期**：1周
+- **总周期**：约 **6-8周**`;
 
 interface ChatMessage {
   info: MessageInfo;
@@ -291,6 +336,11 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
 // 主组件
 // ============================================
 const AiBit: React.FC = () => {
+  const navigate = useNavigate();
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
   const [inputValue, setInputValue] = useState('');
   const [providers, setProviders] = useState<OpenCodeProvider[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
@@ -607,6 +657,16 @@ const AiBit: React.FC = () => {
   }, []);
 
   // ============================================
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setIsLoading(false);
+  };
+
   // Phase 3: 发送消息
   // ============================================
   const handleSend = async (textToSend?: string | React.MouseEvent | React.KeyboardEvent) => {
@@ -637,7 +697,9 @@ const AiBit: React.FC = () => {
         body: requestBody
       });
 
-      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, requestBody);
+      const res = await axios.post(`${OPENCODE_BASE_URL}/session/${sessionId}/message`, requestBody, {
+        signal: abortControllerRef.current?.signal
+      });
 
       logger.log('MESSAGE', 'API 响应接收', {
         status: res.status,
@@ -707,7 +769,9 @@ const AiBit: React.FC = () => {
       };
       setMessages(prev => [...prev, fallbackMsg]);
     } finally {
+      setIsStreaming(false);
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -715,6 +779,61 @@ const AiBit: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const renderSimpleMarkdown = (text: string): React.ReactNode => {
+    const lines = text.split('\n');
+    return (
+      <>
+        {lines.map((line, i) => {
+          // 标题
+          if (line.startsWith('### ')) return <h3 key={i} className="text-base font-bold text-slate-800 mt-4 mb-2">{line.replace('### ', '')}</h3>;
+          if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold text-slate-900 mt-5 mb-2">{line.replace('## ', '')}</h2>;
+          // 分割线
+          if (line.trim() === '---') return <hr key={i} className="my-4 border-slate-200" />;
+          // 表格行
+          if (line.startsWith('|') && line.endsWith('|')) {
+            const cells = line.split('|').filter(c => c.trim());
+            if (cells.every(c => c.trim().match(/^[-]+$/))) return null;
+            return <div key={i} className="flex gap-4 py-1 text-sm"><span className="flex-1 text-slate-500">{cells[0]?.trim()}</span><span className="flex-1 text-slate-700 font-medium">{cells[1]?.trim()}</span></div>;
+          }
+          // 列表项
+          if (line.startsWith('- ')) {
+            const content = line.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            return <div key={i} className="flex items-start gap-2 text-sm text-slate-700 ml-2"><span className="text-emerald-500 mt-1">•</span><span dangerouslySetInnerHTML={{ __html: content }} /></div>;
+          }
+          // 普通文本
+          const content = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900">$1</strong>');
+          return <p key={i} className="text-sm text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: content }} />;
+        })}
+      </>
+    );
+  };
+
+  const handlePublishTask = async () => {
+    if (!selectedPrd) return;
+    setIsPublishing(true);
+    try {
+      // 获取任务名 = 左侧文件名 + 需求
+      const taskTitle = `${selectedPrd.replace(/_PRD$/, '')}需求`;
+      
+      // 调用后端创建任务 API
+      await axios.post('/api/task/create', {
+        title: taskTitle,
+        description: prdContent,
+        budget: 80000,  // 8-10万区间
+        type: '短剧',
+        level: 'advanced',
+      }, { withCredentials: true });
+      
+      // 跳转到任务中心
+      navigate('/tasks');
+    } catch (err) {
+      console.error('Failed to publish task:', err);
+      alert('发布任务失败，请稍后重试');
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -880,16 +999,22 @@ const AiBit: React.FC = () => {
                 onKeyPress={handleKeyPress}
                 placeholder="例如：我需要一套科技感小红书海报，3张..."
                 className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700 placeholder:text-slate-400"
-                disabled={isLoading}
+                disabled={isLoading && !isStreaming}
               />
-              <button 
-                onClick={handleSend}
-                disabled={!inputValue.trim() || isLoading}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-emerald-500 hover:text-white text-slate-400 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-400"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
+              {(isLoading || isStreaming) ? (
+                <button onClick={handleStop} className="w-9 h-9 rounded-full bg-slate-800 hover:bg-red-600 text-white flex items-center justify-center transition-colors shrink-0">
+                  <Square className="w-3.5 h-3.5" fill="currentColor" />
+                </button>
+              ) : (
+                <button 
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || isLoading}
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-emerald-500 hover:text-white text-slate-400 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-400"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              )}
+          </div>
           </div>
         </div>
 
@@ -926,6 +1051,20 @@ const AiBit: React.FC = () => {
                   PRD_Documents
                 </div>
                 <div className="space-y-1">
+
+                  {/* 硬编码的示例产物 */}
+                  <button
+                    onClick={() => { setSelectedPrd('古装贵女重生短剧_PRD'); setPrdContent(GUZHUANG_DRAMA_PRD); }}
+                    className={`w-full flex items-center text-left px-2 py-2 rounded-lg text-sm transition-colors ${
+                      selectedPrd === '古装贵女重生短剧_PRD'
+                        ? 'bg-emerald-100 text-emerald-800 font-medium'
+                        : 'text-slate-600 hover:bg-slate-200/50'
+                    }`}
+                  >
+                    <File className={`w-4 h-4 mr-2 shrink-0 ${selectedPrd === '古装贵女重生短剧_PRD' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <span className="truncate">古装贵女重生短剧_PRD</span>
+                  </button>
+
                   {prdFiles.map((file, idx) => (
                     <button
                       key={idx}
@@ -957,9 +1096,34 @@ const AiBit: React.FC = () => {
                       {selectedPrd}
                     </div>
                     {/* Render raw markdown as simple text for now, or could use react-markdown if installed */}
-                    <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700 leading-relaxed bg-transparent p-0">
-                      {prdContent}
-                    </pre>
+                    <div className="text-sm text-slate-700 leading-relaxed">
+                      {renderSimpleMarkdown(prdContent)}
+                    </div>
+                    
+                    {selectedPrd && (
+                      <div className="mt-6 pt-4 border-t border-slate-100">
+                        <button
+                          onClick={handlePublishTask}
+                          disabled={isPublishing}
+                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isPublishing ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              发布中...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4" />
+                              发布任务
+                            </>
+                          )}
+                        </button>
+                        <p className="text-xs text-slate-400 text-center mt-2">
+                          将在任务中心创建新任务
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400">

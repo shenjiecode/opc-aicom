@@ -237,9 +237,10 @@ func main() {
 		agentbabaAuth := api.Group("/agentbaba")
 		agentbabaAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
-			agentbabaHandler := handler.NewAgentBabaHandler(db)
+			agentbabaHandler := handler.NewAgentBabaHandler(db, cfg)
 			agentbabaAuth.POST("/session/create", agentbabaHandler.CreateSession)
 			agentbabaAuth.GET("/session/:id", agentbabaHandler.GetSession)
+			agentbabaAuth.PUT("/session/:id", agentbabaHandler.UpdateSession)
 			agentbabaAuth.POST("/session/:id/clarify", agentbabaHandler.StartClarification)
 			agentbabaAuth.POST("/session/:id/answer", agentbabaHandler.AnswerQuestion)
 			agentbabaAuth.POST("/session/:id/match-skills", agentbabaHandler.MatchSkills)
@@ -274,7 +275,7 @@ func main() {
 		}
 
 		// Agent instance routes
-		instanceHandler := handler.NewAgentInstanceHandler(db)
+		instanceHandler := handler.NewAgentInstanceHandler(db, cfg)
 		chatHandler := handler.NewAgentChatHandler(db)
 		agentInstances := api.Group("/agent-instances")
 		agentInstances.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))

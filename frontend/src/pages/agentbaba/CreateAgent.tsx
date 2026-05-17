@@ -120,7 +120,7 @@ export default function CreateAgentPage() {
   };
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+    <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
       {/* Header */}
       <div className="h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-20">
         <div className="flex items-center gap-4">

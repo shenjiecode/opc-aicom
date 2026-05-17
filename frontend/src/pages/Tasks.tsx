@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
-import { ClipboardList, Search, Pin, Clock, Flame } from "lucide-react";
+import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+
 
 interface Task {
   id: number;
@@ -42,6 +50,8 @@ export default function Tasks() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeType, setActiveType] = useState("全部");
   const [activeLevel, setActiveLevel] = useState("全部");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -91,6 +101,17 @@ export default function Tasks() {
       letter: letters[i % letters.length],
       color: colors[i % colors.length],
     }));
+  };
+
+  const openDetail = (task: Task) => {
+    setSelectedTask(task);
+    setIsDialogOpen(true);
+  };
+
+  const handleChat = () => {
+    // TODO: 跳转到AI比特页面或打开聊天
+    setIsDialogOpen(false);
+    window.location.href = '/aibit';
   };
 
   return (
@@ -273,11 +294,13 @@ export default function Tasks() {
                       <Button
                         variant="outline"
                         className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+                        onClick={() => openDetail(task)}
                       >
                         详情
                       </Button>
                       <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white">
-                        立即报名
+                        <MessageCircle className="w-4 h-4 mr-1" />
+                        聊聊需求
                       </Button>
                     </div>
                   </div>
@@ -287,11 +310,13 @@ export default function Tasks() {
                     <Button
                       variant="outline"
                       className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50 flex-1"
+                      onClick={() => openDetail(task)}
                     >
                       详情
                     </Button>
                     <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1">
-                      立即报名
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      聊聊需求
                     </Button>
                   </div>
                 </CardContent>
@@ -300,6 +325,70 @@ export default function Tasks() {
           )}
         </div>
       </div>
+
+      {/* Task Detail Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {selectedTask?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {selectedTask?.description}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-indigo-50 text-indigo-600 text-xs px-2.5 py-1 rounded font-medium">
+                {selectedTask?.type}
+              </span>
+              <span
+                className={cn(
+                  "text-xs px-2.5 py-1 rounded font-medium",
+                  selectedTask?.level === "初级"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : selectedTask?.level === "中级"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-teal-50 text-teal-600",
+                )}
+              >
+                {selectedTask?.level}
+              </span>
+              {selectedTask?.urgent && (
+                <span className="bg-rose-50 text-rose-600 text-xs px-2.5 py-1 rounded font-medium flex items-center">
+                  <Flame className="w-3 h-3 mr-1" />
+                  急招
+                </span>
+              )}
+              <span className="text-slate-400 text-xs px-2.5 py-1 flex items-center bg-slate-50 rounded font-medium">
+                <Clock className="w-3 h-3 mr-1" />
+                {selectedTask?.duration_days}天
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <div className="text-indigo-600 font-bold text-xl">
+                {formatCurrency(selectedTask?.budget || 0)}
+              </div>
+              <div className="text-sm text-slate-500">
+                {selectedTask?.applicants_count} 人已报名
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              关闭
+            </Button>
+            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={handleChat}>
+              <MessageCircle className="w-4 h-4 mr-1" />
+              聊聊需求
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/opc-aicom/backend/internal/model"
 	"github.com/opc-aicom/backend/internal/repository"
 	"github.com/opc-aicom/backend/internal/service"
+	"github.com/opc-aicom/backend/pkg/config"
 	"gorm.io/gorm"
 )
 
@@ -17,11 +18,15 @@ type AgentInstanceHandler struct {
 	dockerMgr *service.DockerManager
 }
 
-func NewAgentInstanceHandler(db *gorm.DB) *AgentInstanceHandler {
+func NewAgentInstanceHandler(db *gorm.DB, cfg *config.Config) *AgentInstanceHandler {
 	repo := repository.NewAgentInstanceRepository(db)
+	dockerMgr, err := service.NewDockerManager(repo, &cfg.LLM)
+	if err != nil {
+		panic("failed to create docker manager: " + err.Error())
+	}
 	return &AgentInstanceHandler{
 		repo:      repo,
-		dockerMgr: service.NewDockerManager(repo),
+		dockerMgr: dockerMgr,
 	}
 }
 
