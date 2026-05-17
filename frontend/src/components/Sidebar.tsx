@@ -84,13 +84,6 @@ const navigationGroups: NavGroup[] = [
     section: "个人中心",
     items: [
       { id: "my-opc", path: "/my-opc", icon: User, label: "我的OPC" },
-      { id: "my-agents", path: "/my-agents", icon: Bot, label: "我的智能体" },
-      {
-        id: "my-workflows",
-        path: "/my-workflows",
-        icon: Workflow,
-        label: "我的工作流",
-      },
       {
         id: "agentbaba",
         path: "/agentbaba",
