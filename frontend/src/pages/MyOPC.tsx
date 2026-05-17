@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -21,6 +22,7 @@ import {
   CheckCircle,
   Clock3,
   XCircle,
+  PlusCircle,
 } from "lucide-react";
 
 // Types
@@ -315,25 +317,37 @@ export default function MyOPC() {
         </section>
 
         {/* Main Tabs */}
-        <div className="flex items-center gap-3 mb-6">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200",
-                  activeTab === tab.id
-                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                )}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200",
+                    activeTab === tab.id
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                  )}
+                >
+                  <Icon className="w-4 h-4 mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          
+          {activeTab === "events" && (
+            <Button
+              onClick={() => navigate("/event/create")}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              发布活动
+            </Button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -429,7 +443,14 @@ export default function MyOPC() {
               {userEvents.length === 0 ? (
                 <div className="py-20 text-center bg-white rounded-2xl border border-slate-100">
                   <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500">您还没有报名活动</p>
+                  <p className="text-slate-500 mb-6">您还没有发布或参与任何活动</p>
+                  <Button
+                    onClick={() => navigate("/event/create")}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    立即发布
+                  </Button>
                 </div>
               ) : (
                 <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
