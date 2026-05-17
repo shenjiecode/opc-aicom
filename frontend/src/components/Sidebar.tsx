@@ -18,6 +18,7 @@ import {
   Settings,
   ChevronUp,
   Calendar,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,23 +58,18 @@ const navigationGroups: NavGroup[] = [
         path: "/community",
         icon: Globe,
         label: "社区",
-        badge: 508,
       },
       {
         id: "tasks",
         path: "/tasks",
         icon: ClipboardList,
         label: "任务中心",
-        badge: 23,
-        badgeType: "hot",
       },
       {
         id: "ai-resources",
         path: "/ai-resources",
         icon: Bot,
         label: "AI资源",
-        badge: 12,
-        badgeType: "hot",
       },
 
       {
@@ -81,7 +77,6 @@ const navigationGroups: NavGroup[] = [
         path: "/service-center",
         icon: Palette,
         label: "服务中心",
-        badge: 16,
       },
     ],
   },
@@ -95,6 +90,13 @@ const navigationGroups: NavGroup[] = [
         path: "/my-workflows",
         icon: Workflow,
         label: "我的工作流",
+      },
+      {
+        id: "agentbaba",
+        path: "/agentbaba",
+        icon: Sparkles,
+        label: "AgentBaba",
+        badgeType: "new",
       },
       {
         id: "opc-workbench",
