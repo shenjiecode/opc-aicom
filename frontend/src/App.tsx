@@ -21,7 +21,8 @@ import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import EventShare from './pages/EventShare';
 import MyEvents from './pages/MyEvents';
-
+import PostDetail from './pages/PostDetail';
+import CreatePost from './pages/CreatePost';
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
@@ -45,6 +46,7 @@ function App() {
               <Route path="/service-center" element={<ServiceCenter />} />
               <Route path="/aibit" element={<AiBit />} />
               <Route path="/event/:id" element={<EventDetail />} />
+              <Route path="/post/:id" element={<PostDetail />} />
 
               {/* Protected pages - require authentication */}
               <Route element={<ProtectedRoute />}>
@@ -54,6 +56,7 @@ function App() {
                 <Route path="/points-mall" element={<PointsMall />} />
                 <Route path="/my-events" element={<MyEvents />} />
                 <Route path="/event/create" element={<CreateEvent />} />
+                <Route path="/post/create" element={<CreatePost />} />
               </Route>
             </Route>
           </Routes>

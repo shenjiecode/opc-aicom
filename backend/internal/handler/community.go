@@ -261,8 +261,10 @@ func CommentPost(db *gorm.DB) gin.HandlerFunc {
 
 // CreatePostRequest represents the request body for creating a post
 type CreatePostRequest struct {
-	Title   string `json:"title" binding:"required"`
-	Content string `json:"content" binding:"required"`
+	Title    string `json:"title" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+	Category string `json:"category"`
+	Tags     string `json:"tags"`
 }
 
 // CreatePostResponse represents the response for creating a post
@@ -315,9 +317,11 @@ func CreatePost(db *gorm.DB) gin.HandlerFunc {
 
 		// Create post
 		post := &model.Post{
-			UserID:  userID,
-			Title:   req.Title,
-			Content: req.Content,
+			UserID:   userID,
+			Title:    req.Title,
+			Content:  req.Content,
+			Category: req.Category,
+			Tags:     req.Tags,
 		}
 
 		createdPost, err := postRepo.Create(post)
@@ -333,6 +337,145 @@ func CreatePost(db *gorm.DB) gin.HandlerFunc {
 			Code:    0,
 			Message: "success",
 			Data:    CreatePostResponse{PostID: createdPost.ID},
+		})
+	}
+}
+
+// GetPostResponse represents the response for getting a single post
+type GetPostResponse struct {
+	Post    *repository.PostWithAuthor `json:"post"`
+	IsLiked bool                       `json:"is_liked"`
+}
+
+// GetPost handles getting a single post by ID
+// GET /api/community/:id
+func GetPost(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get post ID from URL param
+		idStr := c.Param("id")
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "invalid post id",
+			})
+			return
+		}
+
+		postRepo := repository.NewPostRepository(db)
+
+		// Get post with author info
+		post, err := postRepo.GetPostWithAuthor(uint(id))
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, UnifiedResponse{
+					Code:    404,
+					Message: "post not found",
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "failed to fetch post",
+			})
+			return
+		}
+
+		// Increment view count (async, ignore error)
+		go postRepo.IncrementViews(uint(id))
+
+		// Check if current user has liked this post (optional auth)
+		var isLiked bool
+		if userID, ok := middleware.GetUserID(c); ok {
+			isLiked, _ = postRepo.HasUserLiked(uint(id), userID)
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: GetPostResponse{
+				Post:    post,
+				IsLiked: isLiked,
+			},
+		})
+	}
+}
+
+// CommentListResponse represents the response for listing comments
+type CommentListResponse struct {
+	List     interface{} `json:"list"`
+	Total    int64       `json:"total"`
+	Page     int         `json:"page"`
+	PageSize int         `json:"pageSize"`
+}
+
+// ListComments handles getting comments for a post
+// GET /api/community/:id/comments
+func ListComments(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get post ID from URL param
+		idStr := c.Param("id")
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "invalid post id",
+			})
+			return
+		}
+
+		// Get pagination params
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+
+		if page < 1 {
+			page = 1
+		}
+		if pageSize < 1 {
+			pageSize = 10
+		}
+		if pageSize > 100 {
+			pageSize = 100
+		}
+
+		postRepo := repository.NewPostRepository(db)
+
+		// Check if post exists
+		_, err = postRepo.GetByID(uint(id))
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, UnifiedResponse{
+					Code:    404,
+					Message: "post not found",
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "failed to fetch post",
+			})
+			return
+		}
+
+		// Get comments
+		comments, total, err := postRepo.ListComments(uint(id), page, pageSize)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "failed to fetch comments",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: CommentListResponse{
+				List:     comments,
+				Total:    total,
+				Page:     page,
+				PageSize: pageSize,
+			},
 		})
 	}
 }

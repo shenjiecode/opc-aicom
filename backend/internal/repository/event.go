@@ -122,3 +122,27 @@ func (r *EventRepository) GetRegistrationsByEvent(eventID uint) ([]*model.EventR
 	return registrations, err
 }
 
+// ListRegisteredByUserID retrieves events the user has registered for, with pagination.
+func (r *EventRepository) ListRegisteredByUserID(userID uint, page, pageSize int) ([]*model.Event, int64, error) {
+	var events []*model.Event
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	query := r.db.Model(&model.Event{}).
+		Joins("JOIN event_registrations ON event_registrations.event_id = events.id").
+		Where("event_registrations.user_id = ? AND event_registrations.deleted_at IS NULL", userID)
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = query.Offset(offset).Limit(pageSize).Order("events.start_time DESC").Find(&events).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return events, total, nil
+}
+

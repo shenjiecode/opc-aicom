@@ -69,6 +69,8 @@ c.Next()
 		{
 			userAuth.POST("/info", handler.GetUserInfo(db))
 			userAuth.POST("/refresh", handler.RefreshToken(cfg))
+			userAuth.GET("/posts", handler.GetUserPosts(db))
+			userAuth.GET("/events", handler.GetUserEvents(db))
 		}
 
 		// Home routes (no auth required)
@@ -99,11 +101,13 @@ c.Next()
 		{
 			tasks.POST("/list", handler.ListTasks(db))
 		}
-		community := api.Group("/community")
-		{
-			community.POST("/list", handler.ListPosts(db))
+community := api.Group("/community")
+{
+community.POST("/list", handler.ListPosts(db))
 			community.POST("/events", handler.ListEvents(db))
-		}
+			community.GET("/:id", handler.GetPost(db))
+			community.GET("/:id/comments", handler.ListComments(db))
+}
 
 		// Community routes (auth required)
 		communityAuth := api.Group("/community")

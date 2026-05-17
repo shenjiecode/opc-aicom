@@ -1,0 +1,109 @@
+{
+  "test_run": "2026-05-17T00:39:57.972627",
+  "total_tests": 12,
+  "passed": 12,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "User Registration",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.053158",
+      "details": {
+        "username": "testuser_1778949597"
+      }
+    },
+    {
+      "name": "User Login",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.113925",
+      "details": {
+        "username": "testuser_1778949597",
+        "user_id": 16
+      }
+    },
+    {
+      "name": "Create Post",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.121510",
+      "details": {
+        "post_id": 83
+      }
+    },
+    {
+      "name": "List Posts",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.125118",
+      "details": {
+        "total": 11
+      }
+    },
+    {
+      "name": "Get Post Detail",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.127590",
+      "details": {
+        "title": "测试帖子 - 20260517003958",
+        "views": 0
+      }
+    },
+    {
+      "name": "Add Comment",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.136012",
+      "details": {
+        "post_id": 83
+      }
+    },
+    {
+      "name": "Get Comments",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.138389",
+      "details": {
+        "total": 1
+      }
+    },
+    {
+      "name": "Like Post",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.143852",
+      "details": {
+        "post_id": 83,
+        "is_liked": true
+      }
+    },
+    {
+      "name": "Create Event",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.147361",
+      "details": {
+        "event_id": 30,
+        "share_code": "9c06019a4fc6126b0453fc30a1ef05ca"
+      }
+    },
+    {
+      "name": "List Events",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.149205",
+      "details": {
+        "total": 6
+      }
+    },
+    {
+      "name": "Get Event Detail",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.150259",
+      "details": {
+        "title": "测试活动 - 20260517003958",
+        "joined_count": 0
+      }
+    },
+    {
+      "name": "Join Event",
+      "success": true,
+      "timestamp": "2026-05-17T00:39:58.155547",
+      "details": {
+        "event_id": 30
+      }
+    }
+  ]
+}

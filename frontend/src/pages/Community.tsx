@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,10 +138,14 @@ export default function Community() {
     }
   }, [activeTab, activeForumCategory, activeEventCategory]);
 
+  const navigate = useNavigate();
+
   const handleCreatePost = () => {
-    // Assuming there's a route for creating a post, or you can keep the modal
-    // For now, let's keep it simple or open a modal
-    console.log("Navigate to create post or open modal");
+    navigate("/post/create");
+  };
+
+  const handlePostClick = (postId: number) => {
+    navigate(`/post/${postId}`);
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -344,7 +349,10 @@ export default function Community() {
             ) : (
               posts.map((post) => (
                 <div key={post.id} className="break-inside-avoid">
-                  <Card className="overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl group cursor-pointer border border-slate-100">
+                  <Card 
+                    className="overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl group cursor-pointer border border-slate-100"
+                    onClick={() => handlePostClick(post.id)}
+                  >
                     {/* Image Placeholder */}
                     <div className="h-48 bg-slate-100 relative group-hover:bg-slate-200 transition-colors">
                       {post.badge && (
@@ -416,7 +424,10 @@ export default function Community() {
             events.map((event) => {
               return (
                 <div key={event.id} className="break-inside-avoid">
-                  <Card className="overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl group cursor-pointer flex flex-col h-full border border-slate-100">
+                  <Card
+                    className="overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl group cursor-pointer flex flex-col h-full border border-slate-100"
+                    onClick={() => navigate(`/event/${event.id}`)}
+                  >
                     {/* Gradient Header */}
                     <div
                       className={cn(

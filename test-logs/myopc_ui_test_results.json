@@ -1,0 +1,79 @@
+{
+  "test_run": "2026-05-17T00:22:00Z",
+  "module": "MyOPC",
+  "total_tests": 6,
+  "passed": 6,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "Page Load",
+      "success": true,
+      "timestamp": "2026-05-17T00:21:24Z",
+      "details": {
+        "url": "http://localhost:5173/my-opc",
+        "title": "BitBay OPC - AI协作平台",
+        "header_visible": true,
+        "assets_cards_visible": true
+      }
+    },
+    {
+      "name": "Tab Switching - My Activities",
+      "success": true,
+      "timestamp": "2026-05-17T00:21:33Z",
+      "details": {
+        "tab": "我的活动",
+        "active_state": true,
+        "content_loaded": true,
+        "activity_count": 2
+      }
+    },
+    {
+      "name": "Activity Card Navigation",
+      "success": true,
+      "timestamp": "2026-05-17T00:21:45Z",
+      "details": {
+        "card_title": "Playwright自动化测试活动",
+        "navigated_to": "/event/29",
+        "detail_page_loaded": true
+      }
+    },
+    {
+      "name": "Tab Switching - My Tasks",
+      "success": true,
+      "timestamp": "2026-05-17T00:22:01Z",
+      "details": {
+        "tab": "我的任务",
+        "active_state": true,
+        "sections_visible": ["我发布的任务", "我接单的任务"],
+        "published_tasks_count": 0,
+        "accepted_tasks_count": 0
+      }
+    },
+    {
+      "name": "Tab Switching - My Posts",
+      "success": true,
+      "timestamp": "2026-05-17T00:22:12Z",
+      "details": {
+        "tab": "我的帖子",
+        "active_state": true,
+        "empty_state_visible": true,
+        "empty_message": "您还没有发布帖子"
+      }
+    },
+    {
+      "name": "Console Error Check",
+      "success": true,
+      "timestamp": "2026-05-17T00:22:12Z",
+      "details": {
+        "errors": 0,
+        "warnings": 0
+      }
+    }
+  ],
+  "summary": {
+    "page_load": "PASS",
+    "tab_switching": "PASS",
+    "activity_navigation": "PASS",
+    "console_errors": "PASS"
+  }
+}

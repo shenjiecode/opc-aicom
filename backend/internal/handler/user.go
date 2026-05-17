@@ -2,10 +2,11 @@ package handler
 
 import (
 	"net/http"
-
+	"strconv"
 	"github.com/gin-gonic/gin"
 	"github.com/opc-aicom/backend/internal/middleware"
 	"github.com/opc-aicom/backend/internal/model"
+	"github.com/opc-aicom/backend/internal/repository"
 	"github.com/opc-aicom/backend/internal/pkg/jwt"
 	"github.com/opc-aicom/backend/pkg/config"
 	"golang.org/x/crypto/bcrypt"
@@ -234,10 +235,19 @@ func Login(db *gorm.DB, cfg *config.Config) gin.HandlerFunc {
 
 // GetUserInfoResponse represents the get user info response
 type GetUserInfoResponse struct {
-	UserID   uint   `json:"userId"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	VipLevel int    `json:"vipLevel"`
+	UserID   uint       `json:"userId"`
+	Username string     `json:"username"`
+	Role     string     `json:"role"`
+	VipLevel int        `json:"vipLevel"`
+	Assets   UserAssets `json:"assets"`
+}
+
+type UserAssets struct {
+	Points          int     `json:"points"`
+	Coupons         int     `json:"coupons"`
+	CouponsExpiring int     `json:"couponsExpiring"`
+	ComputeHours    float64 `json:"computeHours"`
+	ComputeGPU      float64 `json:"computeGpu"`
 }
 
 // GetUserInfo handles getting user info
@@ -271,18 +281,32 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Find user assets
+		var userAsset model.UserAsset
+		if err := db.Where("user_id = ?", userID).First(&userAsset).Error; err != nil {
+			// Assets not found is not an error, use defaults
+			userAsset = model.UserAsset{UserID: userID}
+		}
+
 		// Return user info
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
-		Data: GetUserInfoResponse{
-			UserID:   user.ID,
-			Username: user.Username,
-			Role:     user.Role,
-			VipLevel: user.VipLevel,
-		},
-	})
-}
+			Data: GetUserInfoResponse{
+				UserID:   user.ID,
+				Username: user.Username,
+				Role:     user.Role,
+				VipLevel: user.VipLevel,
+				Assets: UserAssets{
+					Points:          userAsset.Points,
+					Coupons:         userAsset.Coupons,
+					CouponsExpiring: userAsset.CouponsExpiring,
+					ComputeHours:    userAsset.ComputeHours,
+					ComputeGPU:      userAsset.ComputeGPU,
+				},
+			},
+		})
+	}
 }
 
 // Logout handles user logout
@@ -295,6 +319,130 @@ func Logout(cfg *config.Config) gin.HandlerFunc {
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
+		})
+	}
+}
+
+// UserPostListResponse represents the user's post list response
+type UserPostListResponse struct {
+	List     []*repository.PostWithAuthor `json:"list"`
+	Total    int64                        `json:"total"`
+	Page     int                          `json:"page"`
+	PageSize int                          `json:"pageSize"`
+}
+
+// GetUserPosts handles getting user's published posts
+// GET /api/user/posts (requires auth)
+func GetUserPosts(db *gorm.DB) gin.HandlerFunc {
+	postRepo := repository.NewPostRepository(db)
+
+	return func(c *gin.Context) {
+		// Get user ID from context (set by auth middleware)
+		userID, ok := middleware.GetUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "unauthorized",
+			})
+			return
+		}
+
+		// Get pagination params from query
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+
+		if page < 1 {
+			page = 1
+		}
+		if pageSize < 1 {
+			pageSize = 10
+		}
+		if pageSize > 100 {
+			pageSize = 100
+		}
+
+		// Query posts by user ID
+		posts, total, err := postRepo.ListByUserID(userID, page, pageSize)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "failed to fetch posts",
+			})
+			return
+		}
+
+		// Return success response
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: UserPostListResponse{
+				List:     posts,
+				Total:    total,
+				Page:     page,
+				PageSize: pageSize,
+			},
+		})
+	}
+}
+
+// UserEventListResponse represents the user's event list response
+type UserEventListResponse struct {
+	List     []*model.Event `json:"list"`
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"pageSize"`
+}
+
+// GetUserEvents handles getting user's registered events
+// GET /api/user/events (requires auth)
+func GetUserEvents(db *gorm.DB) gin.HandlerFunc {
+	eventRepo := repository.NewEventRepository(db)
+
+	return func(c *gin.Context) {
+		// Get user ID from context (set by auth middleware)
+		userID, ok := middleware.GetUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "unauthorized",
+			})
+			return
+		}
+
+		// Get pagination params from query
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+
+		if page < 1 {
+			page = 1
+		}
+		if pageSize < 1 {
+			pageSize = 10
+		}
+		if pageSize > 100 {
+			pageSize = 100
+		}
+
+		// Query events user has registered for
+		events, total, err := eventRepo.ListRegisteredByUserID(userID, page, pageSize)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "failed to fetch events",
+			})
+			return
+		}
+
+		// Return success response
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: UserEventListResponse{
+				List:     events,
+				Total:    total,
+				Page:     page,
+				PageSize: pageSize,
+			},
 		})
 	}
 }

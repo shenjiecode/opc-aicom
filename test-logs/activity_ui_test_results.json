@@ -1,0 +1,84 @@
+{
+  "test_run": "2026-05-17T00:48:00",
+  "test_type": "Activity Module UI Integration Test",
+  "total_tests": 6,
+  "passed": 6,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "活动列表点击详情",
+      "success": true,
+      "timestamp": "2026-05-17T00:46:32",
+      "details": {
+        "action": "点击活动卡片",
+        "expected": "跳转到活动详情页",
+        "actual": "成功跳转到 /event/29",
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "活动详情页报名功能",
+      "success": true,
+      "timestamp": "2026-05-17T00:46:52",
+      "details": {
+        "action": "点击立即报名按钮",
+        "expected": "报名成功，人数增加",
+        "actual": "报名人数从 1 人变为 2 人，显示'您已报名此活动'",
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "分享活动二维码",
+      "success": true,
+      "timestamp": "2026-05-17T00:47:04",
+      "details": {
+        "action": "点击分享活动按钮",
+        "expected": "显示二维码和分享链接",
+        "actual": "二维码正常显示，可复制分享链接",
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "分享链接打开详情页",
+      "success": true,
+      "timestamp": "2026-05-17T00:47:31",
+      "details": {
+        "url": "/event/share/17f238049fe84d9de5f06def9f9d44c8",
+        "expected": "全屏显示活动详情",
+        "actual": "分享页面正常显示，无侧边栏，活动信息完整",
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "分享页面重复报名提示",
+      "success": true,
+      "timestamp": "2026-05-17T00:47:47",
+      "details": {
+        "action": "已报名用户再次点击报名",
+        "expected": "显示已报名提示",
+        "actual": "显示'您已报名过此活动'",
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "分享页面新用户报名",
+      "success": true,
+      "timestamp": "2026-05-17T00:48:32",
+      "details": {
+        "url": "/event/share/8b477e043df7a2ca02d61739f898b78b",
+        "action": "点击立即报名",
+        "expected": "报名成功",
+        "actual": "报名人数从 0 变为 1，显示'您已报名此活动'",
+        "status": "PASS"
+      }
+    }
+  ],
+  "bugs_fixed": [
+    {
+      "description": "活动卡片点击无响应",
+      "file": "frontend/src/pages/Community.tsx",
+      "fix": "为活动卡片 Card 组件添加 onClick 事件: onClick={() => navigate(`/event/${event.id}`)}"
+    }
+  ],
+  "summary": "活动模块完整流程测试通过，包括列表跳转、详情报名、分享链接访问、分享页报名等功能"
+}
