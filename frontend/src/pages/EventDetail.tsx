@@ -261,7 +261,7 @@ export default function EventDetail() {
                   </div>
                 ) : (
                   <Button
-                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 mb-4"
                     onClick={handleRegister}
                     disabled={isRegistering}
                   >
@@ -276,6 +276,18 @@ export default function EventDetail() {
                         立即报名
                       </>
                     )}
+                  </Button>
+                )}
+                
+                {/* 任何状态下都可以展示分享按钮 */}
+                {!isRegistered && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowQR(!showQR)}
+                  >
+                    <QrCode className="w-4 h-4 mr-2" />
+                    {showQR ? "隐藏二维码" : "分享活动"}
                   </Button>
                 )}
               </CardContent>
@@ -317,18 +329,6 @@ export default function EventDetail() {
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Share Without Registration */}
-            {!isRegistered && !showQR && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowQR(true)}
-              >
-                <QrCode className="w-4 h-4 mr-2" />
-                分享活动
-              </Button>
             )}
           </div>
         </div>
