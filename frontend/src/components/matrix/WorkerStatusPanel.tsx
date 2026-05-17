@@ -8,7 +8,7 @@ import { WorkerConfigDialog } from "./WorkerConfigDialog";
 import type { WorkerConfig } from "./WorkerConfigDialog";
 import {
   Bot,
-  Hash,
+
   LogIn,
   CheckCircle2,
   Circle,
@@ -92,12 +92,6 @@ export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
     }
   };
 
-  // Get room name from room ID
-  const getRoomName = (roomId: string) => {
-    const room = rooms.find(r => r.roomId === roomId);
-    return room?.name || roomId.split(":")[0].replace("!", "");
-  };
-
   // Use allRooms for the room selection dropdown
   const availableRooms = allRooms.length > 0 ? allRooms : rooms;
 
@@ -168,25 +162,6 @@ export function WorkerStatusPanel({ className }: WorkerStatusPanelProps) {
                     加入房间
                   </Button>
                 </div>
-              </div>
-
-              {/* Worker's rooms */}
-              <div className="flex flex-wrap gap-1.5">
-                {worker.rooms.length === 0 ? (
-                  <span className="text-xs text-slate-500">未加入任何房间</span>
-                ) : (
-                  worker.rooms.map((roomId) => (
-                    <div
-                      key={roomId}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-700/50 text-xs text-slate-400"
-                    >
-                      <Hash className="w-3 h-3" />
-                      <span className="truncate max-w-[120px]">
-                        {getRoomName(roomId)}
-                      </span>
-                    </div>
-                  ))
-                )}
               </div>
             </div>
           ))

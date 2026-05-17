@@ -154,17 +154,28 @@ const {
                     <Users className="w-3.5 h-3.5" />
                     <span>{currentRoom.members.length} 成员</span>
                   </div>
-                  {/* Workers in this room */}
-                  {workers.filter(w => w.rooms.includes(currentRoom.roomId)).length > 0 && (
+                  {/* Members in this room */}
+                  {currentRoom.members.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-violet-500/20">
-                      <div className="text-xs text-slate-400 mb-2">房间内 Workers:</div>
+                      <div className="text-xs text-slate-400 mb-2">房间成员:</div>
                       <div className="flex flex-wrap gap-2">
-                        {workers.filter(w => w.rooms.includes(currentRoom.roomId)).map(w => (
-                          <div key={w.workerId} className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs">
-                            <Bot className="w-3 h-3" />
-                            <span>{w.name}</span>
-                          </div>
-                        ))}
+                        {currentRoom.members.map(userId => {
+                          const worker = workers.find(w => w.userId === userId);
+                          if (worker) {
+                            return (
+                              <div key={userId} className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs">
+                                <Bot className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[100px]">{worker.name}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={userId} className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs">
+                              <Users className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[100px]">{userId.split(':')[0].replace('@', '')}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

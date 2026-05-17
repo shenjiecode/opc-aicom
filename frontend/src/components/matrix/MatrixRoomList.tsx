@@ -91,7 +91,6 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
           displayRooms.map((room) => {
             const isJoined = room.joined !== false; // default to true for rooms from SDK
             const isCurrentRoom = currentRoom?.roomId === room.roomId;
-            const roomWorkers = workers.filter(w => w.rooms.includes(room.roomId));
 
             return (
               <div
@@ -122,22 +121,41 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{room.name}</div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
-                    <Users className="w-3 h-3" />
-                    <span>{room.members.length}</span>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap mt-1">
                     {!isJoined && (
-                      <span className="text-amber-500 text-[10px]">未加入</span>
+                      <span className="text-amber-500 text-[10px] mr-1">未加入</span>
                     )}
-                    {/* Worker badges */}
-                    {roomWorkers.map(w => (
-                      <div
-                        key={w.workerId}
-                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400"
-                      >
-                        <Bot className="w-2.5 h-2.5" />
-                        <span className="text-[10px]">{w.name}</span>
+                    {/* Member badges */}
+                    {room.members.slice(0, 5).map(userId => {
+                      const worker = workers.find(w => w.userId === userId);
+                      if (worker) {
+                        return (
+                          <div
+                            key={userId}
+                            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400"
+                          >
+                            <Bot className="w-2.5 h-2.5 shrink-0" />
+                            <span className="text-[10px] truncate max-w-[60px]">{worker.name}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div
+                          key={userId}
+                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-300"
+                        >
+                          <Users className="w-2.5 h-2.5 shrink-0" />
+                          <span className="text-[10px] truncate max-w-[60px]">
+                            {userId.split(':')[0].replace('@', '')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {room.members.length > 5 && (
+                      <div className="flex items-center px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">
+                        +{room.members.length - 5}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
                 {room.unreadCount > 0 && (

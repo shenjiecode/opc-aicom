@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -57,6 +57,10 @@ export default function AgentBaba() {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
   const fetchSessions = async () => {
     setLoading(true);
     try {
@@ -71,6 +75,7 @@ export default function AgentBaba() {
 
   const handleCreateSession = async (data: CreateSessionRequest) => {
     const result = await createSession(data);
+    console.log("[TEST LOG][AgentBaba] createSession:navigate", result);
     navigate(`/agentbaba/${result.session_id}`);
   };
 
@@ -87,43 +92,6 @@ export default function AgentBaba() {
         </div>
       </div>
 
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[var(--primary-900)] via-[var(--primary-800)] to-[var(--bg-default)] border-b border-[var(--border-default)]">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[var(--primary-500)] rounded-full filter blur-[100px] animate-pulse" />
-          <div className="absolute bottom-10 right-20 w-96 h-96 bg-purple-500 rounded-full filter blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-          <div className="absolute top-40 right-40 w-48 h-48 bg-cyan-500 rounded-full filter blur-[80px] animate-pulse" style={{ animationDelay: "2s" }} />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--primary-500)]/10 border border-[var(--primary-500)]/20 text-[var(--primary-400)] text-sm font-medium mb-8 backdrop-blur-sm">
-              <Sparkles className="w-4 h-4" />
-              <span>AgentBaba - 智能体工厂</span>
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[var(--text-primary)] mb-6 tracking-tight leading-tight">
-              告诉我你想要什么
-              <br />
-              <span className="text-[var(--primary-400)]">我来帮你创建</span>
-            </h1>
-
-            <p className="text-xl text-[var(--text-secondary)] mb-10 leading-relaxed max-w-2xl">
-              用自然语言描述你的需求，AgentBaba 会通过对话澄清细节，
-              自动匹配最合适的 Skill，一键创建并部署你的专属智能体。
-            </p>
-
-            <Button
-              size="lg"
-              onClick={() => setDialogOpen(true)}
-              className="bg-[var(--primary-500)] hover:bg-[var(--primary-400)] text-white text-lg px-8 py-6 shadow-2xl shadow-[var(--primary-500)]/30 transition-all duration-300 hover:scale-105"
-            >
-              <Plus className="w-5 h-5 mr-3" />
-              开始创建 Agent
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Content Area */}
       <div className="flex-1 max-w-7xl mx-auto px-6 lg:px-8 py-12 w-full">
@@ -136,11 +104,16 @@ export default function AgentBaba() {
               查看所有 Agent 创建会话和进度
             </p>
           </div>
-          <Button variant="outline" onClick={fetchSessions} disabled={loading}>
-            刷新
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={fetchSessions} disabled={loading}>
+              刷新
+            </Button>
+            <Button onClick={() => navigate('/agentbaba/create')}>
+              <Plus className="w-4 h-4 mr-2" />
+              创建 Agent
+            </Button>
+          </div>
         </div>
-
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-500)]" />

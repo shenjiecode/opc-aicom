@@ -7,7 +7,6 @@ import {
   Bot,
   Palette,
   User,
-  Workflow,
   Briefcase,
   ShoppingBag,
   ChevronLeft,
@@ -17,7 +16,6 @@ import {
   LogOut,
   Settings,
   ChevronUp,
-  Calendar,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

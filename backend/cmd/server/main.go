@@ -25,20 +25,32 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{}, &model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{}, &model.ActivityLog{}, &model.Event{}, &model.EventRegistration{}, &model.Resource{}, &model.Service{}, &model.ReviewRecord{}, &model.SystemAgentConfig{}, &model.OPC{}, &model.APIEndpoint{}, &model.APIKey{}); err != nil {
+	if err := database.AutoMigrate(db,
+		&model.User{}, &model.UserAsset{}, &model.Post{}, &model.Comment{},
+		&model.Like{}, &model.Task{}, &model.Application{}, &model.Agent{},
+		&model.ActivityLog{}, &model.Event{}, &model.EventRegistration{},
+		&model.Resource{}, &model.Service{}, &model.ReviewRecord{},
+		&model.SystemAgentConfig{}, &model.OPC{}, &model.APIEndpoint{},
+		&model.APIKey{},
+		&model.AgentBabaSession{}, &model.Skill{}, &model.MCPServer{},
+		&model.AgentInstance{},
+	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
 	// Initialize Matrix client
 	matrixClient := handler.NewMatrixClient(cfg)
 
-
 	// Initialize Gin router
 	router := gin.Default()
 
-	// CORS middleware for Matrix integration
+	// CORS middleware
 	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			origin = "http://localhost:5173"
+		}
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
@@ -47,8 +59,7 @@ if err := database.AutoMigrate(db, &model.User{}, &model.UserAsset{}, &model.Pos
 			c.AbortWithStatus(204)
 			return
 		}
-
-c.Next()
+		c.Next()
 	})
 
 	// API routes
@@ -74,7 +85,7 @@ c.Next()
 			userAuth.GET("/events", handler.GetUserEvents(db))
 		}
 
-		// Home routes (no auth required)
+		// Home routes
 		home := api.Group("/home")
 		{
 			home.POST("/stats", handler.GetStats(db))
@@ -102,13 +113,14 @@ c.Next()
 		{
 			tasks.POST("/list", handler.ListTasks(db))
 		}
-community := api.Group("/community")
-{
-community.POST("/list", handler.ListPosts(db))
+
+		community := api.Group("/community")
+		{
+			community.POST("/list", handler.ListPosts(db))
 			community.POST("/events", handler.ListEvents(db))
 			community.GET("/:id", handler.GetPost(db))
 			community.GET("/:id/comments", handler.ListComments(db))
-}
+		}
 
 		// Community routes (auth required)
 		communityAuth := api.Group("/community")
@@ -120,13 +132,12 @@ community.POST("/list", handler.ListPosts(db))
 			communityAuth.POST("/comment", handler.CommentPost(db))
 		}
 
-		// Task routes (no auth required)
+		// Task routes
 		task := api.Group("/task")
 		{
 			task.POST("/list", handler.ListTasks(db))
 		}
 
-		// Task routes (auth required)
 		taskAuth := api.Group("/task")
 		taskAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		taskAuth.Use(middleware.ActivityTracker(db))
@@ -135,7 +146,7 @@ community.POST("/list", handler.ListPosts(db))
 			taskAuth.POST("/apply", handler.ApplyTask(db))
 		}
 
-		// PRD 文档管理路由
+		// PRD routes
 		api.GET("/prds", handler.ListPRDs)
 		api.POST("/prds", handler.SavePRD)
 		api.GET("/prds/:filename", handler.GetPRD)
@@ -153,7 +164,7 @@ community.POST("/list", handler.ListPosts(db))
 			eventAuth.POST("/join", handler.JoinEvent(db))
 		}
 
-		// Matrix routes (auth required)
+		// Matrix routes
 		matrix := api.Group("/matrix")
 		matrix.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
@@ -161,7 +172,6 @@ community.POST("/list", handler.ListPosts(db))
 			matrix.POST("/login", handler.LoginMatrixUser(matrixClient))
 		}
 
-		// Matrix room routes
 		matrixRooms := api.Group("/matrix/rooms")
 		matrixRooms.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
@@ -172,54 +182,40 @@ community.POST("/list", handler.ListPosts(db))
 			matrixRooms.POST("/:room_id/invite", handler.InviteToMatrixRoom(matrixClient))
 		}
 
-		// Matrix worker routes
 		matrixWorkers := api.Group("/matrix/workers")
 		matrixWorkers.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
 			matrixWorkers.GET("", handler.ListMatrixWorkers(matrixClient))
 			matrixWorkers.POST("/:worker_id/join", handler.JoinWorkerToRoom(matrixClient))
 		}
-		// Admin login (public - no auth required)
+
+		// Admin routes
 		api.POST("/admin/login", handler.AdminLogin(db, cfg))
 
-		// Admin routes (auth + admin role required)
 		admin := api.Group("/admin")
 		admin.Use(handler.AdminAuthMiddleware(db, cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
 			admin.POST("/dashboard", handler.GetAdminDashboard(db))
-
-			// User management
 			admin.POST("/users/list", handler.GetAdminUserList(db))
 			admin.POST("/users/:id/detail", handler.GetAdminUserDetail(db))
 			admin.POST("/users/:id/ban", handler.BanUser(db))
 			admin.POST("/users/:id/unban", handler.UnbanUser(db))
 			admin.POST("/users/:id/role", handler.ChangeUserRole(db))
-
-			// Content review
 			admin.POST("/posts/review/list", handler.GetReviewPostList(db))
 			admin.POST("/posts/review/approve", handler.ApprovePost(db))
 			admin.POST("/posts/review/reject", handler.RejectPost(db))
-
 			admin.POST("/events/review/list", handler.GetReviewEventList(db))
 			admin.POST("/events/review/approve", handler.ApproveEvent(db))
-
-			// Task management
 			admin.POST("/tasks/list", handler.GetAdminTaskList(db))
 			admin.POST("/tasks/:id", handler.GetAdminTaskDetail(db))
 			admin.POST("/tasks/:id/close", handler.CloseAdminTask(db))
-
-			// Order management
 			admin.POST("/orders/list", handler.GetAdminOrderList(db))
 			admin.POST("/orders/:id", handler.GetAdminOrderDetail(db))
 			admin.POST("/orders/:id/refund", handler.RefundAdminOrder(db))
-
-			// Agent config
 			admin.GET("/agents/bit/config", handler.GetBitAgentConfig(db))
 			admin.POST("/agents/bit/config", handler.UpdateBitAgentConfig(db))
 			admin.GET("/agents/little-o/config", handler.GetLittleOAgentConfig(db))
 			admin.POST("/agents/little-o/config", handler.UpdateLittleOAgentConfig(db))
-
-			// OPC management
 			admin.POST("/opc/stats", handler.GetOPCStats(db))
 			admin.POST("/opc/list", handler.GetOPCList(db))
 			admin.POST("/opc/:id/detail", handler.GetOPCDetail(db))
@@ -227,8 +223,6 @@ community.POST("/list", handler.ListPosts(db))
 			admin.POST("/opc/:id/reject", handler.RejectOPC(db))
 			admin.POST("/opc/:id/suspend", handler.SuspendOPC(db))
 			admin.POST("/opc/:id/quota", handler.UpdateOPCQuota(db))
-
-			// API Gateway
 			admin.POST("/api/stats", handler.GetAPIStats(db))
 			admin.POST("/api/list", handler.GetAPIList(db))
 			admin.POST("/api/create", handler.CreateAPIEndpoint(db))
@@ -237,6 +231,64 @@ community.POST("/list", handler.ListPosts(db))
 			admin.POST("/api/keys/list", handler.GetAPIKeyList(db))
 			admin.POST("/api/keys/create", handler.CreateAPIKey(db))
 			admin.POST("/api/keys/:id/revoke", handler.RevokeAPIKey(db))
+		}
+
+		// AgentBaba routes (auth required)
+		agentbabaAuth := api.Group("/agentbaba")
+		agentbabaAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			agentbabaHandler := handler.NewAgentBabaHandler(db)
+			agentbabaAuth.POST("/session/create", agentbabaHandler.CreateSession)
+			agentbabaAuth.GET("/session/:id", agentbabaHandler.GetSession)
+			agentbabaAuth.POST("/session/:id/clarify", agentbabaHandler.StartClarification)
+			agentbabaAuth.POST("/session/:id/answer", agentbabaHandler.AnswerQuestion)
+			agentbabaAuth.POST("/session/:id/match-skills", agentbabaHandler.MatchSkills)
+			agentbabaAuth.POST("/session/:id/select-skills", agentbabaHandler.SelectSkills)
+			agentbabaAuth.POST("/session/:id/generate-config", agentbabaHandler.GenerateConfig)
+			agentbabaAuth.POST("/session/:id/build", agentbabaHandler.BuildAgent)
+			agentbabaAuth.POST("/session/:id/test", agentbabaHandler.TestAgent)
+			agentbabaAuth.POST("/session/:id/deploy", agentbabaHandler.DeployAgent)
+			agentbabaAuth.GET("/sessions", agentbabaHandler.ListSessions)
+		}
+
+		// Skill routes
+		skillHandler := handler.NewSkillHandler(db)
+		skills := api.Group("/skills")
+		{
+			skills.GET("", skillHandler.List)
+			skills.GET("/:id", skillHandler.GetDetail)
+			skills.POST("/sync", skillHandler.SyncMCP)
+		}
+
+		// MCP routes
+		mcpHandler := handler.NewMCPHandler(db)
+		mcp := api.Group("/mcp")
+		{
+			mcp.GET("/servers", mcpHandler.ListServers)
+			mcp.POST("/servers", mcpHandler.InstallServer)
+			mcp.DELETE("/servers/:name", mcpHandler.UninstallServer)
+			mcp.POST("/servers/:name/start", mcpHandler.StartServer)
+			mcp.POST("/servers/:name/stop", mcpHandler.StopServer)
+			mcp.GET("/servers/:name/tools", mcpHandler.ListTools)
+			mcp.POST("/servers/:name/tools/:tool/call", mcpHandler.CallTool)
+		}
+
+		// Agent instance routes
+		instanceHandler := handler.NewAgentInstanceHandler(db)
+		chatHandler := handler.NewAgentChatHandler(db)
+		agentInstances := api.Group("/agent-instances")
+		agentInstances.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			agentInstances.GET("", instanceHandler.List)
+			agentInstances.GET("/:id", instanceHandler.GetDetail)
+			agentInstances.POST("/:id/start", instanceHandler.Start)
+			agentInstances.POST("/:id/stop", instanceHandler.Stop)
+			agentInstances.DELETE("/:id", instanceHandler.Delete)
+			agentInstances.POST("/:id/run", instanceHandler.Run)
+			agentInstances.GET("/:id/logs", instanceHandler.GetLogs)
+			agentInstances.GET("/:id/chat/config", chatHandler.GetConfig)
+			agentInstances.POST("/:id/chat", chatHandler.Chat)
+			agentInstances.PUT("/:id/config", chatHandler.UpdateConfig)
 		}
 	}
 

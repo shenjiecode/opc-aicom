@@ -32,6 +32,7 @@ import AgentSettings from "./pages/admin/AgentSettings";
 import OPCManagement from "./pages/admin/OPCManagement";
 import APIGateway from "./pages/admin/APIGateway";
 import AgentBaba from "./pages/agentbaba";
+import CreateAgentPage from "./pages/agentbaba/CreateAgent";
 import ClarificationPage from "./pages/agentbaba/Clarification";
 import SkillMatchPage from "./pages/agentbaba/SkillMatch";
 import ConfigPreviewPage from "./pages/agentbaba/ConfigPreview";
@@ -74,8 +75,12 @@ function App() {
               <Route path="/aibit" element={<AiBit />} />
               <Route path="/event/:id" element={<EventDetail />} />
               <Route path="/post/:id" element={<PostDetail />} />
-
-              {/* Protected pages - require authentication */}
+              <Route path="/agentbaba" element={<AgentBaba />} />
+              <Route path="/agentbaba/create" element={<CreateAgentPage />} />
+              <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
+              <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
+              <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />
+              <Route path="/agentbaba/:sessionId/build" element={<BuildProgressPage />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/my-opc" element={<MyOPC />} />
                 <Route path="/my-agents" element={<MyAgents />} />
@@ -83,11 +88,6 @@ function App() {
                 <Route path="/points-mall" element={<PointsMall />} />
                 <Route path="/event/create" element={<CreateEvent />} />
                 <Route path="/post/create" element={<CreatePost />} />
-                <Route path="/agentbaba" element={<AgentBaba />} />
-                <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
-                <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
-                <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />
-                <Route path="/agentbaba/:sessionId/build" element={<BuildProgressPage />} />
                 <Route path="/agent/chat/:id" element={<AgentChatPage />} />
             </Route>
             </Route>

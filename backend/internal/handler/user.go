@@ -140,6 +140,8 @@ func setAuthCookie(c *gin.Context, token string, cfg *config.Config) {
 		cfg.JWT.Cookie.Secure,
 		cfg.JWT.Cookie.HttpOnly,
 	)
+	// Note: Gin's SetCookie doesn't support SameSite directly, but modern browsers
+	// default to SameSite=Lax, so we don't need to add it explicitly for localhost
 }
 
 // clearAuthCookie clears the authentication cookie
