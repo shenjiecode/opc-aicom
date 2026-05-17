@@ -20,7 +20,6 @@ import AiBit from './pages/AiBit';
 import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import EventShare from './pages/EventShare';
-import MyEvents from './pages/MyEvents';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -32,6 +31,12 @@ import OrderManagement from "./pages/admin/OrderManagement";
 import AgentSettings from "./pages/admin/AgentSettings";
 import OPCManagement from "./pages/admin/OPCManagement";
 import APIGateway from "./pages/admin/APIGateway";
+import AgentBaba from "./pages/agentbaba";
+import ClarificationPage from "./pages/agentbaba/Clarification";
+import SkillMatchPage from "./pages/agentbaba/SkillMatch";
+import ConfigPreviewPage from "./pages/agentbaba/ConfigPreview";
+import BuildProgressPage from "./pages/agentbaba/BuildProgress";
+import AgentChatPage from "./pages/agentbaba/AgentChat";
 
 function App() {
   return (
@@ -76,10 +81,15 @@ function App() {
                 <Route path="/my-agents" element={<MyAgents />} />
                 <Route path="/my-workflows" element={<MyWorkflows />} />
                 <Route path="/points-mall" element={<PointsMall />} />
-                <Route path="/my-events" element={<MyEvents />} />
                 <Route path="/event/create" element={<CreateEvent />} />
                 <Route path="/post/create" element={<CreatePost />} />
-              </Route>
+                <Route path="/agentbaba" element={<AgentBaba />} />
+                <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
+                <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
+                <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />
+                <Route path="/agentbaba/:sessionId/build" element={<BuildProgressPage />} />
+                <Route path="/agent/chat/:id" element={<AgentChatPage />} />
+            </Route>
             </Route>
           </Routes>
         </AuthProvider>

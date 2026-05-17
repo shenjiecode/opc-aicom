@@ -98,12 +98,6 @@ const navigationGroups: NavGroup[] = [
         label: "OPC工作台",
       },
       {
-        id: "my-events",
-        path: "/my-events",
-        icon: Calendar,
-        label: "我的活动",
-      },
-      {
         id: "points-mall",
         path: "/points-mall",
         icon: ShoppingBag,
