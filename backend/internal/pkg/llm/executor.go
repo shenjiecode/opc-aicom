@@ -21,16 +21,12 @@ func (e *AgentExecutor) Execute(
 	input string,
 	mcpTools []model.MCPTool,
 ) (string, error) {
-	provider, err := e.registry.GetDefault("chat")
-	if err != nil {
-		return "", err
-	}
+	provider := e.getProviderForConfig(config)
 
 	messages := []Message{
 		{Role: "system", Content: config.SystemPrompt},
 		{Role: "user", Content: input},
 	}
-
 	tools := []Tool{}
 	for _, mcpTool := range mcpTools {
 		tools = append(tools, Tool{
@@ -70,10 +66,7 @@ func (e *AgentExecutor) ExecuteWithMemory(
 	history []Message,
 	mcpTools []model.MCPTool,
 ) (string, []Message, error) {
-	provider, err := e.registry.GetDefault("chat")
-	if err != nil {
-		return "", history, err
-	}
+	provider := e.getProviderForConfig(config)
 
 	messages := []Message{}
 	if config.SystemPrompt != "" {
@@ -166,4 +159,29 @@ func SerializeHistoryToJSON(messages []Message) string {
 	}
 	data, _ := json.Marshal(messages)
 	return string(data)
+}
+
+// getProviderForConfig returns an LLM provider based on agent config.
+// If config has BaseURL and APIKey, creates a dynamic OpenAI-compatible provider.
+// Otherwise, falls back to registry default provider.
+func (e *AgentExecutor) getProviderForConfig(config *model.AgentConfig) LLMProvider {
+	// If agent has custom BaseURL, create a dynamic provider
+	if config.BaseURL != "" && config.APIKey != "" {
+		return NewOpenAIProvider(LLMConfig{
+			BaseURL: config.BaseURL,
+			APIKey:  config.APIKey,
+			Model:   config.Model,
+		})
+	}
+
+	// Fallback to registry default
+	provider, err := e.registry.GetDefault("chat")
+	if err != nil {
+		// Return a default OpenAI provider if registry has no default
+		return NewOpenAIProvider(LLMConfig{
+			BaseURL: "https://api.openai.com/v1",
+			Model:   config.Model,
+		})
+	}
+	return provider
 }

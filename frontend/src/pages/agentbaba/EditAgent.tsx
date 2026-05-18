@@ -40,6 +40,7 @@ import {
   updateSession,
   buildAgent,
 } from "@/lib/api/agentbaba";
+import { apiFetch } from "@/lib/api";
 import type { AgentConfig } from "@/types/agentbaba";
 
 interface EditFormConfig {
@@ -51,6 +52,8 @@ interface EditFormConfig {
   systemPrompt: string;
   memoryEnabled: boolean;
   agentType: string;
+  baseUrl: string;
+  apiKey: string;
 }
 
 const modelOptions = [
@@ -79,6 +82,8 @@ const defaultConfig: EditFormConfig = {
   systemPrompt: "",
   memoryEnabled: true,
   agentType: "assistant",
+  baseUrl: "",
+  apiKey: "",
 };
 
 export default function EditAgentPage() {
@@ -88,7 +93,7 @@ export default function EditAgentPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<EditFormConfig>(defaultConfig);
-
+  const [agentInstanceId, setAgentInstanceId] = useState<number | null>(null);
   useEffect(() => {
     if (!sessionId) {
       setError("缺少 sessionId 参数");
@@ -122,6 +127,8 @@ export default function EditAgentPage() {
               systemPrompt: parsed.system_prompt || "",
               memoryEnabled: parsed.memory?.enable_summary ?? true,
               agentType: parsed.planner?.type || "assistant",
+              baseUrl: parsed.base_url || "",
+              apiKey: parsed.api_key || "",
             };
           } catch {
             // agent_config_json parse failed, use session-level fields
@@ -129,6 +136,7 @@ export default function EditAgentPage() {
         }
 
         setConfig(formConfig);
+        setAgentInstanceId(session.agent_instance_id);
         setError(null);
       } catch (err) {
         if (!cancelled) {
@@ -155,6 +163,8 @@ export default function EditAgentPage() {
       system_prompt: config.systemPrompt,
       temperature: config.temperature,
       max_tokens: config.maxTokens,
+      base_url: config.baseUrl,
+      api_key: config.apiKey,
       skills: [],
       mcp_servers: [],
       memory: {
@@ -462,6 +472,35 @@ export default function EditAgentPage() {
                     />
                   </div>
 
+                  {/* LLM Provider 配置 */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-700">
+                      API Gateway URL (可选)
+                    </Label>
+                    <Input
+                      placeholder="https://api.openai-proxy.org/v1"
+                      value={config.baseUrl}
+                      onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
+                      className="text-sm border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                    />
+                    <p className="text-[10px] text-slate-500">使用代理网关转发 LLM 请求</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-700">
+                      API Key (可选)
+                    </Label>
+                    <Input
+                      type="password"
+                      placeholder="sk-..."
+                      value={config.apiKey}
+                      onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                      className="text-sm border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                    />
+                    <p className="text-[10px] text-slate-500">Per-agent API Key，留空使用全局环境变量</p>
+                  </div>
+
+
                   <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center shadow-sm">
@@ -508,7 +547,7 @@ export default function EditAgentPage() {
 
           {/* Right: Chat Test Panel (2/3) */}
           <div className="flex-1 bg-slate-50/50 overflow-hidden flex flex-col">
-            <ChatTestPanel agentName={config.name} systemPrompt={config.systemPrompt} />
+            <ChatTestPanel agentName={config.name} systemPrompt={config.systemPrompt} agentInstanceId={agentInstanceId} />
           </div>
         </div>
       </div>
@@ -529,9 +568,10 @@ interface Message {
 interface ChatTestPanelProps {
   agentName: string;
   systemPrompt: string;
+  agentInstanceId: number | null;
 }
 
-function ChatTestPanel({ agentName, systemPrompt }: ChatTestPanelProps) {
+function ChatTestPanel({ agentName, systemPrompt: _systemPrompt, agentInstanceId }: ChatTestPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -580,29 +620,47 @@ function ChatTestPanel({ agentName, systemPrompt }: ChatTestPanelProps) {
     setInputValue('');
     setIsLoading(true);
 
-    // Mock response for now
-    setTimeout(() => {
-      const mockResponses = [
-        '这是一个很有趣的问题！让我来帮你分析一下...',
-        '我理解了你的需求。根据我的分析，建议你可以考虑以下几种方案...',
-        '好的，我来为你详细解答这个问题。',
-        '这是一个非常好的想法！让我帮你完善一下。',
-        systemPrompt
-          ? '基于你设置的系统提示词，我会按照你的要求来回答。'
-          : '我收到了你的消息，正在为你处理中...',
-      ];
-      const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+    try {
+      // 如果有 agentInstanceId，调用真实 API
+      if (agentInstanceId) {
+        const result = await apiFetch<{ response: string; model: string }>(
+          `/agent-instances/${agentInstanceId}/chat`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ message: userMessage.content }),
+          },
+          60000 // 60 秒超时，LLM 可能需要较长响应时间
+        );
 
-      const assistantMessage: Message = {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: result.response,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        // 如果没有 agent instance，显示提示
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: '请先保存并构建 Agent 后再进行对话测试。',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: randomResponse + '\n\n(这是一个模拟回复，实际使用时将连接到真实的 AI 服务)',
+        content: '抱歉，发生了错误。请检查您的 API 配置或网络连接。',
         timestamp: new Date(),
       };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000 + Math.random() * 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

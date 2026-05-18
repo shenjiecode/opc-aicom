@@ -29,6 +29,7 @@ import {
   Brain,
   Settings2,
   MessageSquare,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createSession, generateConfig, buildAgent } from "@/lib/api/agentbaba";
@@ -42,6 +43,8 @@ interface AgentConfig {
   systemPrompt: string;
   memoryEnabled: boolean;
   agentType: string;
+  baseUrl: string; // API Gateway URL
+  apiKey: string;  // Optional API Key
 }
 
 const modelOptions = [
@@ -75,6 +78,8 @@ export default function CreateAgentPage() {
     systemPrompt: "",
     memoryEnabled: true,
     agentType: "assistant",
+    baseUrl: "https://api.openai-proxy.org/v1",
+    apiKey: "",
   });
 
   const handleCreate = async () => {
@@ -128,7 +133,7 @@ export default function CreateAgentPage() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/agentbaba")}
-            className="text-slate-500 hover:text-slate-700"
+            className="text-slate-500 hover:text-slate-700 dark:text-slate-200"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -163,7 +168,7 @@ export default function CreateAgentPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+                  <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     智能体名称 <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -171,11 +176,11 @@ export default function CreateAgentPage() {
                     placeholder="例如：代码小助手"
                     value={config.name}
                     onChange={(e) => setConfig({ ...config, name: e.target.value })}
-                    className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                    className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 text-slate-900 dark:text-slate-100 dark:bg-slate-800"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-sm font-medium text-slate-700">
+                  <Label htmlFor="type" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     智能体类型
                   </Label>
                   <Select
@@ -199,7 +204,7 @@ export default function CreateAgentPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   功能描述 <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
@@ -207,8 +212,56 @@ export default function CreateAgentPage() {
                   placeholder="描述这个智能体的主要功能和用途..."
                   value={config.description}
                   onChange={(e) => setConfig({ ...config, description: e.target.value })}
-                  className="min-h-[80px] border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                  className="min-h-[80px] border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 text-slate-900 dark:text-slate-100 dark:bg-slate-800"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* API Gateway 配置 */}
+          <Card className="border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-medium">API Gateway</CardTitle>
+                  <CardDescription className="text-sm">配置 LLM API 网关地址</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="baseUrl" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  API Gateway URL
+                </Label>
+                <Input
+                  id="baseUrl"
+                  placeholder="https://api.openai-proxy.org/v1"
+                  value={config.baseUrl}
+                  onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
+                  className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 text-slate-900 dark:text-slate-100 dark:bg-slate-800"
+                />
+                <p className="text-xs text-slate-500">
+                  支持 OpenAI-compatible API，如 AIGateway、OpenAI Proxy 等
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apiKey" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  API Key (可选)
+                </Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  placeholder="留空则使用系统默认配置"
+                  value={config.apiKey}
+                  onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                  className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 text-slate-900 dark:text-slate-100 dark:bg-slate-800"
+                />
+                <p className="text-xs text-slate-500">
+                  如果网关需要独立的 API Key，在此填写
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -229,7 +282,7 @@ export default function CreateAgentPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-700">语言模型</Label>
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">语言模型</Label>
                   <Select
                     value={config.model}
                     onValueChange={(v) => setConfig({ ...config, model: v })}
@@ -250,7 +303,7 @@ export default function CreateAgentPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-700">
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     最大输出长度: {config.maxTokens}
                   </Label>
                   <Slider
@@ -270,7 +323,7 @@ export default function CreateAgentPage() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-slate-700">
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     温度 (创造性): {config.temperature.toFixed(1)}
                   </Label>
                   <span className="text-xs text-slate-500">
@@ -309,7 +362,7 @@ export default function CreateAgentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="systemPrompt" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="systemPrompt" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   系统提示词 (可选)
                 </Label>
                 <Textarea
@@ -317,17 +370,17 @@ export default function CreateAgentPage() {
                   placeholder="定义智能体的角色、行为和回答风格..."
                   value={config.systemPrompt}
                   onChange={(e) => setConfig({ ...config, systemPrompt: e.target.value })}
-                  className="min-h-[100px] border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 font-mono text-sm"
+                  className="min-h-[100px] border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 text-slate-900 dark:text-slate-100 dark:bg-slate-800 font-mono text-sm"
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 flex items-center justify-center">
                     <Brain className="w-5 h-5 text-indigo-500" />
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-slate-700">启用记忆功能</Label>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">启用记忆功能</Label>
                     <p className="text-xs text-slate-500">记住历史对话上下文</p>
                   </div>
                 </div>

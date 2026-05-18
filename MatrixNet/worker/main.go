@@ -185,22 +185,32 @@ func loadConfig(cfg *Config) error {
 func acquirePIDLock(cfg *Config) error {
 	pidPath := filepath.Join(cfg.PIDDir, fmt.Sprintf("%s.pid", cfg.WorkerID))
 
+	currentPID := os.Getpid()
+
 	// Check if process already running
 	if data, err := os.ReadFile(pidPath); err == nil {
 		pidStr := strings.TrimSpace(string(data))
 		pid, err := strconv.Atoi(pidStr)
 		if err == nil && pid > 0 {
-			// Check if process exists
-			process, err := os.FindProcess(pid)
-			if err == nil {
-				// Signal(0) checks if process is alive without killing it
-				if process.Signal(syscall.Signal(0)) == nil {
-					return fmt.Errorf("worker %s already running (PID: %d)", cfg.WorkerID, pid)
+			// If PID matches our own, it's a stale file from container restart
+			if pid == currentPID {
+				fmt.Printf("[INFO] Stale PID file found with own PID %d (container restart), removing...\n", pid)
+				os.Remove(pidPath)
+			} else {
+				// Check if another process exists
+				process, err := os.FindProcess(pid)
+				if err == nil {
+					// Signal(0) checks if process is alive without killing it
+					if process.Signal(syscall.Signal(0)) == nil {
+						return fmt.Errorf("worker %s already running (PID: %d)", cfg.WorkerID, pid)
+					}
 				}
+				fmt.Printf("[INFO] Stale PID file found (PID %d no longer running), removing...\n", pid)
+				os.Remove(pidPath)
 			}
-			fmt.Printf("[INFO] Stale PID file found (PID %d no longer running), removing...\n", pid)
+		} else {
+			os.Remove(pidPath)
 		}
-		os.Remove(pidPath)
 	}
 
 	// Create PID file

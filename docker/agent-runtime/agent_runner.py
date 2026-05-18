@@ -18,7 +18,22 @@ AGENT_TEMPERATURE = float(os.getenv("AGENT_TEMPERATURE", "0.7"))
 AGENT_MAX_TOKENS = int(os.getenv("AGENT_MAX_TOKENS", "4096"))
 AGENT_SYSTEM_PROMPT = os.getenv("AGENT_SYSTEM_PROMPT", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+# Support per-agent base_url and api_key from AGENT_CONFIG or AGENT_BASE_URL
+AGENT_BASE_URL = os.getenv("AGENT_BASE_URL", "")
+agent_config_json = os.getenv("AGENT_CONFIG", "")
+if agent_config_json:
+    try:
+        config = json.loads(agent_config_json)
+        if not AGENT_BASE_URL:
+            AGENT_BASE_URL = config.get("base_url", "")
+        if not OPENAI_API_KEY:
+            OPENAI_API_KEY = config.get("api_key", "")
+    except json.JSONDecodeError:
+        pass
+if not AGENT_BASE_URL:
+    AGENT_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_BASE_URL = AGENT_BASE_URL
+OPENAI_API_KEY = OPENAI_API_KEY
 
 class ChatRequest(BaseModel):
     message: str
@@ -69,7 +84,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     }
     
     async with httpx.AsyncClient(timeout=60.0) as client:
-		response = await client.post(
+        response = await client.post(
             f"{OPENAI_BASE_URL}/chat/completions",
             headers=headers,
             json=payload,

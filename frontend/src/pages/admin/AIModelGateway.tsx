@@ -582,7 +582,7 @@ export default function AIModelGateway() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8"
+                          className="h-8 text-slate-600 hover:text-slate-900"
                           onClick={() => openEditChannelDialog(channel)}
                         >
                           <Edit className="w-4 h-4" />
@@ -684,7 +684,7 @@ export default function AIModelGateway() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8"
+                          className="h-8 text-slate-600 hover:text-slate-900"
                           onClick={() => openEditModelDialog(model)}
                         >
                           <Edit className="w-4 h-4" />

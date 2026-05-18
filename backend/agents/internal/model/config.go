@@ -9,6 +9,10 @@ type AgentConfig struct {
 	Temperature  float64                `json:"temperature"`
 	MaxTokens    int                    `json:"max_tokens"`
 
+	// LLM Provider 配置 (per-agent)
+	BaseURL string `json:"base_url"` // API gateway URL, e.g. "https://api.openai-proxy.org/v1"
+	APIKey  string `json:"api_key"`  // Optional, can use global env var if empty
+
 	Skills     []SkillConfig     `json:"skills"`
 	MCPServers []MCPServerConfig `json:"mcp_servers"`
 

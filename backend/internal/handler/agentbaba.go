@@ -108,11 +108,31 @@ func (h *AgentBabaHandler) GetSession(c *gin.Context) {
 		6: "测试验证",
 	}
 
+	// 转换 session 为响应格式，正确处理 sql.NullInt64
+	var agentInstanceID *int64
+	if session.AgentInstanceID.Valid {
+		agentInstanceID = &session.AgentInstanceID.Int64
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"session":                 session,
+			"session": gin.H{
+				"id":                  session.ID,
+				"user_id":             session.UserID,
+				"title":               session.Title,
+				"description":         session.Description,
+				"status":              session.Status,
+				"current_step":        session.CurrentStep,
+				"clarification_json":  session.ClarificationJSON,
+				"answers_json":        session.AnswersJSON,
+				"matched_skills_json": session.MatchedSkillsJSON,
+				"agent_config_json":   session.AgentConfigJSON,
+				"agent_instance_id":   agentInstanceID,
+				"created_at":          session.CreatedAt,
+				"updated_at":          session.UpdatedAt,
+			},
 			"current_step_description": stepDescriptions[session.CurrentStep],
 		},
 	})

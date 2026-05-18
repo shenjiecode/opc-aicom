@@ -34,6 +34,7 @@ interface AgentConfig {
   temperature: number;
   max_tokens: number;
   system_prompt: string;
+  base_url?: string;
 }
 
 export default function AgentChatPage() {
@@ -89,7 +90,8 @@ export default function AgentChatPage() {
         {
           method: "POST",
           body: JSON.stringify({ message: input }),
-        }
+        },
+        60000 // 60 秒超时
       );
 
       const assistantMessage: Message = {
@@ -210,7 +212,7 @@ export default function AgentChatPage() {
                         handleUpdateConfig({ model: e.target.value })
                       }
                       placeholder="gpt-4-turbo"
-                      className="bg-[var(--bg-default)] border-[var(--border-default)]"
+                      className="bg-[var(--bg-default)] border-[var(--border-default)] text-[var(--text-primary)]"
                     />
                   </div>
                   <div>
@@ -226,7 +228,7 @@ export default function AgentChatPage() {
                           temperature: parseFloat(e.target.value),
                         })
                       }
-                      className="bg-[var(--bg-default)] border-[var(--border-default)]"
+                      className="bg-[var(--bg-default)] border-[var(--border-default)] text-[var(--text-primary)]"
                     />
                   </div>
                   <div>
@@ -241,13 +243,27 @@ export default function AgentChatPage() {
                           max_tokens: parseInt(e.target.value),
                         })
                       }
-                      className="bg-[var(--bg-default)] border-[var(--border-default)]"
+                      className="bg-[var(--bg-default)] border-[var(--border-default)] text-[var(--text-primary)]"
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-[var(--text-muted)] mb-1 block">
+                    API Gateway URL
+                  </label>
+                  <Input
+                    value={config?.base_url || ""}
+                    onChange={(e) =>
+                      handleUpdateConfig({ base_url: e.target.value })
+                    }
+                    placeholder="https://api.openai-proxy.org/v1"
+                    className="bg-[var(--bg-default)] border-[var(--border-default)] text-[var(--text-primary)]"
+                  />
+                </div>
                 <p className="text-xs text-[var(--text-muted)]">
-                  提示：API Key 和 URL 需要在后端环境变量中配置 (OPENAI_API_KEY, OPENAI_BASE_URL)
+                  API Gateway 用于代理 LLM 请求，如使用 AIGateway 或 OpenAI Proxy
                 </p>
+
               </CardContent>
             </Card>
           </div>
@@ -331,7 +347,8 @@ export default function AgentChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="输入消息..."
             disabled={loading}
-            className="bg-[var(--bg-muted)] border-[var(--border-default)] flex-1"
+            autoFocus
+            className="bg-white border-slate-300 text-slate-800 placeholder:text-slate-500 flex-1"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

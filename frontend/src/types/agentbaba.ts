@@ -22,6 +22,9 @@ export interface AgentConfig {
   system_prompt: string;
   temperature: number;
   max_tokens: number;
+  // LLM Provider 配置 (per-agent)
+  base_url?: string; // API gateway URL, e.g. "https://api.openai-proxy.org/v1"
+  api_key?: string;  // Optional, can use global env var if empty
   skills: SkillConfig[];
   mcp_servers: MCPServerConfig[];
   memory: MemoryConfig;

@@ -169,7 +169,12 @@ func (h *AgentChatHandler) UpdateConfig(c *gin.Context) {
 	if req.MaxTokens > 0 {
 		config.MaxTokens = req.MaxTokens
 	}
-
+	if req.ApiKey != "" {
+		config.APIKey = req.ApiKey
+	}
+	if req.ApiUrl != "" {
+		config.BaseURL = req.ApiUrl
+	}
 	configJSON, _ := json.Marshal(config)
 	instance.ConfigJSON = string(configJSON)
 	_ = h.instanceRepo.Update(instance)
