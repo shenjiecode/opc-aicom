@@ -22,9 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  createSession,
   listSessions,
-  type CreateSessionRequest,
 } from "@/lib/api/agentbaba";
 import type { AgentBabaSession, SessionStatus } from "@/types/agentbaba";
 import { CreateSessionDialog } from "@/components/agentbaba/CreateSessionDialog";
@@ -71,12 +69,6 @@ export default function AgentBaba() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCreateSession = async (data: CreateSessionRequest) => {
-    const result = await createSession(data);
-    console.log("[TEST LOG][AgentBaba] createSession:navigate", result);
-    navigate(`/agentbaba/${result.session_id}`);
   };
 
   return (
@@ -196,7 +188,6 @@ export default function AgentBaba() {
       <CreateSessionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSubmit={handleCreateSession}
       />
     </div>
   );

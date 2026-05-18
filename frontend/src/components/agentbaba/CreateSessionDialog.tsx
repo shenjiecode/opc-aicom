@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -9,35 +10,34 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Sparkles, Send } from "lucide-react";
-import type { CreateSessionRequest } from "@/lib/api/agentbaba";
+
+const AIBIT_PENDING_KEY = "aibit_pending_message";
 
 interface CreateSessionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CreateSessionRequest) => void;
 }
 
 export function CreateSessionDialog({
   open,
   onOpenChange,
-  onSubmit,
 }: CreateSessionDialogProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const navigate = useNavigate();
+  const [requirement, setRequirement] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !description.trim()) return;
+    if (!requirement.trim()) return;
 
     setLoading(true);
     try {
-      onSubmit({ title, description });
-      setTitle("");
-      setDescription("");
+      const text = requirement.trim();
+      console.log("[TEST LOG][AgentBaba] Saving requirement and navigating to AiBit", { text });
+      localStorage.setItem(AIBIT_PENDING_KEY, text);
+      setRequirement("");
       onOpenChange(false);
+      navigate("/aibit");
     } finally {
       setLoading(false);
     }
@@ -53,10 +53,10 @@ export function CreateSessionDialog({
             </div>
             <div>
               <DialogTitle className="text-xl text-[var(--text-primary)]">
-                创建新 Agent
+                AgentBaba - 智能体工厂
               </DialogTitle>
               <DialogDescription className="text-[var(--text-secondary)]">
-                描述你想要的 Agent 功能，我会帮你一步步完成创建
+                告诉我你想要什么，我来帮你创建
               </DialogDescription>
             </div>
           </div>
@@ -64,32 +64,21 @@ export function CreateSessionDialog({
 
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-[var(--text-primary)]">
-              Agent 名称
-            </Label>
-            <Input
-              id="title"
-              placeholder="例如：智能客服助手"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="bg-[var(--bg-muted)] border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-[var(--text-primary)]">
-              功能描述
-            </Label>
+            <label className="text-[var(--text-primary)] font-medium flex items-center gap-2 text-base">
+              <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-gradient-to-r from-[var(--primary-500)] to-purple-500 text-white text-sm font-bold">
+                AI比特：
+              </span>
+              请描述你的需求
+            </label>
             <Textarea
-              id="description"
-              placeholder="请详细描述你希望这个 Agent 能做什么...&#10;&#10;例如：帮助用户查询订单状态、处理退款申请、回答常见问题。需要能够连接数据库查询订单信息，并通过邮件通知用户处理结果。"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              placeholder="你有什么需求"
+              value={requirement}
+              onChange={(e) => setRequirement(e.target.value)}
               rows={6}
               className="bg-[var(--bg-muted)] border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none"
             />
             <p className="text-xs text-[var(--text-muted)]">
-              描述越详细，生成的 Agent 越符合你的需求
+              描述越详细，生成的智能体越符合你的需求。AI比特会通过对话帮你澄清细节。
             </p>
           </div>
         </div>
@@ -105,11 +94,11 @@ export function CreateSessionDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!title.trim() || !description.trim() || loading}
+            disabled={!requirement.trim() || loading}
             className="bg-[var(--primary-500)] hover:bg-[var(--primary-400)]"
           >
             <Send className="w-4 h-4 mr-2" />
-            {loading ? "创建中..." : "开始创建"}
+            {loading ? "处理中..." : "让AI比特处理"}
           </Button>
         </DialogFooter>
       </DialogContent>

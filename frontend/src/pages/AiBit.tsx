@@ -17,6 +17,7 @@ interface LogEntry {
 
 const LOG_STORAGE_KEY = 'aibit_debug_logs';
 const MAX_LOG_ENTRIES = 500;
+const AIBIT_PENDING_KEY = 'aibit_pending_message';
 
 const logger = {
   logs: [] as LogEntry[],
@@ -466,13 +467,20 @@ const AiBit: React.FC = () => {
     logger.log('SESSION', '开始初始化会话');
     addUILog('🚀 开始初始化会话...');
     
+    const pendingMessage = localStorage.getItem(AIBIT_PENDING_KEY);
+    if (pendingMessage) {
+      logger.log('SESSION', '检测到来自 AgentBaba 的待发送消息', { pendingMessage });
+      addUILog(`📝 检测到待处理需求: "${pendingMessage.substring(0, 30)}..."`);
+      // 强制清除本地会话，创建新会话
+      localStorage.removeItem('opencode_bit_session_id');
+    }
+    
     const initSession = async () => {
       try {
-        // 检查本地存储的 sessionId
         const storedSessionId = localStorage.getItem('opencode_bit_session_id');
-        logger.log('SESSION', '检查本地存储', { storedSessionId });
         
-        if (storedSessionId) {
+        // 如果有 pendingMessage，跳过使用旧会话
+        if (!pendingMessage && storedSessionId) {
           logger.log('SESSION', '使用本地存储的 sessionId', { sessionId: storedSessionId });
           addUILog(`✅ 使用本地会话: ${storedSessionId.substring(0, 12)}...`);
           setSessionId(storedSessionId);
@@ -490,7 +498,7 @@ const AiBit: React.FC = () => {
           sessions: res.data?.map((s: any) => ({ id: s.id, title: s.title }))
         });
         
-        if (res.data && Array.isArray(res.data)) {
+        if (!pendingMessage && res.data && Array.isArray(res.data)) {
           const existingSession = res.data.find((s: {id: string, title: string}) => s.title === 'bit-chat');
           
           if (existingSession && existingSession.id) {
@@ -515,19 +523,34 @@ const AiBit: React.FC = () => {
         addUILog(`✅ 新会话创建成功: ${createRes.data?.id?.substring(0, 12)}...`);
         
         if (createRes.data && createRes.data.id) {
-          setSessionId(createRes.data.id);
-          localStorage.setItem('opencode_bit_session_id', createRes.data.id);
+          const newId = createRes.data.id;
+          setSessionId(newId);
+          localStorage.setItem('opencode_bit_session_id', newId);
         }
       } catch (error) {
         logger.error('SESSION', '初始化会话失败', error);
         addUILog(`❌ 会话初始化失败: ${String(error)}`);
-        // Fallback
         setSessionId('bit-chat');
       }
     };
     
     initSession();
   }, []);
+
+  // Phase 1.5: 处理来自 AgentBaba 的待发送消息
+  // ============================================
+  useEffect(() => {
+    const pendingMessage = localStorage.getItem(AIBIT_PENDING_KEY);
+    if (pendingMessage && sessionId) {
+      logger.log('SESSION', '发送来自 AgentBaba 的待处理需求', { pendingMessage, sessionId });
+      addUILog(`📤 发送来自 AgentBaba 的需求: "${pendingMessage.substring(0, 30)}..."`);
+      localStorage.removeItem(AIBIT_PENDING_KEY);
+      // 使用 setTimeout 确保消息组件已渲染
+      setTimeout(() => {
+        handleSend(pendingMessage);
+      }, 500);
+    }
+  }, [sessionId]);
 
   // ============================================
   // Phase 2: 健康检查 + 加载历史消息
