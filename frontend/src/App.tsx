@@ -30,7 +30,7 @@ import TaskManagement from "./pages/admin/TaskManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 import AgentSettings from "./pages/admin/AgentSettings";
 import OPCManagement from "./pages/admin/OPCManagement";
-import APIGateway from "./pages/admin/APIGateway";
+import AIModelGateway from "./pages/admin/AIModelGateway";
 import AgentBaba from "./pages/agentbaba";
 import CreateAgentPage from "./pages/agentbaba/CreateAgent";
 import ClarificationPage from "./pages/agentbaba/Clarification";
@@ -59,12 +59,11 @@ function App() {
 			  <Route path="users" element={<UserManagement />} />
 			  <Route path="review" element={<ContentReview />} />
 			  <Route path="tasks" element={<TaskManagement />} />
-			  <Route path="orders" element={<OrderManagement />} />
-			  <Route path="agents" element={<AgentSettings />} />
+				<Route path="orders" element={<OrderManagement />} />
+				<Route path="agents" element={<AgentSettings />} />
 			  <Route path="opc" element={<OPCManagement />} />
-			  <Route path="api-gateway" element={<APIGateway />} />
+			  <Route path="api-gateway" element={<AIModelGateway />} />
 			</Route>
-
             {/* Routes with Layout */}
             <Route element={<Layout />}>
               {/* Public pages */}

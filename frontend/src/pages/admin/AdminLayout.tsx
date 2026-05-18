@@ -31,10 +31,8 @@ const navigationItems = [
   { path: "/admin/tasks", label: "任务管理", icon: ClipboardList },
   { path: "/admin/orders", label: "订单管理", icon: ShoppingCart },
   { path: "/admin/agents", label: "智能体设置", icon: Bot },
-  { path: "/admin/opc", label: "OPC管理", icon: Shield },
-  { path: "/admin/api-gateway", label: "API网关", icon: Globe },
+  { path: "/admin/api-gateway", label: "AI 模型网关", icon: Globe },
 ];
-
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();

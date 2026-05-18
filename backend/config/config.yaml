@@ -23,10 +23,10 @@ jwt:
     max_age: 86400     # 24小时，单位秒
 
 matrix:
-  homeserver_url: http://localhost:8008
-  server_name: localhost
-  shared_secret: mysecret  # Dendrite registration_shared_secret
-  admin_api_url: http://localhost:8008/_matrix/admin
+  homeserver_url: http://8.217.143.228:8008
+  server_name: 8.217.143.228
+  shared_secret: nexus_matrix_secret_xK9mP2vL7qR4wY6j
+  admin_api_url: http://8.217.143.228:8008/_matrix/admin
   workers:
     - worker-001
     - worker-002

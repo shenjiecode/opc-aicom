@@ -1,0 +1,15 @@
+server:
+  port: 8081
+  mode: debug
+
+database:
+  host: localhost
+  port: 3306
+  user: opc_user
+  password: opcpassword
+  dbname: opc_aicom
+
+gateway:
+  default_quota: 1000000
+  default_rpm: 60
+  default_tpm: 100000

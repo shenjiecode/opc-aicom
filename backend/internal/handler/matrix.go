@@ -10,11 +10,30 @@ import (
     "io"
     "net/http"
     "strings"
+    "sync"
     "time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/opc-aicom/backend/pkg/config"
 )
+
+var (
+    matrixTokenCache = make(map[uint]string)
+    tokenCacheMutex  sync.RWMutex
+)
+
+func setMatrixToken(opcUserID uint, token string) {
+    tokenCacheMutex.Lock()
+    defer tokenCacheMutex.Unlock()
+    matrixTokenCache[opcUserID] = token
+}
+
+func getMatrixToken(opcUserID uint) (string, bool) {
+    tokenCacheMutex.RLock()
+    defer tokenCacheMutex.RUnlock()
+    token, ok := matrixTokenCache[opcUserID]
+    return token, ok
+}
 
 // MatrixClient handles communication with Matrix homeserver
 type MatrixClient struct {
@@ -202,13 +221,8 @@ func RegisterMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req MatrixLoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, UnifiedResponse{
-				Code:    400,
-				Message: "Invalid request: " + err.Error(),
-			})
-			return
-		}
+		// Allow empty body - ignore EOF error
+		_ = c.ShouldBindJSON(&req)
 
 		// Use username from request or from auth context
 		username := req.Username
@@ -328,6 +342,10 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
+		opcUserIDRaw, _ := c.Get("userID")
+		opcUserID := opcUserIDRaw.(uint)
+		setMatrixToken(opcUserID, result.AccessToken)
+
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
@@ -409,19 +427,23 @@ func CreateMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
-		// Get access token from header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		userID, exists := c.Get("userID")
+		if !exists {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
-				Message: "Missing Authorization header",
+				Message: "Unauthorized",
 			})
 			return
 		}
 
-		// Extract token from "Bearer <token>"
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "Matrix session not found",
+			})
+			return
+		}
 		// Create room via Matrix client-server API
 		createURL := fmt.Sprintf("%s/_matrix/client/v3/createRoom", matrixClient.config.Matrix.HomeserverURL)
 
@@ -450,7 +472,7 @@ func CreateMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
 		client := &http.Client{}
 		resp, err := client.Do(httpReq)
@@ -502,18 +524,23 @@ func JoinMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
-		// Get access token from header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		userID, exists := c.Get("userID")
+		if !exists {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
-				Message: "Missing Authorization header",
+				Message: "Unauthorized",
 			})
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "Matrix session not found",
+			})
+			return
+		}
 		// Join room via Matrix client-server API
 		joinURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/join", matrixClient.config.Matrix.HomeserverURL, roomID)
 
@@ -527,7 +554,7 @@ func JoinMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
 		client := &http.Client{}
 		resp, err := client.Do(httpReq)
@@ -564,18 +591,23 @@ func JoinMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 // GET /api/matrix/rooms (requires auth)
 func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get access token from header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		userID, exists := c.Get("userID")
+		if !exists {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
-				Message: "Missing Authorization header",
+				Message: "Unauthorized",
 			})
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "Matrix session not found",
+			})
+			return
+		}
 		// Get public rooms first
 		publicRooms := getPublicRooms(matrixClient)
 
@@ -591,7 +623,7 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
-		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
 		client := &http.Client{}
 		resp, err := client.Do(httpReq)
@@ -640,7 +672,7 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 		// Add joined rooms that are not public (private rooms)
 		for _, roomID := range result.JoinedRooms {
 			if !seenRooms[roomID] {
-				roomInfo := getRoomInfo(matrixClient, token, roomID)
+				roomInfo := getRoomInfo(matrixClient, matrixToken, roomID)
 				roomInfo["joined"] = true
 				allRooms = append(allRooms, roomInfo)
 			}
@@ -762,17 +794,23 @@ func LeaveMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		userID, exists := c.Get("userID")
+		if !exists {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
-				Message: "Missing Authorization header",
+				Message: "Unauthorized",
 			})
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "Matrix session not found",
+			})
+			return
+		}
 		leaveURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/leave", matrixClient.config.Matrix.HomeserverURL, roomID)
 
 		httpReq, err := http.NewRequest("POST", leaveURL, bytes.NewBuffer([]byte("{}")))
@@ -785,7 +823,7 @@ func LeaveMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
 		client := &http.Client{}
 		resp, err := client.Do(httpReq)
@@ -838,17 +876,23 @@ func InviteToMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		userID, exists := c.Get("userID")
+		if !exists {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
-				Message: "Missing Authorization header",
+				Message: "Unauthorized",
 			})
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "Matrix session not found",
+			})
+			return
+		}
 		inviteURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/invite", matrixClient.config.Matrix.HomeserverURL, roomID)
 
 		inviteBody := map[string]interface{}{
@@ -866,7 +910,7 @@ func InviteToMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
 		client := &http.Client{}
 		resp, err := client.Do(httpReq)
@@ -1247,12 +1291,30 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
             json.Unmarshal(joinRespBody, &joinError)
             
             if joinError.ErrorCode == "M_FORBIDDEN" {
-                // Need to invite the worker first using caller's access token
-                callerToken := c.GetHeader("Authorization")
-                if callerToken == "" {
+                // Need to invite the worker first using caller's Matrix token from cache
+                userID, exists := c.Get("userID")
+                if !exists {
                     c.JSON(http.StatusInternalServerError, UnifiedResponse{
                         Code:    500,
-                        Message: "Worker cannot join private room without invitation. Please provide Authorization header.",
+                        Message: "Unauthorized - cannot invite worker",
+                    })
+                    return
+                }
+                
+                opcUserID, ok := userID.(uint)
+                if !ok {
+                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
+                        Code:    500,
+                        Message: "Invalid user ID type",
+                    })
+                    return
+                }
+                
+                callerToken, ok := getMatrixToken(opcUserID)
+                if !ok || callerToken == "" {
+                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
+                        Code:    500,
+                        Message: "No Matrix token found for user. Please login to Matrix first.",
                     })
                     return
                 }
@@ -1273,7 +1335,7 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
                     return
                 }
                 inviteReq.Header.Set("Content-Type", "application/json")
-                inviteReq.Header.Set("Authorization", callerToken)
+                inviteReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", callerToken))
                 
                 inviteResp, err := client.Do(inviteReq)
                 if err != nil {
@@ -1347,3 +1409,44 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		})
 	}
 }
+
+
+// MatrixSyncSSE streams Matrix sync events via SSE
+// GET /api/matrix/sync (requires auth)
+func MatrixSyncSSE(matrixClient *MatrixClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{Code: 401, Message: "Unauthorized"})
+			return
+		}
+
+		matrixToken, ok := getMatrixToken(userID.(uint))
+		if !ok {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{Code: 401, Message: "Matrix session not found"})
+			return
+		}
+
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+
+		syncURL := fmt.Sprintf("%s/_matrix/client/v3/sync?timeout=30000", matrixClient.config.Matrix.HomeserverURL)
+		syncReq, _ := http.NewRequest("GET", syncURL, nil)
+		syncReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(syncReq)
+		if err != nil {
+			c.Writer.WriteString("event: error\ndata: {\"message\": \"Failed to sync\"}\n\n")
+			c.Writer.Flush()
+			return
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		c.Writer.WriteString(fmt.Sprintf("event: sync\ndata: %s\n\n", string(body)))
+		c.Writer.Flush()
+	}
+}
+

@@ -43,6 +43,7 @@ var (
 type Config struct {
 	WorkerID      string
 	HomeserverURL string
+	ServerName    string // Matrix server name (e.g., 8.217.143.228)
 	Password      string
 	RoomAlias     string
 	PIDDir        string
@@ -67,6 +68,7 @@ func parseFlags() *Config {
 
 	flag.StringVar(&cfg.WorkerID, "worker-id", "", "Worker identifier (required)")
 	flag.StringVar(&cfg.HomeserverURL, "homeserver", "http://localhost:8008", "Matrix homeserver URL")
+	flag.StringVar(&cfg.ServerName, "server-name", "localhost", "Matrix server name for user ID")
 	flag.StringVar(&cfg.Password, "password", "password", "Worker password")
 	flag.StringVar(&cfg.RoomAlias, "room", "#command_center:localhost", "Command room alias")
 	flag.StringVar(&cfg.PIDDir, "pid-dir", "/tmp", "Directory for PID files")
@@ -81,6 +83,9 @@ func parseFlags() *Config {
 	}
 	if v := os.Getenv("HOMESERVER_URL"); v != "" {
 		cfg.HomeserverURL = v
+	}
+	if v := os.Getenv("SERVER_NAME"); v != "" {
+		cfg.ServerName = v
 	}
 	if v := os.Getenv("WORKER_PASSWORD"); v != "" {
 		cfg.Password = v
@@ -376,13 +381,12 @@ func main() {
 	defer releasePIDLock(cfg)
 
 	// Create Matrix client
-	userID := id.UserID(fmt.Sprintf("@%s:localhost", cfg.WorkerID))
+	userID := id.UserID(fmt.Sprintf("@%s:%s", cfg.WorkerID, cfg.ServerName))
 	client, err := mautrix.NewClient(cfg.HomeserverURL, userID, "")
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to create client: %v\n", err)
 		os.Exit(1)
 	}
-
 	// Login
 	fmt.Printf("[INFO] Logging in as %s...\n", userID)
 	loginResp, err := client.Login(context.Background(), &mautrix.ReqLogin{
@@ -400,14 +404,22 @@ func main() {
 	fmt.Printf("[INFO] Login successful (token: %s...)\n", loginResp.AccessToken[:20])
 	client.AccessToken = loginResp.AccessToken
 
-	// Resolve room alias
-	resp, err := client.ResolveAlias(context.Background(), id.RoomAlias(cfg.RoomAlias))
-	if err != nil {
-		fmt.Printf("[ERROR] Failed to resolve room alias %s: %v\n", cfg.RoomAlias, err)
-		os.Exit(1)
+	// Resolve room: support both room ID (!id:domain) and alias (#name:domain)
+	var roomID id.RoomID
+	if strings.HasPrefix(cfg.RoomAlias, "!") {
+		// Direct room ID
+		roomID = id.RoomID(cfg.RoomAlias)
+		fmt.Printf("[INFO] Using room ID directly: %s\n", roomID)
+	} else {
+		// Room alias - resolve it
+		resp, err := client.ResolveAlias(context.Background(), id.RoomAlias(cfg.RoomAlias))
+		if err != nil {
+			fmt.Printf("[ERROR] Failed to resolve room alias %s: %v\n", cfg.RoomAlias, err)
+			os.Exit(1)
+		}
+		roomID = resp.RoomID
+		fmt.Printf("[INFO] Resolved room alias to ID: %s\n", roomID)
 	}
-	roomID := resp.RoomID
-	fmt.Printf("[INFO] Room ID: %s\n", roomID)
 
 	// Join room
 	_, err = client.JoinRoomByID(context.Background(), roomID)

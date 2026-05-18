@@ -170,6 +170,7 @@ func main() {
 		{
 			matrix.POST("/register", handler.RegisterMatrixUser(matrixClient))
 			matrix.POST("/login", handler.LoginMatrixUser(matrixClient))
+			matrix.GET("/sync", handler.MatrixSyncSSE(matrixClient))
 		}
 
 		matrixRooms := api.Group("/matrix/rooms")

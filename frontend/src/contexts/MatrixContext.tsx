@@ -334,7 +334,19 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     setMessages([]);
   }, []);
 
-// Select a room and load its messages
+  // Refresh rooms list (joined rooms only) - MUST be defined before other functions that use it
+  const refreshRooms = useCallback(async () => {
+    if (!clientRef.current) return;
+    
+    const matrixRooms = clientRef.current.getRooms();
+    const convertedRooms = matrixRooms.map(convertRoom);
+    setRooms(convertedRooms);
+    
+    // Also refresh all rooms from API
+    await fetchAllRooms();
+  }, [convertRoom]);
+
+  // Select a room and load its messages
   const selectRoom = useCallback((roomId: string) => {
     if (!clientRef.current) return;
     
@@ -352,7 +364,6 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       }
     }
   }, [convertRoom, loadRoomMessages]);
-
   // Send a message to current room
   const sendMessage = useCallback(async (text: string) => {
     if (!clientRef.current || !currentRoom) {
@@ -394,9 +405,6 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   const createRoom = useCallback(async (name: string, topic?: string, isPublic = false): Promise<string> => {
     const response = await fetchApi(`${API_BASE}/matrix/rooms`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
       body: JSON.stringify({
         name,
         topic,
@@ -414,15 +422,12 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     await refreshRooms();
     
     return data.data.room_id;
-  }, [accessToken]);
+  }, [refreshRooms]);
 
   // Join a room
   const joinRoom = useCallback(async (roomId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/rooms/${encodeURIComponent(roomId)}/join`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
     });
     
     const data = await response.json();
@@ -432,15 +437,12 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
     
     await refreshRooms();
-  }, [accessToken]);
+  }, [refreshRooms]);
 
   // Leave a room
   const leaveRoom = useCallback(async (roomId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/rooms/${encodeURIComponent(roomId)}/leave`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
     });
     
     const data = await response.json();
@@ -455,15 +457,12 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
     
     await refreshRooms();
-  }, [accessToken, currentRoom]);
+  }, [currentRoom, refreshRooms]);
 
   // Invite user to room
   const inviteUser = useCallback(async (roomId: string, userId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/rooms/${encodeURIComponent(roomId)}/invite`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
       body: JSON.stringify({ user_id: userId }),
     });
     
@@ -472,7 +471,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     if (data.code !== 0) {
       throw new Error(data.message || 'Failed to invite user');
     }
-  }, [accessToken]);
+  }, []);
 
   // Rename room using Matrix SDK directly
   const renameRoom = useCallback(async (roomId: string, newName: string) => {
@@ -487,28 +486,44 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       setCurrentRoom(prev => prev ? { ...prev, name: newName } : null);
     }
   }, [currentRoom]);
-  // Refresh rooms list (joined rooms only)
-  const refreshRooms = useCallback(async () => {
-    if (!clientRef.current) return;
-    
-    const matrixRooms = clientRef.current.getRooms();
-    const convertedRooms = matrixRooms.map(convertRoom);
-    setRooms(convertedRooms);
-    
-    // Also refresh all rooms from API
-    await fetchAllRooms();
-  }, [convertRoom]);
+  const connectSync = useCallback(() => {
+    if (!isInitialized) return;
+
+    const eventSource = new EventSource(`${API_BASE}/matrix/sync`, {
+      withCredentials: true,
+    });
+
+    eventSource.addEventListener('sync', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data) {
+          const syncData = JSON.parse(data.data.data);
+          if (syncData.rooms?.join) {
+            refreshRooms();
+          }
+        }
+      } catch (e) {
+        console.error('[Matrix] Failed to parse sync event:', e);
+      }
+    });
+
+    eventSource.onerror = () => {
+      console.error('[Matrix] SSE error');
+      eventSource.close();
+      setTimeout(connectSync, 5000);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [isInitialized, refreshRooms]);
 
   // Fetch all rooms (public + joined)
   const fetchAllRooms = useCallback(async () => {
     if (!accessToken) return;
     
     try {
-      const response = await fetchApi(`${API_BASE}/matrix/rooms`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      const response = await fetchApi(`${API_BASE}/matrix/rooms`);
       const data = await response.json();
       if (data.code === 0 && data.data?.rooms) {
         const apiRooms: MatrixRoom[] = data.data.rooms.map((r: any) => ({
@@ -529,11 +544,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
 
   // Refresh workers list - combines API data with real-time status
   const refreshWorkers = useCallback(async () => {
-    const response = await fetchApi(`${API_BASE}/matrix/workers`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
+    const response = await fetchApi(`${API_BASE}/matrix/workers`);
     const data = await response.json();
     if (data.code === 0 && data.data?.workers) {
       // Map API snake_case fields to frontend camelCase
@@ -546,15 +557,12 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       }));
       setWorkers(apiWorkers);
     }
-  }, [accessToken]);
+  }, []);
 
   // Join a worker to a room
   const joinWorkerToRoom = useCallback(async (workerId: string, roomId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/workers/${workerId}/join`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
       body: JSON.stringify({ room_id: roomId }),
     });
     const data = await response.json();
@@ -563,7 +571,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
     // Refresh workers after joining
     await refreshWorkers();
-  }, [accessToken, refreshWorkers]);
+  }, [refreshWorkers]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -581,6 +589,13 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
   }, [accessToken, isInitialized, fetchAllRooms]);
 
+
+  useEffect(() => {
+    if (isInitialized) {
+      const cleanup = connectSync();
+      return cleanup;
+    }
+  }, [isInitialized, connectSync]);
   const value: MatrixContextType = {
     client,
     isInitialized,
