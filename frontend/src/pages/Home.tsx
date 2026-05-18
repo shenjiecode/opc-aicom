@@ -39,10 +39,11 @@ export default function Home() {
         {/* Search box */}
         <div className="w-full max-w-xl relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
+          AI比特：
           <div className="relative flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg shadow-slate-200/50 px-4 py-3 transition-all duration-300 hover:shadow-xl hover:shadow-slate-300/50 hover:border-slate-300/80">
-            <Input
+             <Input
               type="text"
-              placeholder="输入您的问题..."
+              placeholder="输入您的需求..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMatrix } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import {
   MessageSquare,
   Bot,
   LogIn,
+  Pencil,
+  Circle,
 } from "lucide-react";
 
 interface MatrixRoomListProps {
@@ -17,16 +19,28 @@ interface MatrixRoomListProps {
 }
 
 export function MatrixRoomList({ className }: MatrixRoomListProps) {
-  const { allRooms, currentRoom, selectRoom, createRoom, isLoading, workers, joinRoom } = useMatrix();
+  const { allRooms, currentRoom, selectRoom, createRoom, isLoading, workers, joinRoom, renameRoom } = useMatrix();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomTopic, setNewRoomTopic] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
 
+  // Rename state
+  const [renamingRoomId, setRenamingRoomId] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingRoomId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingRoomId]);
+
   const handleCreateRoom = async () => {
     if (!newRoomName.trim()) return;
-    
+
     setIsCreating(true);
     try {
       await createRoom(newRoomName, newRoomTopic || undefined);
@@ -50,6 +64,39 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
     } finally {
       setJoiningRoomId(null);
     }
+  };
+
+  const handleStartRename = (roomId: string, currentName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenamingRoomId(roomId);
+    setRenamingValue(currentName);
+  };
+
+  const handleFinishRename = async () => {
+    if (renamingRoomId && renamingValue.trim()) {
+      try {
+        await renameRoom(renamingRoomId, renamingValue.trim());
+      } catch (error) {
+        console.error("Failed to rename room:", error);
+      }
+    }
+    setRenamingRoomId(null);
+    setRenamingValue("");
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleFinishRename();
+    } else if (e.key === "Escape") {
+      setRenamingRoomId(null);
+      setRenamingValue("");
+    }
+  };
+
+  // Check if a non-worker member is online by matching against workers list
+  const isMemberOnline = (userId: string): boolean => {
+    const worker = workers.find(w => w.userId === userId);
+    return worker?.isOnline ?? false;
   };
 
   const displayRooms = allRooms.length > 0 ? allRooms : [];
@@ -77,7 +124,7 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
           </Button>
         </div>
       </CardHeader>
-      
+
       <div className="px-4 pb-4 space-y-1">
         {isLoading ? (
           <div className="text-xs text-slate-500 text-center py-4">
@@ -89,8 +136,17 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
           </div>
         ) : (
           displayRooms.map((room) => {
-            const isJoined = room.joined !== false; // default to true for rooms from SDK
+            const isJoined = room.joined !== false;
             const isCurrentRoom = currentRoom?.roomId === room.roomId;
+            const isRenaming = renamingRoomId === room.roomId;
+
+            // Separate workers and human members
+            const workerMembers = room.members.filter(userId =>
+              workers.some(w => w.userId === userId)
+            );
+            const humanMembers = room.members.filter(userId =>
+              !workers.some(w => w.userId === userId)
+            );
 
             return (
               <div
@@ -103,7 +159,7 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
                       ? "hover:bg-slate-800/50 text-slate-300 cursor-pointer"
                       : "hover:bg-slate-800/30 text-slate-400 cursor-pointer"
                 )}
-                onClick={() => isJoined && selectRoom(room.roomId)}
+                onClick={() => isJoined && !isRenaming && selectRoom(room.roomId)}
               >
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
@@ -120,40 +176,73 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{room.name}</div>
+                  {/* Room name with rename support */}
+                  {isRenaming ? (
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renamingValue}
+                      onChange={(e) => setRenamingValue(e.target.value)}
+                      onBlur={handleFinishRename}
+                      onKeyDown={handleRenameKeyDown}
+                      className="w-full bg-[#242636] border border-violet-500 rounded px-2 py-0.5 text-sm text-white focus:outline-none"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-1.5 group">
+                      <span className="text-sm font-medium truncate">{room.name}</span>
+                      {isJoined && (
+                        <button
+                          onClick={(e) => handleStartRename(room.roomId, room.name, e)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        >
+                          <Pencil className="w-3 h-3 text-slate-500 hover:text-violet-400" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap mt-1">
                     {!isJoined && (
                       <span className="text-amber-500 text-[10px] mr-1">未加入</span>
                     )}
-                    {/* Member badges */}
-                    {room.members.slice(0, 5).map(userId => {
+                    {/* Worker member badges */}
+                    {workerMembers.slice(0, 3).map(userId => {
                       const worker = workers.find(w => w.userId === userId);
-                      if (worker) {
-                        return (
-                          <div
-                            key={userId}
-                            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400"
-                          >
-                            <Bot className="w-2.5 h-2.5 shrink-0" />
-                            <span className="text-[10px] truncate max-w-[60px]">{worker.name}</span>
-                          </div>
-                        );
-                      }
                       return (
                         <div
                           key={userId}
-                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-300"
+                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400"
                         >
+                          <Bot className="w-2.5 h-2.5 shrink-0" />
+                          <span className="text-[10px] truncate max-w-[60px]">{worker?.name || userId.split(':')[0].replace('@', '')}</span>
+                        </div>
+                      );
+                    })}
+                    {/* Human member badges with online status */}
+                    {humanMembers.slice(0, 4).map(userId => {
+                      const online = isMemberOnline(userId);
+                      return (
+                        <div
+                          key={userId}
+                          className={cn(
+                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px]",
+                            online
+                              ? "bg-blue-500/20 text-blue-400"
+                              : "bg-slate-800 text-slate-400"
+                          )}
+                        >
+                          <Circle className={cn("w-1.5 h-1.5 shrink-0", online ? "fill-blue-400 text-blue-400" : "fill-slate-500 text-slate-500")} />
                           <Users className="w-2.5 h-2.5 shrink-0" />
-                          <span className="text-[10px] truncate max-w-[60px]">
+                          <span className="truncate max-w-[60px]">
                             {userId.split(':')[0].replace('@', '')}
                           </span>
                         </div>
                       );
                     })}
-                    {room.members.length > 5 && (
+                    {room.members.length > 7 && (
                       <div className="flex items-center px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">
-                        +{room.members.length - 5}
+                        +{room.members.length - 7}
                       </div>
                     )}
                   </div>

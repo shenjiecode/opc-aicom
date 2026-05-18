@@ -56,6 +56,7 @@ interface MatrixContextType {
   joinRoom: (roomId: string) => Promise<void>;
   leaveRoom: (roomId: string) => Promise<void>;
   inviteUser: (roomId: string, userId: string) => Promise<void>;
+  renameRoom: (roomId: string, newName: string) => Promise<void>;
   refreshRooms: () => Promise<void>;
 
   // Worker state
@@ -473,6 +474,19 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
   }, [accessToken]);
 
+  // Rename room using Matrix SDK directly
+  const renameRoom = useCallback(async (roomId: string, newName: string) => {
+    if (!clientRef.current) throw new Error('Matrix client not initialized');
+
+    await clientRef.current.setRoomName(roomId, newName);
+
+    // Update local state immediately
+    setRooms(prev => prev.map(r => r.roomId === roomId ? { ...r, name: newName } : r));
+    setAllRooms(prev => prev.map(r => r.roomId === roomId ? { ...r, name: newName } : r));
+    if (currentRoom?.roomId === roomId) {
+      setCurrentRoom(prev => prev ? { ...prev, name: newName } : null);
+    }
+  }, [currentRoom]);
   // Refresh rooms list (joined rooms only)
   const refreshRooms = useCallback(async () => {
     if (!clientRef.current) return;
@@ -587,6 +601,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     joinRoom,
     leaveRoom,
     inviteUser,
+    renameRoom,
     refreshRooms,
     workers,
     refreshWorkers,

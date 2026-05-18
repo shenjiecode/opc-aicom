@@ -71,6 +71,9 @@ const {
                     <>
                       <div className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span className="text-emerald-400">Matrix 已连接</span>
+                      {user?.username && (
+                        <span className="text-slate-500 ml-1">| {user.username}</span>
+                      )}
                     </>
                   ) : error ? (
                     <>
@@ -96,26 +99,8 @@ const {
             </CardHeader>
           </Card>
 
-          {/* CEO Panel */}
-          <Card className="bg-[#1a1b26] border-slate-800">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                <Users className="w-3.5 h-3.5" />
-                <span>CEO 指令台</span>
-              </div>
-              <div className="bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-500/30 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-violet-500/50 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-lg">
-                  🔥
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-white">
-                    {user?.username || "你 (CEO)"}
-                  </div>
-                  <div className="text-xs text-violet-300">总指挥</div>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+
+
 
           {/* Matrix Room List - Replaces static AI Agents list */}
           <MatrixRoomList className="flex-1" />

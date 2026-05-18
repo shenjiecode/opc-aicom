@@ -3,14 +3,21 @@ import { useMatrix } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, Users, MoreHorizontal } from "lucide-react";
+import { Send, Users, MoreHorizontal, Bot, Circle } from "lucide-react";
 
 interface MatrixChatProps {
   className?: string;
 }
 
+interface MentionMember {
+  id: string;
+  name: string;
+  isWorker: boolean;
+  isOnline: boolean;
+}
+
 export function MatrixChat({ className }: MatrixChatProps) {
-  const { currentRoom, messages, sendMessage, isLoading, isInitialized, matrixUserId } = useMatrix();
+  const { currentRoom, messages, sendMessage, isLoading, isInitialized, matrixUserId, workers } = useMatrix();
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(-1);
@@ -19,34 +26,52 @@ export function MatrixChat({ className }: MatrixChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get member display name from user ID
-  const getMemberName = (userId: string) => {
-    return userId.split(":")[0].replace("@", "");
+
+
+  // Get filtered members for @ mention autocomplete
+  const getFilteredMembers = (): MentionMember[] => {
+    if (!currentRoom || mentionStart < 0) return [];
+
+    return currentRoom.members
+      .filter(m => m !== matrixUserId)
+      .map(m => {
+        const worker = workers.find(w => w.userId === m);
+        return {
+          id: m,
+          name: worker?.name || m.split(":")[0].replace("@", ""),
+          isWorker: !!worker,
+          isOnline: worker?.isOnline ?? false,
+        };
+      })
+      .filter(m => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+      .sort((a, b) => {
+        // Workers first, then alphabetically
+        if (a.isWorker !== b.isWorker) return a.isWorker ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 10);
   };
 
-  // Filter members for @ mention autocomplete
-  const filteredMembers = currentRoom && mentionStart >= 0
-    ? currentRoom.members
-        .filter(m => m !== matrixUserId)
-        .map(m => ({ id: m, name: getMemberName(m) }))
-        .filter(m => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
-        .slice(0, 8)
-    : [];
+  const filteredMembers = getFilteredMembers();
 
   // Handle input change and detect @ mentions
   const handleInputChange = (text: string) => {
     setInputText(text);
 
-    // Find @ position
+    // Find @ position - look for @ that starts a new mention
     const lastAtIndex = text.lastIndexOf("@");
     if (lastAtIndex >= 0) {
-      const afterAt = text.slice(lastAtIndex + 1);
-      // Check if there's a space after @ (meaning mention is complete)
-      if (!afterAt.includes(" ") && afterAt.length <= 20) {
-        setMentionStart(lastAtIndex);
-        setMentionQuery(afterAt);
-        setMentionIndex(0);
-        return;
+      // Check if @ is at start or preceded by a space
+      const charBefore = lastAtIndex > 0 ? text[lastAtIndex - 1] : " ";
+      if (charBefore === " " || charBefore === "\n" || lastAtIndex === 0) {
+        const afterAt = text.slice(lastAtIndex + 1);
+        // No space after @ means still typing mention
+        if (!afterAt.includes(" ") && afterAt.length <= 20) {
+          setMentionStart(lastAtIndex);
+          setMentionQuery(afterAt);
+          setMentionIndex(0);
+          return;
+        }
       }
     }
     // No active mention
@@ -56,7 +81,7 @@ export function MatrixChat({ className }: MatrixChatProps) {
   };
 
   // Select a member from the dropdown
-  const selectMember = (member: { id: string; name: string }) => {
+  const selectMember = (member: MentionMember) => {
     if (mentionStart >= 0) {
       const beforeMention = inputText.slice(0, mentionStart);
       const afterMention = inputText.slice(mentionStart + mentionQuery.length + 1);
@@ -76,7 +101,7 @@ export function MatrixChat({ className }: MatrixChatProps) {
 
   const handleSend = async () => {
     if (!inputText.trim() || isSending) return;
-    
+
     setIsSending(true);
     setMentionStart(-1);
     try {
@@ -130,17 +155,17 @@ export function MatrixChat({ className }: MatrixChatProps) {
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const today = new Date();
-    
+
     if (date.toDateString() === today.toDateString()) {
       return "今天";
     }
-    
+
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
       return "昨天";
     }
-    
+
     return date.toLocaleDateString("zh-CN", {
       month: "short",
       day: "numeric",
@@ -152,13 +177,13 @@ export function MatrixChat({ className }: MatrixChatProps) {
     (groups, message) => {
       const date = formatDate(message.timestamp);
       const lastGroup = groups[groups.length - 1];
-      
+
       if (lastGroup && lastGroup.date === date) {
         lastGroup.messages.push(message);
       } else {
         groups.push({ date, messages: [message] });
       }
-      
+
       return groups;
     },
     []
@@ -235,14 +260,14 @@ export function MatrixChat({ className }: MatrixChatProps) {
                 {group.date}
               </div>
             </div>
-            
+
             {/* Messages */}
             <div className="space-y-4">
               {group.messages.map((message, index) => {
-                const showAvatar = 
-                  index === 0 || 
+                const showAvatar =
+                  index === 0 ||
                   group.messages[index - 1].sender !== message.sender;
-                
+
                 return (
                   <div
                     key={message.id}
@@ -259,7 +284,7 @@ export function MatrixChat({ className }: MatrixChatProps) {
                         </span>
                       </div>
                     )}
-                    
+
                     {/* Message content */}
                     <div
                       className={cn(
@@ -308,15 +333,16 @@ export function MatrixChat({ className }: MatrixChatProps) {
               value={inputText}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`发送消息到 #${currentRoom?.name || "房间"}...`}
+              placeholder={`发送消息到 #${currentRoom?.name || "房间"}... (输入 @ 提及成员)`}
               disabled={isLoading || isSending}
               className="flex-1 w-full bg-[#1e1f2e] border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors disabled:opacity-50"
             />
             {/* Mention Dropdown */}
             {filteredMembers.length > 0 && mentionStart >= 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1b26] border border-slate-700 rounded-lg overflow-hidden shadow-lg">
-                <div className="text-xs text-slate-400 px-3 py-2 bg-slate-800">
-                  选择成员
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1b26] border border-slate-700 rounded-lg overflow-hidden shadow-lg z-50">
+                <div className="text-xs text-slate-400 px-3 py-2 bg-slate-800 flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  选择成员 (↑↓ 选择, Enter 确认, Esc 关闭)
                 </div>
                 <div className="max-h-48 overflow-y-auto">
                   {filteredMembers.map((member, idx) => (
@@ -328,10 +354,29 @@ export function MatrixChat({ className }: MatrixChatProps) {
                         idx === mentionIndex ? "bg-violet-500/20" : ""
                       )}
                     >
-                      <div className="w-6 h-6 rounded bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white text-xs">
-                        {member.name.charAt(0).toUpperCase()}
+                      <div className={cn(
+                        "w-6 h-6 rounded flex items-center justify-center text-white text-xs",
+                        member.isWorker
+                          ? "bg-gradient-to-br from-emerald-500 to-teal-500"
+                          : "bg-gradient-to-br from-blue-500 to-indigo-500"
+                      )}>
+                        {member.isWorker ? (
+                          <Bot className="w-3 h-3" />
+                        ) : (
+                          member.name.charAt(0).toUpperCase()
+                        )}
                       </div>
-                      <span className="text-white">{member.name}</span>
+                      <span className="text-white flex-1 text-left">{member.name}</span>
+                      <div className="flex items-center gap-1">
+                        {member.isWorker ? (
+                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">AI</span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
+                            <Circle className={cn("w-1.5 h-1.5", member.isOnline ? "fill-blue-400 text-blue-400" : "fill-slate-500 text-slate-500")} />
+                            {member.isOnline ? "在线" : "离线"}
+                          </span>
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
