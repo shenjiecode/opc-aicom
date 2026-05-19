@@ -56,15 +56,6 @@ interface EditFormConfig {
   apiKey: string;
 }
 
-const modelOptions = [
-  { value: "gpt-4-turbo", label: "GPT-4 Turbo", provider: "OpenAI" },
-  { value: "gpt-4o", label: "GPT-4o", provider: "OpenAI" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", provider: "OpenAI" },
-  { value: "claude-3-opus", label: "Claude 3 Opus", provider: "Anthropic" },
-  { value: "claude-3-sonnet", label: "Claude 3 Sonnet", provider: "Anthropic" },
-  { value: "claude-3-haiku", label: "Claude 3 Haiku", provider: "Anthropic" },
-];
-
 const agentTypeOptions = [
   { value: "assistant", label: "对话助手", desc: "通用对话和问答" },
   { value: "coder", label: "代码生成", desc: "编写和调试代码" },
@@ -115,6 +106,38 @@ export default function EditAgentPage() {
           description: session.description,
         };
 
+        // 优先从 agent 运行时配置读取
+        if (session.agent_instance_id) {
+          try {
+            const instanceConfig = await apiFetch<{ instance: unknown; config: AgentConfig }>(
+              `/agent-instances/${session.agent_instance_id}/chat/config`
+            );
+            if (!cancelled && instanceConfig?.config) {
+              const c = instanceConfig.config;
+              formConfig = {
+                name: c.name || session.title,
+                description: c.description || session.description,
+                model: c.model || defaultConfig.model,
+                temperature: c.temperature ?? defaultConfig.temperature,
+                maxTokens: c.max_tokens ?? defaultConfig.maxTokens,
+                systemPrompt: c.system_prompt || "",
+                memoryEnabled: c.memory?.enable_summary ?? true,
+                agentType: c.planner?.type || "assistant",
+                baseUrl: c.base_url || "",
+                apiKey: c.api_key || "",
+              };
+              setConfig(formConfig);
+              setAgentInstanceId(session.agent_instance_id);
+              setError(null);
+              setInitialLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("[EditAgent] Failed to load agent instance config, fallback to session config", e);
+          }
+        }
+
+        // 回退：从 session 的 agent_config_json 读取
         if (session.agent_config_json) {
           try {
             const parsed: AgentConfig = JSON.parse(session.agent_config_json);
@@ -131,7 +154,7 @@ export default function EditAgentPage() {
               apiKey: parsed.api_key || "",
             };
           } catch {
-            // agent_config_json parse failed, use session-level fields
+            // agent_config_json parse failed
           }
         }
 
@@ -187,11 +210,24 @@ export default function EditAgentPage() {
     setLoading(true);
     setError(null);
     try {
+      const agentConfigJson = buildAgentConfigJson();
       await updateSession(Number(sessionId), {
         title: config.name,
         description: config.description,
-        agent_config_json: buildAgentConfigJson(),
+        agent_config_json: agentConfigJson,
       });
+
+      // 如果存在 agentInstanceId，同步回写到 agent 运行时配置
+      if (agentInstanceId) {
+        try {
+          await apiFetch(`/agent-instances/${agentInstanceId}/config`, {
+            method: "PUT",
+            body: agentConfigJson,
+          });
+        } catch (e) {
+          console.warn("[EditAgent] Failed to write back to agent instance config", e);
+        }
+      }
 
       if (rebuild) {
         await buildAgent(Number(sessionId));
@@ -247,7 +283,7 @@ export default function EditAgentPage() {
             variant="outline"
             onClick={() => navigate("/agentbaba")}
             disabled={loading}
-            className="border-slate-200 hidden sm:flex"
+            className="border-slate-200 text-slate-600 hidden sm:flex"
           >
             取消
           </Button>
@@ -381,24 +417,12 @@ export default function EditAgentPage() {
                 <CardContent className="space-y-4 pt-0">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-700">语言模型</Label>
-                    <Select
+                    <Input
                       value={config.model}
-                      onValueChange={(v) => setConfig({ ...config, model: v })}
-                    >
-                      <SelectTrigger className="h-9 text-sm border-slate-200 focus:ring-indigo-400">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modelOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">{opt.label}</span>
-                              <span className="text-xs text-slate-400">({opt.provider})</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                      placeholder="例如：gpt-4o"
+                      className="h-9 text-sm border-slate-200 focus:ring-indigo-400"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -781,7 +805,7 @@ function ChatTestPanel({ agentName, systemPrompt: _systemPrompt, agentInstanceId
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="输入消息测试智能体..."
-              className="min-h-[52px] max-h-[120px] pr-12 resize-none border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 bg-slate-50/50"
+              className="min-h-[52px] max-h-[120px] pr-12 resize-none border-slate-200 focus:border-indigo-400 focus:ring-indigo-400 bg-slate-50/50 text-slate-900"
               rows={1}
             />
           </div>
