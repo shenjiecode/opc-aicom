@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Bot,
@@ -7,21 +8,50 @@ import {
   MoreHorizontal,
   RefreshCw,
   WifiOff,
+  User,
+  AtSign,
+  Circle,
 } from "lucide-react";
 import { useMatrix } from "@/contexts/MatrixContext";
-import { MatrixRoomList, MatrixChat, WorkerStatusPanel, ServerLogTerminal } from "@/components/matrix";
+import { MatrixRoomList, MatrixChat, WorkerStatusPanel, ServerLogTerminal, MatrixUserList } from "@/components/matrix";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 export default function OPCWorkbench() {
   const { user } = useAuth();
-const {
+  const location = useLocation();
+  const {
     isInitialized,
     isLoading,
     error,
     initialize,
     currentRoom,
+    selectRoom,
     workers,
+    homeserverUrl,
+    matrixUserId,
+    userOnline,
+    updateActivity,
   } = useMatrix();
+
+  useEffect(() => {
+    const handleActivity = () => {
+      updateActivity();
+    };
+    
+    // Listen for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+    };
+  }, [updateActivity]);
 
   // Initialize Matrix client on mount
   useEffect(() => {
@@ -33,7 +63,18 @@ const {
       // Don't disconnect on unmount to preserve connection
     };
   }, [user, isInitialized, isLoading, initialize]);
-
+  
+  // Select room from URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const roomId = params.get('room');
+    if (roomId && isInitialized && selectRoom) {
+      // Wait a bit for rooms to load
+      setTimeout(() => {
+        selectRoom(roomId);
+      }, 500);
+    }
+  }, [location.search, isInitialized, selectRoom]);
 
   return (
     <div className="h-screen bg-[#0a0a0f] p-4 lg:p-6 flex flex-col overflow-hidden">
@@ -44,20 +85,71 @@ const {
           <Card className="bg-[#1a1b26] border-slate-800">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
+
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-300 flex items-center justify-center">
+
                   <Zap className="w-5 h-5 text-white" />
+
                 </div>
+
                 <div>
+
                   <CardTitle className="text-white text-base">
+
                     OPC Command Center
+
                   </CardTitle>
+
                   <p className="text-xs text-slate-400">AI 团队协作工作台</p>
+
                 </div>
+
               </div>
+
+              {/* User identity info */}
+
+              {user && (
+                <div className="mt-3 pt-3 border-t border-slate-700/50 space-y-1.5">
+                  {/* User info with online status */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <User className="w-3.5 h-3.5 text-violet-400" />
+                    <span className="text-slate-400">OPC:</span>
+                    <span className="text-white font-medium">{user.username}</span>
+                    {/* Online status indicator */}
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Circle className={cn(
+                        "w-2 h-2",
+                        userOnline ? "fill-green-500 text-green-500" : "fill-slate-500 text-slate-500"
+                      )} />
+                      <span className={cn(
+                        "font-medium",
+                        userOnline ? "text-green-400" : "text-slate-500"
+                      )}>
+                        {userOnline ? "在线" : "离线"}
+                      </span>
+                    </div>
+                  </div>
+                  {matrixUserId && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <AtSign className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-slate-400">Matrix:</span>
+                      <span className="text-emerald-400 font-medium">{matrixUserId.split(':')[0].replace('@', '')}</span>
+                      {/* Matrix online indicator */}
+                      {isInitialized && (
+                        <div className="flex items-center gap-1 ml-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-emerald-400 text-[10px]">已连接</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </CardHeader>
+
           </Card>
 
-          {/* Connection Status */}
           <Card className="bg-[#1a1b26] border-slate-800">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -71,9 +163,9 @@ const {
                     <>
                       <div className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span className="text-emerald-400">Matrix 已连接</span>
-                      {user?.username && (
-                        <span className="text-slate-500 ml-1">| {user.username}</span>
-                      )}
+                      <span className="text-slate-500 ml-1">
+                        | {homeserverUrl ? homeserverUrl.replace('http://', '').replace('https://', '') : 'localhost:8008'}
+                      </span>
                     </>
                   ) : error ? (
                     <>
@@ -109,6 +201,9 @@ const {
 
           {/* Worker Status Panel */}
           <WorkerStatusPanel />
+
+          {/* Server User List */}
+          <MatrixUserList />
         </div>
 
         {/* Middle Panel: Matrix Chat */}

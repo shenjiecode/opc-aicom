@@ -93,12 +93,6 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
     }
   };
 
-  // Check if a non-worker member is online by matching against workers list
-  const isMemberOnline = (userId: string): boolean => {
-    const worker = workers.find(w => w.userId === userId);
-    return worker?.isOnline ?? false;
-  };
-
   const displayRooms = allRooms.length > 0 ? allRooms : [];
 
   return (
@@ -221,18 +215,19 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
                     })}
                     {/* Human member badges with online status */}
                     {humanMembers.slice(0, 4).map(userId => {
-                      const online = isMemberOnline(userId);
+                      // Human members are assumed online (they are logged in)
+                      const online = true;
                       return (
                         <div
                           key={userId}
                           className={cn(
                             "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px]",
                             online
-                              ? "bg-blue-500/20 text-blue-400"
+                              ? "bg-green-500/20 text-green-400"
                               : "bg-slate-800 text-slate-400"
                           )}
                         >
-                          <Circle className={cn("w-1.5 h-1.5 shrink-0", online ? "fill-blue-400 text-blue-400" : "fill-slate-500 text-slate-500")} />
+                          <Circle className={cn("w-1.5 h-1.5 shrink-0", online ? "fill-green-400 text-green-400" : "fill-slate-500 text-slate-500")} />
                           <Users className="w-2.5 h-2.5 shrink-0" />
                           <span className="truncate max-w-[60px]">
                             {userId.split(':')[0].replace('@', '')}

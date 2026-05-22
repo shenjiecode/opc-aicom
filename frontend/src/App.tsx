@@ -39,6 +39,8 @@ import ConfigPreviewPage from "./pages/agentbaba/ConfigPreview";
 import BuildProgressPage from "./pages/agentbaba/BuildProgress";
 import AgentChatPage from "./pages/agentbaba/AgentChat";
 import EditAgentPage from "./pages/agentbaba/EditAgent";
+import CreditHistoryPage from "./pages/credit/CreditHistory";
+import CreditRechargePage from "./pages/admin/CreditRecharge";
 
 function App() {
   return (
@@ -63,6 +65,7 @@ function App() {
 				<Route path="agents" element={<AgentSettings />} />
 			  <Route path="opc" element={<OPCManagement />} />
 			  <Route path="api-gateway" element={<AIModelGateway />} />
+		  <Route path="credit-recharge" element={<CreditRechargePage />} />
 			</Route>
             {/* Routes with Layout */}
             <Route element={<Layout />}>
@@ -90,6 +93,7 @@ function App() {
                 <Route path="/event/create" element={<CreateEvent />} />
                 <Route path="/post/create" element={<CreatePost />} />
                 <Route path="/agent/chat/:id" element={<AgentChatPage />} />
+                <Route path="/credit/history" element={<CreditHistoryPage />} />
             </Route>
             </Route>
           </Routes>

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
+  import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
-
 
 interface Task {
   id: number;
@@ -45,6 +45,7 @@ const PROJECT_TYPES = [
 const DIFFICULTY_LEVELS = ["全部", "初级", "中级", "高级"];
 
 export default function Tasks() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,10 +109,29 @@ export default function Tasks() {
     setIsDialogOpen(true);
   };
 
-  const handleChat = () => {
-    // TODO: 跳转到AI比特页面或打开聊天
-    setIsDialogOpen(false);
-    window.location.href = '/aibit';
+  const handleChat = async (task: Task) => {
+    try {
+      // Create task chat room
+      const result = await apiFetch<{ room_id: string; room_name: string; is_new: boolean }>(
+        `/task/${task.id}/chat-room`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `任务#${task.id}-${task.title.slice(0, 10)}`,
+            topic: `关于任务#${task.id}的沟通讨论`,
+          }),
+        }
+      );
+      
+      // Close dialog
+      setIsDialogOpen(false);
+      
+      // Navigate to OPC workbench with room ID
+      navigate(`/opc-workbench?room=${encodeURIComponent(result.room_id)}`);
+    } catch (err) {
+      console.error("Failed to create chat room", err);
+      alert("创建聊天房间失败，请稍后重试");
+    }
   };
 
   return (
@@ -298,7 +318,7 @@ export default function Tasks() {
                       >
                         详情
                       </Button>
-                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white">
+                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => handleChat(task)}>
                         <MessageCircle className="w-4 h-4 mr-1" />
                         聊聊需求
                       </Button>
@@ -314,7 +334,7 @@ export default function Tasks() {
                     >
                       详情
                     </Button>
-                    <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1">
+                    <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1" onClick={() => handleChat(task)}>
                       <MessageCircle className="w-4 h-4 mr-1" />
                       聊聊需求
                     </Button>
@@ -382,7 +402,7 @@ export default function Tasks() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               关闭
             </Button>
-            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={handleChat}>
+            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => selectedTask && handleChat(selectedTask)}>
               <MessageCircle className="w-4 h-4 mr-1" />
               聊聊需求
             </Button>

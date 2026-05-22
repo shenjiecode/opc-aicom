@@ -1,16 +1,28 @@
 package handler
 
 import (
+
+
 	"net/http"
+
 	"strconv"
+
 	"github.com/gin-gonic/gin"
+
 	"github.com/opc-aicom/backend/internal/middleware"
+
 	"github.com/opc-aicom/backend/internal/model"
+
 	"github.com/opc-aicom/backend/internal/repository"
+
 	"github.com/opc-aicom/backend/internal/pkg/jwt"
+
 	"github.com/opc-aicom/backend/pkg/config"
+
 	"golang.org/x/crypto/bcrypt"
+
 	"gorm.io/gorm"
+
 )
 
 // RegisterRequest represents the user registration request body
@@ -164,84 +176,230 @@ type LoginRequest struct {
 }
 
 // LoginResponse represents the user login response
+
 type LoginResponse struct {
-	Token    string `json:"token"`
-	UserID   uint   `json:"userId"`
-	Username string `json:"username"`
+
+	Token          string `json:"token"`
+
+	UserID         uint   `json:"userId"`
+
+	Username       string `json:"username"`
+
+	MatrixToken    string `json:"matrixToken,omitempty"`
+
+	MatrixUserID   string `json:"matrixUserId,omitempty"`
+
+	MatrixUsername string `json:"matrixUsername,omitempty"`
+
 }
 
 // Login handles user login
+
 // POST /api/user/login
-func Login(db *gorm.DB, cfg *config.Config) gin.HandlerFunc {
+
+// Also auto-login/register Matrix user and return Matrix credentials
+
+func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.HandlerFunc {
+
 	return func(c *gin.Context) {
+
 		var req LoginRequest
+
 		if err := c.ShouldBindJSON(&req); err != nil {
+
 			c.JSON(http.StatusBadRequest, UnifiedResponse{
+
 				Code:    400,
+
 				Message: "Invalid request body",
+
 			})
+
 			return
+
 		}
+
+
 
 		// Find user by username
+
 		var user model.User
+
 		if err := db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+
 			if err == gorm.ErrRecordNotFound {
+
 				c.JSON(http.StatusUnauthorized, UnifiedResponse{
+
 					Code:    401,
+
 					Message: "Invalid username or password",
+
 				})
+
 				return
+
 			}
+
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+
 				Code:    500,
+
 				Message: "Database error",
+
 			})
+
 			return
+
 		}
+
+
 
 		// Verify password
+
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+
 				Code:    401,
+
 				Message: "Invalid username or password",
+
 			})
+
 			return
+
 		}
+
+
 
 		// Generate JWT token
+
 		token, err := jwt.GenerateToken(user.ID, user.Username, cfg.JWT.Secret, cfg.JWT.ExpireHours)
+
 		if err != nil {
+
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+
 				Code:    500,
+
 				Message: "Failed to generate token",
+
 			})
+
 			return
+
 		}
 
+
+
 		// Set httpOnly cookie
+
 		setAuthCookie(c, token, cfg)
 
+
+
+		// Auto-login/register Matrix user
+		// Use existing matrix_username from database, or generate a new one
+		matrixUsername := user.MatrixUsername
+		if matrixUsername == "" {
+			matrixUsername = sanitizeMatrixUsername(user.Username)
+		}
+		matrixPassword := req.Password // Use the same password for Matrix
+		matrixAccessToken := ""
+		matrixUserID := ""
+
+		if matrixClient != nil {
+
+			// Try user's password first, then fallback to default
+
+			accessToken, userID, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
+
+			if err != nil {
+
+				// Fallback to default password
+
+				accessToken, userID, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
+
+				if err == nil {
+
+					matrixAccessToken = accessToken
+
+					matrixUserID = userID
+
+					if user.MatrixUsername == "" {
+
+						db.Model(&user).Update("matrix_username", matrixUsername)
+
+					}
+
+				}
+
+			} else {
+
+				matrixAccessToken = accessToken
+
+				matrixUserID = userID
+
+				if user.MatrixUsername == "" {
+
+					db.Model(&user).Update("matrix_username", matrixUsername)
+
+				}
+
+				setMatrixToken(user.ID, matrixAccessToken)
+
+			}
+
+		}
+
+
+
 		// Return success response with user info (token in cookie only)
+
 		c.JSON(http.StatusOK, UnifiedResponse{
+
 			Code:    0,
+
 			Message: "success",
+
 			Data: LoginResponse{
-				Token:    "",
-				UserID:   user.ID,
-				Username: user.Username,
+
+				Token:          "",
+
+				UserID:         user.ID,
+
+				Username:       user.Username,
+
+				MatrixToken:    matrixAccessToken,
+
+				MatrixUserID:   matrixUserID,
+
+				MatrixUsername: matrixUsername,
+
 			},
+
 		})
+
 	}
+
 }
 
 // GetUserInfoResponse represents the get user info response
 type GetUserInfoResponse struct {
-	UserID   uint       `json:"userId"`
-	Username string     `json:"username"`
-	Role     string     `json:"role"`
-	VipLevel int        `json:"vipLevel"`
-	Assets   UserAssets `json:"assets"`
+
+	UserID         uint       `json:"userId"`
+
+	Username       string     `json:"username"`
+
+	MatrixUsername string     `json:"matrixUsername,omitempty"`
+
+	Role           string     `json:"role"`
+
+	VipLevel       int        `json:"vipLevel"`
+
+	Assets         UserAssets `json:"assets"`
+
 }
 
 type UserAssets struct {
@@ -295,17 +453,31 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 			Code:    0,
 			Message: "success",
 			Data: GetUserInfoResponse{
-				UserID:   user.ID,
-				Username: user.Username,
-				Role:     user.Role,
-				VipLevel: user.VipLevel,
+
+				UserID:         user.ID,
+
+				Username:       user.Username,
+
+				MatrixUsername: user.MatrixUsername,
+
+				Role:           user.Role,
+
+				VipLevel:       user.VipLevel,
+
 				Assets: UserAssets{
+
 					Points:          userAsset.Points,
+
 					Coupons:         userAsset.Coupons,
+
 					CouponsExpiring: userAsset.CouponsExpiring,
+
 					ComputeHours:    userAsset.ComputeHours,
+
 					ComputeGPU:      userAsset.ComputeGPU,
+
 				},
+
 			},
 		})
 	}

@@ -29,6 +29,14 @@ export interface MatrixWorker {
   rooms: string[];
 }
 
+interface MatrixUser {
+  userId: string;
+  name: string;
+  displayName?: string;
+  lastActivity?: number; // Last activity timestamp
+  isOnline?: boolean; // Online status based on activity
+}
+
 interface MatrixContextType {
   // Client state
   client: matrixSdk.MatrixClient | null;
@@ -47,7 +55,11 @@ interface MatrixContextType {
   currentRoom: MatrixRoom | null;
   messages: MatrixMessage[];
   
-  // Actions
+  // User online state
+  userOnline: boolean;
+  lastActivityTime: number | null;
+  updateActivity: () => void;
+
   initialize: () => Promise<void>;
   disconnect: () => void;
   selectRoom: (roomId: string) => void;
@@ -66,6 +78,10 @@ interface MatrixContextType {
   
   // Direct message to specific room
   sendMessageToRoom: (roomId: string, text: string) => Promise<void>;
+  
+  // User state
+  users: MatrixUser[];
+  refreshUsers: () => Promise<void>;
 }
 
 const MatrixContext = createContext<MatrixContextType | undefined>(undefined);
@@ -104,16 +120,38 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   const [currentRoom, setCurrentRoom] = useState<MatrixRoom | null>(null);
   const [messages, setMessages] = useState<MatrixMessage[]>([]);
   const [workers, setWorkers] = useState<MatrixWorker[]>([]);
+  const [users, setUsers] = useState<MatrixUser[]>([]);
 
   const clientRef = useRef<matrixSdk.MatrixClient | null>(null);
   const workerStatusRef = useRef<Map<string, boolean>>(new Map());
   const currentRoomRef = useRef<MatrixRoom | null>(null);
-
+  
+  // User activity tracking for auto-logout
+  const [userOnline, setUserOnline] = useState(false);
+  const [lastActivityTime, setLastActivityTime] = useState<number | null>(null);
+  const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
   // Keep currentRoomRef in sync with currentRoom state
   useEffect(() => {
     currentRoomRef.current = currentRoom;
   }, [currentRoom]);
-// Convert Matrix room to our format
+  
+  // Update activity time and set user online
+  const updateActivity = useCallback(() => {
+    const now = Date.now();
+    setLastActivityTime(now);
+    setUserOnline(true);
+    console.log('[Matrix] Activity updated:', new Date(now).toLocaleTimeString());
+  }, []);
+  
+  // Set user online when initialized
+  useEffect(() => {
+    if (isInitialized) {
+      updateActivity();
+    }
+  }, [isInitialized, updateActivity]);
+  
+  // Convert Matrix room to our format
   const convertRoom = useCallback((room: Room): MatrixRoom => {
     const members = room.getJoinedMembers().map(m => m.userId);
     const name = room.name || room.roomId;
@@ -227,6 +265,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
           
           setIsInitialized(true);
           setIsLoading(false);
+          refreshUsers();
         }
       });
       
@@ -333,7 +372,29 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     setCurrentRoom(null);
     setMessages([]);
   }, []);
-
+  
+  // Check inactivity timer every minute - must be after disconnect is defined
+  useEffect(() => {
+    const checkInactivity = () => {
+      if (lastActivityTime && userOnline) {
+        const elapsed = Date.now() - lastActivityTime;
+        if (elapsed >= INACTIVITY_TIMEOUT) {
+          console.log('[Matrix] User inactive for 10 minutes, logging out...');
+          disconnect();
+          setUserOnline(false);
+        }
+      }
+    };
+    
+    // Check every minute
+    activityTimerRef.current = setInterval(checkInactivity, 60 * 1000);
+    
+    return () => {
+      if (activityTimerRef.current) {
+        clearInterval(activityTimerRef.current);
+      }
+    };
+  }, [lastActivityTime, userOnline, disconnect, INACTIVITY_TIMEOUT]);
   // Refresh rooms list (joined rooms only) - MUST be defined before other functions that use it
   const refreshRooms = useCallback(async () => {
     if (!clientRef.current) return;
@@ -370,6 +431,9 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       throw new Error('Not connected to Matrix or no room selected');
     }
     
+    // Update activity time when user sends message
+    updateActivity();
+    
     // Optimistic update: add message to UI immediately
     const optimisticMsg: MatrixMessage = {
       id: `local-${Date.now()}`,
@@ -390,7 +454,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
         loadRoomMessages(room);
       }
     }
-  }, [currentRoom, loadRoomMessages]);
+  }, [currentRoom, loadRoomMessages, updateActivity]);
 
   // Send message to a specific room (without switching current room)
   const sendMessageToRoom = useCallback(async (roomId: string, text: string) => {
@@ -486,38 +550,6 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       setCurrentRoom(prev => prev ? { ...prev, name: newName } : null);
     }
   }, [currentRoom]);
-  const connectSync = useCallback(() => {
-    if (!isInitialized) return;
-
-    const eventSource = new EventSource(`${API_BASE}/matrix/sync`, {
-      withCredentials: true,
-    });
-
-    eventSource.addEventListener('sync', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.data) {
-          const syncData = JSON.parse(data.data.data);
-          if (syncData.rooms?.join) {
-            refreshRooms();
-          }
-        }
-      } catch (e) {
-        console.error('[Matrix] Failed to parse sync event:', e);
-      }
-    });
-
-    eventSource.onerror = () => {
-      console.error('[Matrix] SSE error');
-      eventSource.close();
-      setTimeout(connectSync, 5000);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [isInitialized, refreshRooms]);
-
   // Fetch all rooms (public + joined)
   const fetchAllRooms = useCallback(async () => {
     if (!accessToken) return;
@@ -559,6 +591,19 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     }
   }, []);
 
+  // Refresh users list
+  const refreshUsers = useCallback(async () => {
+    try {
+      const resp = await fetchApi(`${API_BASE}/matrix/users`);
+      const data = await resp.json();
+      if (data.code === 0 && data.data?.users) {
+        setUsers(data.data.users);
+      }
+    } catch (e) {
+      console.error('Failed to fetch users:', e);
+    }
+  }, []);
+
   // Join a worker to a room
   const joinWorkerToRoom = useCallback(async (workerId: string, roomId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/workers/${workerId}/join`, {
@@ -590,12 +635,6 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   }, [accessToken, isInitialized, fetchAllRooms]);
 
 
-  useEffect(() => {
-    if (isInitialized) {
-      const cleanup = connectSync();
-      return cleanup;
-    }
-  }, [isInitialized, connectSync]);
   const value: MatrixContextType = {
     client,
     isInitialized,
@@ -620,8 +659,14 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     refreshRooms,
     workers,
     refreshWorkers,
+    users,
+    refreshUsers,
     joinWorkerToRoom,
     sendMessageToRoom,
+    // User online state
+    userOnline,
+    lastActivityTime,
+    updateActivity,
   };
 
   return <MatrixContext.Provider value={value}>{children}</MatrixContext.Provider>;

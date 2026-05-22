@@ -19,12 +19,14 @@ JWT      JWTConfig      `mapstructure:"jwt"`
 }
 
 // MatrixConfig holds Matrix server configuration
+
 type MatrixConfig struct {
-HomeserverURL string     `mapstructure:"homeserver_url"`
-ServerName    string     `mapstructure:"server_name"`
-SharedSecret  string     `mapstructure:"shared_secret"`
-AdminAPIURL   string     `mapstructure:"admin_api_url"`
-Workers       []string   `mapstructure:"workers"` // List of worker usernames (e.g., ["worker-001", "worker-002"])
+	HomeserverURL string   `mapstructure:"homeserver_url"`
+	ServerName    string   `mapstructure:"server_name"`
+	SharedSecret  string   `mapstructure:"shared_secret"`
+	AdminUser     string   `mapstructure:"admin_user"`     // Admin username for Synapse Admin API
+	AdminPassword string   `mapstructure:"admin_password"` // Admin password for Synapse Admin API
+	Workers       []string `mapstructure:"workers"`        // List of worker usernames
 }
 
 // LLMConfig holds LLM provider configuration

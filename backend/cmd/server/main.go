@@ -34,12 +34,13 @@ func main() {
 		&model.APIKey{},
 		&model.AgentBabaSession{}, &model.Skill{}, &model.MCPServer{},
 		&model.AgentInstance{},
+		&model.CreditTransaction{}, &model.LLMGateway{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
 	// Initialize Matrix client
-	matrixClient := handler.NewMatrixClient(cfg)
+	matrixClient := handler.NewMatrixClient(cfg, db)
 
 	// Initialize Gin router
 	router := gin.Default()
@@ -64,15 +65,24 @@ func main() {
 
 	// API routes
 	api := router.Group("/api")
-	{
-		// User routes (public)
-		user := api.Group("/user")
 		{
-			user.POST("/register", handler.Register(db))
-			user.POST("/login", handler.Login(db, cfg))
-			user.POST("/logout", handler.Logout(cfg))
-			user.POST("/online", handler.GetOnlineUsers(db))
-		}
+
+			// User routes (public)
+
+			user := api.Group("/user")
+
+			{
+
+				user.POST("/register", handler.Register(db))
+
+				user.POST("/login", handler.Login(db, cfg, matrixClient))
+
+				user.POST("/logout", handler.Logout(cfg))
+
+				user.POST("/online", handler.GetOnlineUsers(db))
+
+			}
+
 
 		// User routes (auth required)
 		userAuth := api.Group("/user")
@@ -144,6 +154,8 @@ func main() {
 		{
 			taskAuth.POST("/create", handler.CreateTask(db))
 			taskAuth.POST("/apply", handler.ApplyTask(db))
+			taskAuth.GET("/:id/publisher", handler.GetTaskPublisher(db))
+			taskAuth.POST("/:id/chat-room", handler.CreateTaskChatRoom(matrixClient))
 		}
 
 		// PRD routes
@@ -168,11 +180,11 @@ func main() {
 		matrix := api.Group("/matrix")
 		matrix.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
-			matrix.POST("/register", handler.RegisterMatrixUser(matrixClient))
-			matrix.POST("/login", handler.LoginMatrixUser(matrixClient))
-			matrix.GET("/sync", handler.MatrixSyncSSE(matrixClient))
+		matrix.POST("/register", handler.RegisterMatrixUser(matrixClient))
+		matrix.POST("/login", handler.LoginMatrixUser(matrixClient))
+		matrix.GET("/sync", handler.MatrixSyncSSE(matrixClient))
+		matrix.GET("/users", handler.ListMatrixUsers(matrixClient))
 		}
-
 		matrixRooms := api.Group("/matrix/rooms")
 		matrixRooms.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
@@ -189,6 +201,12 @@ func main() {
 			matrixWorkers.GET("", handler.ListMatrixWorkers(matrixClient))
 			matrixWorkers.POST("/:worker_id/join", handler.JoinWorkerToRoom(matrixClient))
 		}
+
+		// Credit & Gateway handlers
+		creditHandler := handler.NewCreditHandler(db)
+		gatewayHandler := handler.NewLLMGatewayHandler(db)
+
+		// Admin routes
 
 		// Admin routes
 		api.POST("/admin/login", handler.AdminLogin(db, cfg))
@@ -232,6 +250,7 @@ func main() {
 			admin.POST("/api/keys/list", handler.GetAPIKeyList(db))
 			admin.POST("/api/keys/create", handler.CreateAPIKey(db))
 			admin.POST("/api/keys/:id/revoke", handler.RevokeAPIKey(db))
+			admin.POST("/credit/recharge", creditHandler.Recharge)
 		}
 
 		// AgentBaba routes (auth required)
@@ -274,6 +293,23 @@ func main() {
 			mcp.GET("/servers/:name/tools", mcpHandler.ListTools)
 			mcp.POST("/servers/:name/tools/:tool/call", mcpHandler.CallTool)
 		}
+
+		// Credit & Gateway routes (auth required)
+		creditAuth := api.Group("/credit")
+		creditAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			creditAuth.POST("/balance", creditHandler.GetBalance)
+			creditAuth.POST("/transactions", creditHandler.GetTransactions)
+		}
+
+		gatewayAuth := api.Group("/gateway")
+		gatewayAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			gatewayAuth.GET("/my", gatewayHandler.GetMyGateway)
+			gatewayAuth.POST("/create", gatewayHandler.CreateGateway)
+			gatewayAuth.POST("/usage", gatewayHandler.GetUsage)
+		}
+
 
 		// Agent instance routes
 		instanceHandler := handler.NewAgentInstanceHandler(db, cfg)

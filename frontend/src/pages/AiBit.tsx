@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, Send, Bot, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle, Check, Square } from 'lucide-react';
+import { Info, Send, Bot, Terminal, Sparkles, Crown, User, Download, FileText, Folder, File, ChevronDown, PlusCircle, Check, Square, ChevronLeft, ChevronRight, MessageSquare, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
@@ -336,6 +336,14 @@ const processMessages = (messagesData: any[]): ChatMessage[] => {
 // ============================================
 // 主组件
 // ============================================
+// Session interface
+interface SessionInfo {
+  id: string;
+  title: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 const AiBit: React.FC = () => {
   const navigate = useNavigate();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -354,6 +362,10 @@ const AiBit: React.FC = () => {
   const [selectedPrd, setSelectedPrd] = useState<string | null>(null);
   const [prdContent, setPrdContent] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Session sidebar state
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   // 添加 UI 日志行
   const addUILog = (line: string) => {
@@ -439,14 +451,68 @@ const AiBit: React.FC = () => {
         const newId = createRes.data.id;
         setSessionId(newId);
         localStorage.setItem('opencode_bit_session_id', newId);
-        setMessages([]); // 清空当前消息列表
+        setMessages([]);
         addUILog(`✅ 新会话创建成功: ${newId.substring(0, 12)}...`);
+        // Refresh session list
+        fetchSessions();
       }
     } catch (error) {
       logger.error('SESSION', '手动创建会话失败', error);
       addUILog(`❌ 创建会话失败: ${String(error)}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 获取所有bit-chat会话
+  const fetchSessions = async () => {
+    try {
+      const res = await axios.get(`${OPENCODE_BASE_URL}/session`);
+      if (res.data && Array.isArray(res.data)) {
+        // Filter to only bit-chat sessions and sort by updated_at descending
+        const bitChatSessions = res.data
+          .filter((s: any) => s.title === 'bit-chat')
+          .sort((a: any, b: any) => {
+            const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+            const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+            return timeB - timeA; // Newest first
+          });
+        setSessions(bitChatSessions);
+        return bitChatSessions;
+      }
+    } catch (error) {
+      logger.error('SESSION', '获取会话列表失败', error);
+    }
+    return [];
+  };
+
+  // 切换会话
+  const switchSession = async (newSessionId: string) => {
+    if (newSessionId === sessionId) return;
+    setSessionId(newSessionId);
+    localStorage.setItem('opencode_bit_session_id', newSessionId);
+    setMessages([]);
+    addUILog(`🔄 切换到会话: ${newSessionId.substring(0, 12)}...`);
+  };
+
+  // 删除会话
+  const deleteSession = async (idToDelete: string) => {
+    try {
+      await axios.delete(`${OPENCODE_BASE_URL}/session/${idToDelete}`);
+      addUILog(`🗑️ 删除会话: ${idToDelete.substring(0, 12)}...`);
+      // If deleted current session, switch to another
+      if (idToDelete === sessionId) {
+        const remainingSessions = sessions.filter(s => s.id !== idToDelete);
+        if (remainingSessions.length > 0) {
+          switchSession(remainingSessions[0].id);
+        } else {
+          createNewSession();
+        }
+      }
+      fetchSessions();
+    } catch (error) {
+      logger.error('SESSION', '删除会话失败', error);
+      addUILog(`❌ 删除失败: ${String(error)}`);
     }
   };
 
@@ -479,38 +545,41 @@ const AiBit: React.FC = () => {
       try {
         const storedSessionId = localStorage.getItem('opencode_bit_session_id');
         
-        // 如果有 pendingMessage，跳过使用旧会话
-        if (!pendingMessage && storedSessionId) {
+        // Fetch all sessions first
+        const bitChatSessions = await fetchSessions();
+        
+        // If there's a pendingMessage, create a new session
+        if (pendingMessage) {
+          addUILog('🆕 创建新会话（待处理需求）...');
+          const createRes = await axios.post(`${OPENCODE_BASE_URL}/session`, { title: 'bit-chat' });
+          if (createRes.data && createRes.data.id) {
+            const newId = createRes.data.id;
+            setSessionId(newId);
+            localStorage.setItem('opencode_bit_session_id', newId);
+            fetchSessions();
+          }
+          return;
+        }
+
+        // If stored sessionId exists and is in the session list, use it
+        if (storedSessionId && bitChatSessions.some((s: SessionInfo) => s.id === storedSessionId)) {
           logger.log('SESSION', '使用本地存储的 sessionId', { sessionId: storedSessionId });
           addUILog(`✅ 使用本地会话: ${storedSessionId.substring(0, 12)}...`);
           setSessionId(storedSessionId);
           return;
         }
 
-        // 获取现有会话列表
-        addUILog('📡 获取远程会话列表...');
-        logger.log('SESSION', '请求会话列表', { url: `${OPENCODE_BASE_URL}/session` });
-        
-        const res = await axios.get(`${OPENCODE_BASE_URL}/session`);
-        logger.log('SESSION', '会话列表响应', { 
-          status: res.status,
-          sessionCount: res.data?.length,
-          sessions: res.data?.map((s: any) => ({ id: s.id, title: s.title }))
-        });
-        
-        if (!pendingMessage && res.data && Array.isArray(res.data)) {
-          const existingSession = res.data.find((s: {id: string, title: string}) => s.title === 'bit-chat');
-          
-          if (existingSession && existingSession.id) {
-            logger.log('SESSION', '找到现有 bit-chat 会话', { sessionId: existingSession.id });
-            addUILog(`✅ 找到现有会话: ${existingSession.id.substring(0, 12)}...`);
-            setSessionId(existingSession.id);
-            localStorage.setItem('opencode_bit_session_id', existingSession.id);
-            return;
-          }
+        // Otherwise, select the most recent session (first in sorted list)
+        if (bitChatSessions.length > 0) {
+          const latestSession = bitChatSessions[0];
+          logger.log('SESSION', '选择最新的会话', { sessionId: latestSession.id });
+          addUILog(`✅ 选择最新会话: ${latestSession.id.substring(0, 12)}...`);
+          setSessionId(latestSession.id);
+          localStorage.setItem('opencode_bit_session_id', latestSession.id);
+          return;
         }
         
-        // 创建新会话
+        // No existing sessions, create a new one
         addUILog('🆕 创建新会话...');
         logger.log('SESSION', '创建新会话', { title: 'bit-chat' });
         
@@ -526,6 +595,7 @@ const AiBit: React.FC = () => {
           const newId = createRes.data.id;
           setSessionId(newId);
           localStorage.setItem('opencode_bit_session_id', newId);
+          fetchSessions();
         }
       } catch (error) {
         logger.error('SESSION', '初始化会话失败', error);
@@ -874,7 +944,95 @@ const AiBit: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full min-h-0 overflow-hidden">
+      <div className="flex-1 flex gap-0 min-h-0 overflow-hidden">
+        
+        {/* Session Sidebar */}
+        <div className={`shrink-0 flex flex-col bg-white border-r border-slate-200 transition-all duration-300 ease-in-out overflow-hidden ${sidebarExpanded ? 'w-[260px]' : 'w-0'}`}>
+          {/* Sidebar Header */}
+          <div className="shrink-0 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-semibold text-slate-700">历史对话</span>
+              <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{sessions.length}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={createNewSession}
+                className="p-1 text-slate-400 hover:text-emerald-600 transition-colors rounded hover:bg-emerald-50"
+                title="新建对话"
+              >
+                <PlusCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Session List */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {sessions.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-slate-400">
+                暂无对话记录
+              </div>
+            ) : (
+              <div className="py-1">
+                {sessions.map((session) => {
+                  const isActive = session.id === sessionId;
+                  const sessionTime = session.updated_at || session.created_at;
+                  const timeStr = sessionTime
+                    ? new Date(sessionTime).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  
+                  // Try to extract first user message as preview
+                  const preview = session.title === 'bit-chat' ? '对话' : session.title;
+                  
+                  return (
+                    <div
+                      key={session.id}
+                      onClick={() => switchSession(session.id)}
+                      className={`group px-4 py-3 cursor-pointer transition-colors border-l-2 ${
+                        isActive
+                          ? 'bg-emerald-50 border-emerald-500'
+                          : 'border-transparent hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <span className={`text-sm truncate ${isActive ? 'text-emerald-700 font-medium' : 'text-slate-600'}`}>{preview}</span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all rounded hover:bg-red-50"
+                          title="删除对话"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {timeStr && (
+                        <div className="ml-4 mt-1 text-xs text-slate-400">{timeStr}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Sidebar Toggle */}
+        <button
+          onClick={() => setSidebarExpanded(!sidebarExpanded)}
+          className="shrink-0 w-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer border-r border-slate-200"
+          title={sidebarExpanded ? '收起侧边栏' : '展开侧边栏'}
+        >
+          {sidebarExpanded ? (
+            <ChevronLeft className="w-3.5 h-3.5 text-slate-400" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          )}
+        </button>
+        
+        {/* Content Area */}
+        <div className="flex-1 p-6 md:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full min-h-0 overflow-hidden">
           
           {/* Left Column: Chat Interface */}
           <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 relative">
@@ -1221,8 +1379,12 @@ const AiBit: React.FC = () => {
             </div>
           </div>
 
+          </div>
+
         </div>
+        {/* End of Content Area */}
       </div>
+      {/* End of Main Content Area */}
     </div>
   );
 };

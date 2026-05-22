@@ -254,3 +254,56 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 		})
 	}
 }
+
+// GetTaskPublisher gets the publisher info of a task
+// GET /api/task/:id/publisher
+func GetTaskPublisher(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		taskID := c.Param("id")
+		if taskID == "" {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "Task ID is required",
+			})
+			return
+		}
+
+		// Get task
+		var task model.Task
+		if err := db.First(&task, taskID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, UnifiedResponse{
+					Code:    404,
+					Message: "Task not found",
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "Database error",
+			})
+			return
+		}
+
+		// Get publisher
+		var user model.User
+		if err := db.First(&user, task.UserID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "Failed to get publisher info",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: gin.H{
+				"user_id":         user.ID,
+				"username":        user.Username,
+				"matrix_username": user.MatrixUsername,
+				"display_name":    user.Username,
+			},
+		})
+	}
+}
