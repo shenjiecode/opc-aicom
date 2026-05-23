@@ -39,3 +39,15 @@ llm:
   anthropic:
     api_key: ""       # Set via ANTHROPIC_API_KEY env var
     base_url: ""
+
+# Workspace storage configuration
+workspace:
+  type: local           # "local" or "oss"
+  local_dir: uploads/workspace
+  oss:
+    endpoint: ""           # e.g. "oss-cn-hangzhou.aliyuncs.com"
+    access_key_id: ""
+    access_key_secret: ""
+    bucket_name: ""
+    region: ""
+    prefix: "openc-aicom/workspace/"

@@ -11,11 +11,12 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-Server   ServerConfig   `mapstructure:"server"`
-Database DatabaseConfig `mapstructure:"database"`
-JWT      JWTConfig      `mapstructure:"jwt"`
-	Matrix   MatrixConfig   `mapstructure:"matrix"`
-	LLM      LLMConfig      `mapstructure:"llm"`
+Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	Matrix    MatrixConfig    `mapstructure:"matrix"`
+	LLM       LLMConfig       `mapstructure:"llm"`
+	Workspace WorkspaceConfig  `mapstructure:"workspace"`
 }
 
 // MatrixConfig holds Matrix server configuration
@@ -46,6 +47,23 @@ type OpenAIConfig struct {
 type AnthropicConfig struct {
 	APIKey  string `mapstructure:"api_key"`
 	BaseURL string `mapstructure:"base_url"`
+}
+
+// WorkspaceConfig holds workspace storage configuration
+type WorkspaceConfig struct {
+	Type     string    `mapstructure:"type"`     // "local" or "oss"
+	LocalDir string    `mapstructure:"local_dir"`
+	OSS      OSSConfig `mapstructure:"oss"`
+}
+
+// OSSConfig holds OSS storage configuration
+type OSSConfig struct {
+	Endpoint        string `mapstructure:"endpoint"`
+	AccessKeyID     string `mapstructure:"access_key_id"`
+	AccessKeySecret string `mapstructure:"access_key_secret"`
+	BucketName      string `mapstructure:"bucket_name"`
+	Region          string `mapstructure:"region"`
+	Prefix          string `mapstructure:"prefix"`
 }
 // ServerConfig holds server configuration
 type ServerConfig struct {
@@ -158,12 +176,22 @@ viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
 	viper.BindEnv("llm.openai.api_key", "OPENAI_API_KEY")
 	viper.BindEnv("llm.openai.base_url", "OPENAI_BASE_URL")
 	viper.BindEnv("llm.anthropic.api_key", "ANTHROPIC_API_KEY")
-	viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
-// Enable automatic environment variable detection
-// This allows any environment variable to override config file values
-// without explicit BindEnv calls
-viper.AutomaticEnv()
+viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
 
+	// Workspace config
+	viper.BindEnv("workspace.type", "WORKSPACE_TYPE")
+	viper.BindEnv("workspace.local_dir", "WORKSPACE_LOCAL_DIR")
+	viper.BindEnv("workspace.oss.endpoint", "OSS_ENDPOINT")
+	viper.BindEnv("workspace.oss.access_key_id", "OSS_ACCESS_KEY_ID")
+	viper.BindEnv("workspace.oss.access_key_secret", "OSS_ACCESS_KEY_SECRET")
+	viper.BindEnv("workspace.oss.bucket_name", "OSS_BUCKET_NAME")
+	viper.BindEnv("workspace.oss.region", "OSS_REGION")
+	viper.BindEnv("workspace.oss.prefix", "OSS_PREFIX")
+
+	// Enable automatic environment variable detection
+	// This allows any environment variable to override config file values
+	// without explicit BindEnv calls
+	viper.AutomaticEnv()
 	// Read configuration from file
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -181,6 +209,19 @@ viper.AutomaticEnv()
 	}
 
 	return &cfg, nil
+}
+
+// Global config instance
+var globalConfig *Config
+
+// GetConfig returns the global config instance
+func GetConfig() *Config {
+	return globalConfig
+}
+
+// SetConfig sets the global config instance
+func SetConfig(cfg *Config) {
+	globalConfig = cfg
 }
 
 // validate validates the configuration values
@@ -211,7 +252,14 @@ cfg.Matrix.ServerName = "localhost"
 	if cfg.LLM.DefaultProvider == "" {
 		cfg.LLM.DefaultProvider = "openai"
 	}
-return nil
+	// Workspace config defaults
+	if cfg.Workspace.Type == "" {
+		cfg.Workspace.Type = "local"
+	}
+	if cfg.Workspace.LocalDir == "" {
+		cfg.Workspace.LocalDir = "uploads/workspace"
+	}
+	return nil
 }
 
 // GetConnMaxLifetime returns database connection max lifetime as duration
