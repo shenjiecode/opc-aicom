@@ -42,6 +42,7 @@ import {
 } from "@/lib/api/agentbaba";
 import { apiFetch } from "@/lib/api";
 import type { AgentConfig } from "@/types/agentbaba";
+import ApiKeySection from "@/components/credit/ApiKeySection";
 
 interface EditFormConfig {
   name: string;
@@ -542,6 +543,9 @@ export default function EditAgentPage() {
                   </div>
                 </CardContent>
               </Card>
+
+            {/* API Key Section */}
+            <ApiKeySection />
 
               {/* Mobile Save Buttons */}
               <div className="flex flex-col gap-2 md:hidden pt-2">

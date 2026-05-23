@@ -59,6 +59,52 @@ func (e *AgentExecutor) Execute(
 	return resp.Choices[0].Message.Content, nil
 }
 
+// ExecuteWithUsage returns response content and token usage
+// ExecuteWithUsage returns response content and token usage
+func (e *AgentExecutor) ExecuteWithUsage(
+	ctx context.Context,
+	config *model.AgentConfig,
+	input string,
+	mcpTools []model.MCPTool,
+) (string, *Usage, error) {
+	provider := e.getProviderForConfig(config)
+
+	messages := []Message{
+		{Role: "system", Content: config.SystemPrompt},
+		{Role: "user", Content: input},
+	}
+	tools := []Tool{}
+	for _, mcpTool := range mcpTools {
+		tools = append(tools, Tool{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        mcpTool.Name,
+				Description: mcpTool.Description,
+				Parameters:  mcpTool.InputSchema,
+			},
+		})
+	}
+
+	req := &ChatRequest{
+		Model:       config.Model,
+		Messages:    messages,
+		Temperature: config.Temperature,
+		MaxTokens:   config.MaxTokens,
+		Tools:       tools,
+	}
+
+	resp, err := provider.Chat(ctx, req)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", &resp.Usage, nil
+	}
+
+	return resp.Choices[0].Message.Content, &resp.Usage, nil
+}
+
 func (e *AgentExecutor) ExecuteWithMemory(
 	ctx context.Context,
 	config *model.AgentConfig,

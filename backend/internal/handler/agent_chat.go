@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,15 +16,18 @@ import (
 )
 
 type AgentChatHandler struct {
+	db           *gorm.DB
 	instanceRepo *repository.AgentInstanceRepository
 	registry     *llm.ProviderRegistry
+	creditHandler *CreditHandler
 }
-
 func NewAgentChatHandler(db *gorm.DB) *AgentChatHandler {
 	return &AgentChatHandler{
-		instanceRepo: repository.NewAgentInstanceRepository(db),
+		db:           db,
+instanceRepo: repository.NewAgentInstanceRepository(db),
 		registry:     llm.InitDefaultRegistry(),
-	}
+		creditHandler: NewCreditHandler(db),
+}
 }
 
 type ChatRequest struct {
@@ -31,9 +35,10 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Response string `json:"response"`
-	Model    string `json:"model"`
+Response string `json:"response"`
+Model    string `json:"model"`
 	Duration int64  `json:"duration_ms"`
+	Tokens   int    `json:"tokens"`
 }
 
 func (h *AgentChatHandler) Chat(c *gin.Context) {
@@ -76,7 +81,7 @@ func (h *AgentChatHandler) Chat(c *gin.Context) {
 	defer cancel()
 
 	start := time.Now()
-	response, err := executor.Execute(ctx, &config, req.Message, nil)
+	response, usage, err := executor.ExecuteWithUsage(ctx, &config, req.Message, nil)
 	duration := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -85,6 +90,17 @@ func (h *AgentChatHandler) Chat(c *gin.Context) {
 			"message": "LLM调用失败: " + err.Error(),
 		})
 		return
+	}
+
+	// Deduct credits after successful LLM call
+	tokensUsed := 0
+	if usage != nil {
+		tokensUsed = usage.TotalTokens
+		instanceID := uint(id)
+		if err := h.creditHandler.DeductCredits(instance.UserID, config.Model, tokensUsed, &instanceID, "agent_instance"); err != nil {
+			// Log but don't fail the request
+			fmt.Printf("Failed to deduct credits: %v\n", err)
+		}
 	}
 
 	_ = h.instanceRepo.IncrementRuns(uint(id), true)
@@ -96,6 +112,7 @@ func (h *AgentChatHandler) Chat(c *gin.Context) {
 			Response: response,
 			Model:    config.Model,
 			Duration: duration,
+			Tokens:   tokensUsed,
 		},
 	})
 }
