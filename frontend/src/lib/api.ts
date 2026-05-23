@@ -12,8 +12,9 @@ interface User {
   username: string;
   role: string;
   vipLevel: number;
+  memberType: 'normal' | 'personal' | 'enterprise';
+  verificationStatus: 'none' | 'pending' | 'verified' | 'rejected';
 }
-
 interface UserInfoResponse {
   code: number;
   message: string;

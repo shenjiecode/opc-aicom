@@ -17,9 +17,11 @@ import {
   Settings,
   ChevronUp,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { VerificationDialog } from "@/components/VerificationDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Navigation item type
 // Navigation item type
 interface NavItem {
   id: string;
@@ -120,6 +123,7 @@ export function Sidebar({
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const [verificationOpen, setVerificationOpen] = useState(false);
 
   // Support both controlled and uncontrolled collapsed state
   const collapsed = controlledCollapsed ?? internalCollapsed;
@@ -140,6 +144,18 @@ export function Sidebar({
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  // Helper function to get member type display text
+  const getMemberTypeDisplay = (type?: string) => {
+    switch (type) {
+      case 'personal':
+        return '个人会员';
+      case 'enterprise':
+        return '企业会员';
+      default:
+        return '普通用户';
+    }
   };
 
   return (
@@ -352,17 +368,20 @@ export function Sidebar({
               {/* User Stats */}
               <div className="px-3 py-2 text-xs text-[var(--text-muted)]">
                 <div className="flex justify-between mb-1">
-                  <span>角色</span>
+                  <span>会员类型</span>
                   <span className="text-[var(--text-secondary)]">
-                    {user.role === 'user' ? '普通用户' : user.role}
+                    {getMemberTypeDisplay(user.memberType)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>VIP等级</span>
-                  <span className="text-[var(--text-secondary)]">
-                    {user.vipLevel > 0 ? `VIP ${user.vipLevel}` : '普通会员'}
-                  </span>
-                </div>
+                {user.verificationStatus === 'verified' && (
+                  <div className="flex justify-between items-center">
+                    <span>认证状态</span>
+                    <span className="text-green-500 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      已认证
+                    </span>
+                  </div>
+                )}
               </div>
 
               <DropdownMenuSeparator className="bg-[var(--border-default)]" />
@@ -377,12 +396,19 @@ export function Sidebar({
 
               <DropdownMenuItem
                 className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
+                onClick={() => setVerificationOpen(true)}
+              >
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                认证
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
                 onClick={() => navigate("/settings")}
               >
                 <Settings className="w-4 h-4 mr-2" />
                 设置
               </DropdownMenuItem>
-
               <DropdownMenuSeparator className="bg-[var(--border-default)]" />
 
               <DropdownMenuItem
@@ -396,6 +422,10 @@ export function Sidebar({
           </DropdownMenu>
         </div>
       )}
+
+      {/* Verification Dialog */}
+      <VerificationDialog open={verificationOpen} onOpenChange={setVerificationOpen} />
+
 
       {/* Login Button - When not authenticated */}
       {!isAuthenticated && (

@@ -4,8 +4,15 @@ import { useNavigate } from 'react-router-dom';
 interface User {
   userId: number;
   username: string;
+  matrixUsername?: string;
+  matrixToken?: string;
+  matrixUserId?: string;
   role: string;
   vipLevel: number;
+  memberType: string; // normal, personal, enterprise
+  verificationStatus: string; // none, pending, verified, rejected
+  realName?: string;
+  enterpriseName?: string;
 }
 
 interface AuthContextType {
@@ -73,8 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser({
           userId: data.data.userId,
           username: data.data.username,
+          matrixUsername: data.data.matrixUsername,
           role: data.data.role,
           vipLevel: data.data.vipLevel,
+          memberType: data.data.memberType || 'normal',
+          verificationStatus: data.data.verificationStatus || 'none',
+          realName: data.data.realName,
+          enterpriseName: data.data.enterpriseName,
         });
       } else {
         setUser(null);
@@ -112,13 +124,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Set user from response
+
     if (data.data) {
+
       setUser({
         userId: data.data.userId,
         username: data.data.username,
-        role: 'user',
-        vipLevel: 0,
+        matrixUsername: data.data.matrixUsername,
+        matrixToken: data.data.matrixToken,
+        matrixUserId: data.data.matrixUserId,
+        role: data.data.role || 'user',
+        vipLevel: data.data.vipLevel || 0,
+        memberType: data.data.memberType || 'normal',
+        verificationStatus: data.data.verificationStatus || 'none',
       });
+
     }
   }, []);
 
