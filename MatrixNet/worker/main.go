@@ -184,10 +184,10 @@ func loadConfig(cfg *Config) error {
 // PID file lock - prevent multiple instances
 func acquirePIDLock(cfg *Config) error {
 	pidPath := filepath.Join(cfg.PIDDir, fmt.Sprintf("%s.pid", cfg.WorkerID))
-
 	currentPID := os.Getpid()
 
-	// Check if process already running
+	// In Docker containers, PID 1 is always the init process and Signal(0) always succeeds.
+	// Docker already ensures single instance, so we just clean up any stale PID file.
 	if data, err := os.ReadFile(pidPath); err == nil {
 		pidStr := strings.TrimSpace(string(data))
 		pid, err := strconv.Atoi(pidStr)
@@ -196,8 +196,13 @@ func acquirePIDLock(cfg *Config) error {
 			if pid == currentPID {
 				fmt.Printf("[INFO] Stale PID file found with own PID %d (container restart), removing...\n", pid)
 				os.Remove(pidPath)
+			} else if pid == 1 || currentPID == 1 {
+				// In Docker (PID 1), Signal(0) on PID 1 always succeeds spuriously.
+				// Docker ensures single instance, so just remove stale file.
+				fmt.Printf("[INFO] Docker environment detected, removing stale PID file (PID %d)\n", pid)
+				os.Remove(pidPath)
 			} else {
-				// Check if another process exists
+				// Check if another process exists (non-Docker case)
 				process, err := os.FindProcess(pid)
 				if err == nil {
 					// Signal(0) checks if process is alive without killing it
