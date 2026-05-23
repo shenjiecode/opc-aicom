@@ -1,0 +1,28 @@
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse-local
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+      - "8448:8448"
+    volumes:
+      - ./synapse-data:/data
+    environment:
+      - SYNAPSE_SERVER_NAME=localhost
+      - SYNAPSE_REPORT_STATS=no
+    depends_on:
+      - synapse-db
+
+  synapse-db:
+    image: postgres:15-alpine
+    container_name: synapse-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse_secret
+      POSTGRES_DB: synapse
+    volumes:
+      - ./synapse-pgdata:/var/lib/postgresql/data

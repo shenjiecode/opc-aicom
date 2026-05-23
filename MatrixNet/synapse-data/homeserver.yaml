@@ -1,0 +1,66 @@
+server_name: "localhost"
+pid_file: /data/homeserver.pid
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false
+  - port: 8448
+    tls: false
+    type: http
+    resources:
+      - names: [federation]
+        compress: false
+
+database:
+  name: psycopg2
+  allow_unsafe_locale: true  # Allow non-C locale
+  args:
+    user: synapse
+    password: synapse_secret
+    database: synapse
+    host: synapse-db
+    cp_min: 5
+    cp_max: 10
+log_config: "/data/log.config"
+media_store_path: /data/media_store
+registration_shared_secret: "nexus_matrix_secret_xK9mP2vL7qR4wY6j"
+report_stats: false
+macaroon_secret_key: "opc_synapse_macaroon_secret_key_change_me"
+form_secret: "opc_synapse_form_secret_change_me"
+signing_key_path: "/data/signing.key"
+
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+# Enable registration
+enable_registration: true
+enable_registration_without_verification: true
+
+# Allow admin API access
+admin_contact: "mailto:admin@localhost"
+
+# Rate limiting configuration - exempt workers
+rc_login:
+  account:
+    per_second: 0.5
+    burst_count: 100
+  address:
+    per_second: 0.5
+    burst_count: 100
+  failed_attempts:
+    per_second: 0.5
+    burst_count: 100
+rc_registration:
+  per_second: 0.5
+  burst_count: 100
+rc_joins:
+  local:
+    per_second: 0.5
+    burst_count: 100
+  remote:
+    per_second: 0.5
+    burst_count: 100

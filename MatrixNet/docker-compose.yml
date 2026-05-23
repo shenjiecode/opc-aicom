@@ -1,43 +1,6 @@
 version: '3.8'
 
 services:
-  dendrite:
-    image: matrixdotorg/dendrite-monolith:latest
-    container_name: dendrite
-    restart: unless-stopped
-    ports:
-      - "8008:8008"
-      - "8448:8448"
-    volumes:
-      - ./config:/etc/dendrite
-      - ./data:/var/dendrite
-    depends_on:
-      - postgres
-    environment:
-      - DENDRITE_CONFIG=/etc/dendrite/dendrite.yaml
-
-  matrix-proxy:
-    image: nginx:alpine
-    container_name: matrix-proxy
-    restart: unless-stopped
-    ports:
-      - "8888:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - dendrite
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: dendrite-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: dendrite
-      POSTGRES_PASSWORD: itsasecret
-      POSTGRES_DB: dendrite
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-
   worker-001:
     build:
       context: ./worker
@@ -47,13 +10,12 @@ services:
     environment:
       - WORKER_ID=worker-001
       - WORKER_PASSWORD=password
-      - HOMESERVER_URL=http://dendrite:8008
+      - HOMESERVER_URL=http://synapse-local:8008
       - COMMAND_ROOM_ALIAS=#command_center:localhost
       - LIGHT_AGENT_URL=http://host.docker.internal:3000/api/chat
     volumes:
       - ./worker-config/worker-001:/app/config
-    depends_on:
-      - dendrite
+    depends_on: []
   worker-002:
     build:
       context: ./worker
@@ -63,13 +25,12 @@ services:
     environment:
       - WORKER_ID=worker-002
       - WORKER_PASSWORD=password
-      - HOMESERVER_URL=http://dendrite:8008
+      - HOMESERVER_URL=http://synapse-local:8008
       - COMMAND_ROOM_ALIAS=#command_center:localhost
       - LIGHT_AGENT_URL=http://host.docker.internal:3000/api/chat
     volumes:
       - ./worker-config/worker-002:/app/config
-    depends_on:
-      - dendrite
+    depends_on: []
   commander-backend:
     build:
       context: ./commander/backend
@@ -81,10 +42,9 @@ services:
     environment:
       - COMMANDER_ID=commander
       - COMMANDER_PASSWORD=password
-      - HOMESERVER_URL=http://dendrite:8008
+      - HOMESERVER_URL=http://synapse-local:8008
       - COMMAND_ROOM_ALIAS=#command_center:localhost
-    depends_on:
-      - dendrite
+    depends_on: []
 
   light-agent:
     build: ./light-agent-server
