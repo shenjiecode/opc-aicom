@@ -14,10 +14,11 @@ import (
 
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
+cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+	config.SetConfig(cfg)
 
 	// Initialize database
 	db, err := database.InitDB(cfg.Database)
@@ -35,6 +36,7 @@ func main() {
 		&model.AgentBabaSession{}, &model.Skill{}, &model.MCPServer{},
 		&model.AgentInstance{},
 		&model.CreditTransaction{}, &model.LLMGateway{},
+		&model.Verification{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -162,6 +164,11 @@ func main() {
 		api.GET("/prds", handler.ListPRDs)
 		api.POST("/prds", handler.SavePRD)
 		api.GET("/prds/:filename", handler.GetPRD)
+		// Workspace routes
+		api.GET("/workspace", handler.ListWorkspaceFiles)
+		api.GET("/workspace/:filename", handler.GetWorkspaceFile)
+		api.POST("/workspace", handler.UploadWorkspaceFile)
+
 
 		// Event routes (public)
 		api.GET("/event/:id", handler.GetEvent(db))
@@ -174,6 +181,16 @@ func main() {
 		{
 			eventAuth.POST("/create", handler.CreateEvent(db))
 			eventAuth.POST("/join", handler.JoinEvent(db))
+
+		// Verification routes (auth required)
+		verification := api.Group("/verification")
+		verification.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			verification.POST("/personal", handler.SubmitPersonalVerification(db))
+			verification.POST("/enterprise", handler.SubmitEnterpriseVerification(db))
+			verification.GET("/status", handler.GetVerificationStatus(db))
+		}
+
 		}
 
 		// Matrix routes

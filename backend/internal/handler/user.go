@@ -387,19 +387,16 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 // GetUserInfoResponse represents the get user info response
 type GetUserInfoResponse struct {
-
-	UserID         uint       `json:"userId"`
-
-	Username       string     `json:"username"`
-
-	MatrixUsername string     `json:"matrixUsername,omitempty"`
-
-	Role           string     `json:"role"`
-
-	VipLevel       int        `json:"vipLevel"`
-
-	Assets         UserAssets `json:"assets"`
-
+	UserID             uint       `json:"userId"`
+	Username           string     `json:"username"`
+	MatrixUsername     string     `json:"matrixUsername,omitempty"`
+	Role               string     `json:"role"`
+	VipLevel           int        `json:"vipLevel"`
+	MemberType         string     `json:"memberType"`
+	VerificationStatus string     `json:"verificationStatus"`
+	RealName           string     `json:"realName,omitempty"`
+	EnterpriseName     string     `json:"enterpriseName,omitempty"`
+	Assets             UserAssets `json:"assets"`
 }
 
 type UserAssets struct {
@@ -453,35 +450,27 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 			Code:    0,
 			Message: "success",
 			Data: GetUserInfoResponse{
-
-				UserID:         user.ID,
-
-				Username:       user.Username,
-
-				MatrixUsername: user.MatrixUsername,
-
-				Role:           user.Role,
-
-				VipLevel:       user.VipLevel,
-
+				UserID:             user.ID,
+				Username:           user.Username,
+				MatrixUsername:     user.MatrixUsername,
+				Role:               user.Role,
+				VipLevel:           user.VipLevel,
+				MemberType:         user.MemberType,
+				VerificationStatus: user.VerificationStatus,
+				RealName:           user.RealName,
+				EnterpriseName:     user.EnterpriseName,
 				Assets: UserAssets{
-
 					Points:          userAsset.Points,
-
 					Coupons:         userAsset.Coupons,
-
 					CouponsExpiring: userAsset.CouponsExpiring,
-
 					ComputeHours:    userAsset.ComputeHours,
-
 					ComputeGPU:      userAsset.ComputeGPU,
-
 				},
-
 			},
 		})
 	}
 }
+
 
 // Logout handles user logout
 // POST /api/user/logout
