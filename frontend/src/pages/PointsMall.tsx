@@ -38,8 +38,8 @@ interface Toast {
 }
 
 // Format number with commas
-function formatNumber(num: number): string {
-  return num.toLocaleString("zh-CN");
+function formatNumber(num: number | undefined | null): string {
+  return (num ?? 0).toLocaleString("zh-CN");
 }
 
 // Format date
@@ -103,8 +103,8 @@ export default function PointsMall() {
     try {
       setLoading(true);
       const response = await getPackages();
-      // Filter only active packages
-      const activePackages = response.list.filter((p) => p.status === "active");
+      const allPackages = response?.list || [];
+      const activePackages = allPackages.filter((p) => p.status === "active");
       // Sort by sort_order
       activePackages.sort((a, b) => a.sort_order - b.sort_order);
       setPackages(activePackages);
@@ -135,7 +135,7 @@ export default function PointsMall() {
     try {
       setMyPackagesLoading(true);
       const response = await getMyPackages();
-      setMyPackages(response.list);
+      setMyPackages(response?.list || []);
     } catch (err) {
       console.error("[PointsMall] Failed to load my packages:", err);
       showToast("error", "加载失败", "无法加载已购套餐");

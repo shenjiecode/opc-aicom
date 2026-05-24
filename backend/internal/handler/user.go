@@ -299,86 +299,45 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 
 
-		// Auto-login/register Matrix user
-		// Use existing matrix_username from database, or generate a new one
+		// Auto-login/register Matrix user (async - don't block login response)
 		matrixUsername := user.MatrixUsername
 		if matrixUsername == "" {
 			matrixUsername = sanitizeMatrixUsername(user.Username)
 		}
-		matrixPassword := req.Password // Use the same password for Matrix
-		matrixAccessToken := ""
-		matrixUserID := ""
+		matrixPassword := req.Password
 
 		if matrixClient != nil {
-
-			// Try user's password first, then fallback to default
-
-			accessToken, userID, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
-
-			if err != nil {
-
-				// Fallback to default password
-
-				accessToken, userID, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
-
+			// Run Matrix login in background to avoid blocking the login response
+			go func() {
+				accessToken, _, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
+				if err != nil {
+					// Fallback to default password
+					accessToken, _, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
+				}
 				if err == nil {
-
-					matrixAccessToken = accessToken
-
-					matrixUserID = userID
-
+					setMatrixToken(user.ID, accessToken)
 					if user.MatrixUsername == "" {
-
 						db.Model(&user).Update("matrix_username", matrixUsername)
-
 					}
-
 				}
-
-			} else {
-
-				matrixAccessToken = accessToken
-
-				matrixUserID = userID
-
-				if user.MatrixUsername == "" {
-
-					db.Model(&user).Update("matrix_username", matrixUsername)
-
-				}
-
-				setMatrixToken(user.ID, matrixAccessToken)
-
-			}
-
+			}()
 		}
 
 
 
 		// Return success response with user info (token in cookie only)
-
+		// Matrix token will be set async - can be fetched via /api/matrix/login
 		c.JSON(http.StatusOK, UnifiedResponse{
-
 			Code:    0,
-
 			Message: "success",
-
 			Data: LoginResponse{
-
 				Token:          "",
-
 				UserID:         user.ID,
-
 				Username:       user.Username,
-
-				MatrixToken:    matrixAccessToken,
-
-				MatrixUserID:   matrixUserID,
-
+				MatrixToken:    "", // Set async
+				MatrixUserID:   "", // Set async
 				MatrixUsername: matrixUsername,
-
 			},
-
 		})
 
 	}

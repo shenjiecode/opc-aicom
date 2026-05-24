@@ -204,7 +204,7 @@ func RegisterMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		httpReq.Header.Set("Content-Type", "application/json")
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -449,7 +449,7 @@ func registerMatrixUserInternal(matrixClient *MatrixClient, username, password s
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return fmt.Errorf("failed to register: %w", err)
@@ -516,7 +516,7 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 
 	resp, err := client.Do(httpReq)
 
@@ -669,7 +669,7 @@ func CreateMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -751,7 +751,7 @@ func JoinMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -1011,7 +1011,7 @@ func LeaveMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -1098,7 +1098,7 @@ func InviteToMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -1301,7 +1301,7 @@ func getWorkerRooms(matrixClient *MatrixClient, workerName string) []string {
 
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return []string{}
@@ -1412,7 +1412,7 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		httpReq.Header.Set("Content-Type", "application/json")
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
@@ -1884,7 +1884,7 @@ func CreateTaskChatRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", matrixToken))
 
-		client := &http.Client{}
+		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{

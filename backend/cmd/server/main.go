@@ -37,6 +37,10 @@ cfg, err := config.Load()
 		&model.AgentInstance{},
 		&model.CreditTransaction{}, &model.LLMGateway{},
 		&model.Verification{},
+		&model.ComputePackage{}, &model.ComputeUsage{},
+		&model.UserPackage{},
+		&model.Contract{}, &model.ContractStage{},
+		&model.TaskNotification{}, &model.RequirementSession{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -333,6 +337,31 @@ cfg, err := config.Load()
 		compute.GET("/usage/:id", computeUsageHandler.GetComputeUsageDetail)
 	}
 
+	// Points Mall routes
+	mallHandler := handler.NewPointsMallHandler(db)
+	mall := api.Group("/mall")
+	{
+		mall.GET("/packages", mallHandler.ListPackages)
+	}
+	mallAuth := api.Group("/mall")
+	mallAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+	{
+		mallAuth.GET("/balance", mallHandler.GetBalance)
+		mallAuth.GET("/my-packages", mallHandler.ListMyPackages)
+		mallAuth.POST("/purchase", mallHandler.Purchase)
+	}
+
+	// Contract routes
+	contractHandler := handler.NewContractHandler(db)
+	contractsAuth := api.Group("/contracts")
+	contractsAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+	{
+		contractsAuth.POST("", contractHandler.CreateContract)
+		contractsAuth.GET("/:id", contractHandler.GetContract)
+		contractsAuth.PUT("/:id/sign", contractHandler.SignContract)
+		contractsAuth.PUT("/:id/stage/:stageId", contractHandler.UpdateStage)
+		contractsAuth.GET("/task/:taskId", contractHandler.GetContractByTask)
+	}
 		gatewayAuth := api.Group("/gateway")
 		gatewayAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
