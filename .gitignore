@@ -47,6 +47,7 @@ frontend/dist/
 # MatrixNet runtime data
 MatrixNet/data/
 MatrixNet/postgres-data/
+MatrixNet/synapse-pgdata/
 MatrixNet/light-agent-server/venv/
 MatrixNet/nginx/
 

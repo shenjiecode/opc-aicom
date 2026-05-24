@@ -231,4 +231,15 @@ func approveVerification(db *gorm.DB, verificationID uint, reviewerID uint, rema
 		"member_type":         memberType,
 		"verification_status": "verified",
 	})
+
+	// 如果是企业认证，赠送10000积分
+	if verification.Type == model.VerificationTypeEnterprise {
+		creditHandler := NewCreditHandler(db)
+		giftReason := "企业认证通过，系统赠送积分"
+		if err := creditHandler.GiftPoints(verification.UserID, 10000, giftReason); err != nil {
+			// Log error but don't fail the verification
+			// In production, you'd want proper logging here
+			_ = err
+		}
+	}
 }

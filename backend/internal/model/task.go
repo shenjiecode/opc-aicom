@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -21,9 +22,18 @@ type Task struct {
 	Progress        int            `gorm:"default:0" json:"progress"`
 	Deadline        *time.Time     `json:"deadline"`
 	ApplicantsCount int            `gorm:"default:0" json:"applicants_count"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	EscrowPoints   int            `gorm:"default:0" json:"escrow_points"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt  `gorm:"index" json:"-"`
+
+	// Enterprise publish flow fields
+	ContractID     *uint           `gorm:"index" json:"contract_id"`
+	BudgetMin     decimal.Decimal `gorm:"type:decimal(10,2)" json:"budget_min"`
+	BudgetMax     decimal.Decimal `gorm:"type:decimal(10,2)" json:"budget_max"`
+	Priority      string          `gorm:"type:varchar(20)" json:"priority"`
+	RequiredSkills string         `gorm:"type:text" json:"required_skills"`
+	EstimatedDays int            `gorm:"default:0" json:"estimated_days"`
 }
 
 // TableName specifies the table name for GORM.

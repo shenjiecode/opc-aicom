@@ -2984,3 +2984,190 @@ func RevokeAPIKey(db *gorm.DB) gin.HandlerFunc {
 		})
 	}
 }
+
+// ================== Admin Compute Usage ==================
+
+// AdminComputeUsageListRequest represents the compute usage list request
+type AdminComputeUsageListRequest struct {
+	Page         int    `json:"page"`
+	PageSize     int    `json:"pageSize"`
+	UserID       uint   `json:"userId"`
+	PackageID    uint   `json:"packageId"`
+	ResourceType string `json:"resourceType"`
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
+}
+
+// AdminComputeUsageListItem represents a compute usage record in the list
+type AdminComputeUsageListItem struct {
+	ID           uint      `json:"id"`
+	UserID       uint      `json:"userId"`
+	Username     string    `json:"username"`
+	PackageID    uint      `json:"packageId"`
+	PackageName  string    `json:"packageName"`
+	CreditsUsed  string    `json:"creditsUsed"`
+	ComputeHours float64   `json:"computeHours"`
+	ResourceType string    `json:"resourceType"`
+	ResourceID   uint      `json:"resourceId"`
+	Description  string    `json:"description"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+// AdminComputeUsageListResponse represents the compute usage list response
+type AdminComputeUsageListResponse struct {
+	List     []AdminComputeUsageListItem `json:"list"`
+	Total    int64                       `json:"total"`
+	Page     int                         `json:"page"`
+	PageSize int                         `json:"pageSize"`
+}
+
+// AdminComputeUsageSummary represents compute usage summary
+type AdminComputeUsageSummary struct {
+	TotalCreditsUsed  string  `json:"totalCreditsUsed"`
+	TotalComputeHours float64 `json:"totalComputeHours"`
+	TotalRecords      int64   `json:"totalRecords"`
+}
+
+// GetAdminComputeUsageList returns paginated compute usage list for admin
+// POST /api/admin/compute/usage/list
+func GetAdminComputeUsageList(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req AdminComputeUsageListRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			req.Page = 1
+			req.PageSize = 20
+		}
+
+		if req.Page < 1 {
+			req.Page = 1
+		}
+		if req.PageSize < 1 || req.PageSize > 100 {
+			req.PageSize = 20
+		}
+
+		query := db.Model(&model.ComputeUsage{})
+
+		// Apply filters
+		if req.UserID > 0 {
+			query = query.Where("user_id = ?", req.UserID)
+		}
+		if req.PackageID > 0 {
+			query = query.Where("package_id = ?", req.PackageID)
+		}
+		if req.ResourceType != "" {
+			query = query.Where("resource_type = ?", req.ResourceType)
+		}
+		if req.StartDate != "" {
+			query = query.Where("created_at >= ?", req.StartDate)
+		}
+		if req.EndDate != "" {
+			query = query.Where("created_at <= ?", req.EndDate+" 23:59:59")
+		}
+
+		// Get total
+		var total int64
+		query.Count(&total)
+
+		// Get list with user and package info
+		var usages []model.ComputeUsage
+		offset := (req.Page - 1) * req.PageSize
+		query.Order("created_at DESC").Offset(offset).Limit(req.PageSize).Find(&usages)
+
+		// Get user names and package names
+		userIDs := make([]uint, 0)
+		packageIDs := make([]uint, 0)
+		for _, u := range usages {
+			userIDs = append(userIDs, u.UserID)
+			packageIDs = append(packageIDs, u.PackageID)
+		}
+
+		userNames := make(map[uint]string)
+		if len(userIDs) > 0 {
+			var users []model.User
+			db.Select("id, username").Where("id IN ?", userIDs).Find(&users)
+			for _, u := range users {
+				userNames[u.ID] = u.Username
+			}
+		}
+
+		packageNames := make(map[uint]string)
+		if len(packageIDs) > 0 {
+			var packages []model.ComputePackage
+			db.Select("id, name").Where("id IN ?", packageIDs).Find(&packages)
+			for _, p := range packages {
+				packageNames[p.ID] = p.Name
+			}
+		}
+
+		list := make([]AdminComputeUsageListItem, len(usages))
+		for i, u := range usages {
+			list[i] = AdminComputeUsageListItem{
+				ID:           u.ID,
+				UserID:       u.UserID,
+				Username:     userNames[u.UserID],
+				PackageID:    u.PackageID,
+				PackageName:  packageNames[u.PackageID],
+				CreditsUsed:  u.CreditsUsed.String(),
+				ComputeHours: u.ComputeHours,
+				ResourceType: u.ResourceType,
+				ResourceID:   u.ResourceID,
+				Description:  u.Description,
+				CreatedAt:    u.CreatedAt,
+			}
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: AdminComputeUsageListResponse{
+				List:     list,
+				Total:    total,
+				Page:     req.Page,
+				PageSize: req.PageSize,
+			},
+		})
+	}
+}
+
+// GetAdminComputeUsageSummary returns compute usage summary for admin
+// POST /api/admin/compute/usage/summary
+func GetAdminComputeUsageSummary(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			StartDate string `json:"startDate"`
+			EndDate   string `json:"endDate"`
+		}
+		c.ShouldBindJSON(&req)
+
+		query := db.Model(&model.ComputeUsage{})
+
+		// Apply date filters
+		if req.StartDate != "" {
+			query = query.Where("created_at >= ?", req.StartDate)
+		}
+		if req.EndDate != "" {
+			query = query.Where("created_at <= ?", req.EndDate+" 23:59:59")
+		}
+
+		var totalRecords int64
+		query.Count(&totalRecords)
+
+		// Calculate total credits used and compute hours
+		type Result struct {
+			TotalCredits float64
+			TotalHours   float64
+		}
+		var result Result
+		query.Select("COALESCE(SUM(credits_used), 0) as total_credits, COALESCE(SUM(compute_hours), 0) as total_hours").Scan(&result)
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data: AdminComputeUsageSummary{
+				TotalCreditsUsed:  strconv.FormatFloat(result.TotalCredits, 'f', 2, 64),
+				TotalComputeHours: result.TotalHours,
+				TotalRecords:      totalRecords,
+			},
+		})
+	}
+}

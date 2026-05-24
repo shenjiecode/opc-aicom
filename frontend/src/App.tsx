@@ -18,6 +18,7 @@ import MyOPC from "./pages/MyOPC";
 import OPCWorkbench from "./pages/OPCWorkbench";
 import AiBit from './pages/AiBit';
 import CreateEvent from './pages/CreateEvent';
+import EnterprisePublish from './pages/EnterprisePublish';
 import EventDetail from './pages/EventDetail';
 import EventShare from './pages/EventShare';
 import PostDetail from './pages/PostDetail';
@@ -31,6 +32,7 @@ import OrderManagement from "./pages/admin/OrderManagement";
 import AgentSettings from "./pages/admin/AgentSettings";
 import OPCManagement from "./pages/admin/OPCManagement";
 import AIModelGateway from "./pages/admin/AIModelGateway";
+import AdminBilling from "./pages/admin/AdminBilling";
 import AgentBaba from "./pages/agentbaba";
 import CreateAgentPage from "./pages/agentbaba/CreateAgent";
 import ClarificationPage from "./pages/agentbaba/Clarification";
@@ -41,6 +43,7 @@ import AgentChatPage from "./pages/agentbaba/AgentChat";
 import EditAgentPage from "./pages/agentbaba/EditAgent";
 import CreditHistoryPage from "./pages/credit/CreditHistory";
 import CreditRechargePage from "./pages/admin/CreditRecharge";
+import ContractDetail from './pages/ContractDetail';
 
 function App() {
   return (
@@ -66,6 +69,7 @@ function App() {
 			  <Route path="opc" element={<OPCManagement />} />
 			  <Route path="api-gateway" element={<AIModelGateway />} />
 		  <Route path="credit-recharge" element={<CreditRechargePage />} />
+<Route path="billing" element={<AdminBilling />} />
 			</Route>
             {/* Routes with Layout */}
             <Route element={<Layout />}>
@@ -77,6 +81,7 @@ function App() {
               <Route path="/service-center" element={<ServiceCenter />} />
               <Route path="/aibit" element={<AiBit />} />
               <Route path="/event/:id" element={<EventDetail />} />
+              <Route path="/contracts/:id" element={<ContractDetail />} />
               <Route path="/post/:id" element={<PostDetail />} />
               <Route path="/agentbaba" element={<AgentBaba />} />
               <Route path="/agentbaba/create" element={<CreateAgentPage />} />
@@ -94,6 +99,7 @@ function App() {
                 <Route path="/post/create" element={<CreatePost />} />
                 <Route path="/agent/chat/:id" element={<AgentChatPage />} />
                 <Route path="/credit/history" element={<CreditHistoryPage />} />
+                <Route path="/enterprise-publish" element={<EnterprisePublish />} />
             </Route>
             </Route>
           </Routes>

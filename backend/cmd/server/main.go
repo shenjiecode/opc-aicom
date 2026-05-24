@@ -158,6 +158,8 @@ cfg, err := config.Load()
 			taskAuth.POST("/apply", handler.ApplyTask(db))
 			taskAuth.GET("/:id/publisher", handler.GetTaskPublisher(db))
 			taskAuth.POST("/:id/chat-room", handler.CreateTaskChatRoom(matrixClient))
+			taskAuth.POST("/:id/broadcast", handler.BroadcastTask(db))
+			taskAuth.POST("/:id/accept", handler.AcceptTask(db))
 		}
 
 		// PRD routes
@@ -268,6 +270,8 @@ cfg, err := config.Load()
 			admin.POST("/api/keys/create", handler.CreateAPIKey(db))
 			admin.POST("/api/keys/:id/revoke", handler.RevokeAPIKey(db))
 			admin.POST("/credit/recharge", creditHandler.Recharge)
+			admin.POST("/compute/usage/list", handler.GetAdminComputeUsageList(db))
+			admin.POST("/compute/usage/summary", handler.GetAdminComputeUsageSummary(db))
 		}
 
 		// AgentBaba routes (auth required)
@@ -318,6 +322,16 @@ cfg, err := config.Load()
 			creditAuth.POST("/balance", creditHandler.GetBalance)
 			creditAuth.POST("/transactions", creditHandler.GetTransactions)
 		}
+
+	// Compute Usage routes (auth required)
+	computeUsageHandler := handler.NewComputeUsageHandler(db)
+	compute := api.Group("/compute")
+	compute.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+	{
+		compute.POST("/usage", computeUsageHandler.CreateComputeUsage)
+		compute.GET("/usage", computeUsageHandler.GetComputeUsageList)
+		compute.GET("/usage/:id", computeUsageHandler.GetComputeUsageDetail)
+	}
 
 		gatewayAuth := api.Group("/gateway")
 		gatewayAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))

@@ -11,6 +11,7 @@ type UserAsset struct {
 	ID              uint           `gorm:"primaryKey" json:"id"`
 	UserID          uint           `gorm:"uniqueIndex;not null" json:"user_id"`
 	Points          int            `gorm:"default:0" json:"points"`
+	TotalGifted    int            `gorm:"default:0" json:"total_gifted"`
 	Coupons         int            `gorm:"default:0" json:"coupons"`
 	CouponsExpiring int            `gorm:"default:0" json:"coupons_expiring"`
 	ComputeHours    float64        `gorm:"default:0" json:"compute_hours"`

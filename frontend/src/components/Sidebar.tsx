@@ -18,6 +18,9 @@ import {
   ChevronUp,
   Sparkles,
   ShieldCheck,
+  FileText,
+  Building2,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +42,8 @@ interface NavItem {
   label: string;
   badge?: string | number;
   badgeType?: "default" | "hot" | "new";
+  allowedRoles?: string[];
+  allowedMemberTypes?: string[];
 }
 
 // Navigation group type
@@ -72,7 +77,6 @@ const navigationGroups: NavGroup[] = [
         icon: Bot,
         label: "AI资源",
       },
-
       {
         id: "service-center",
         path: "/service-center",
@@ -103,6 +107,31 @@ const navigationGroups: NavGroup[] = [
         path: "/points-mall",
         icon: ShoppingBag,
         label: "积分商城",
+      },
+      {
+        id: "contracts",
+        path: "/contracts/0",
+        icon: FileText,
+        label: "我的合同",
+      },
+      {
+        id: "enterprise-publish",
+        path: "/enterprise-publish",
+        icon: Building2,
+        label: "企业发包",
+        allowedMemberTypes: ["enterprise"]
+      },
+    ],
+  },
+  {
+    section: "管理后台",
+    items: [
+      {
+        id: "admin-billing",
+        path: "/admin/billing",
+        icon: Receipt,
+        label: "算力账单",
+        allowedRoles: ["admin"]
       },
     ],
   },
@@ -158,6 +187,37 @@ export function Sidebar({
     }
   };
 
+  // Filter navigation items based on user role/memberType
+
+  // Filter navigation items based on user role/memberType
+  const getFilteredGroups = (): NavGroup[] => {
+    if (!user) return navigationGroups;
+
+    return navigationGroups
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => {
+          // If no restrictions, show to all
+          if (!item.allowedRoles && !item.allowedMemberTypes) return true;
+          
+          // Check role permission
+          if (item.allowedRoles && item.allowedRoles.length > 0) {
+            if (item.allowedRoles.includes(user.role)) return true;
+          }
+          
+          // Check memberType permission
+          if (item.allowedMemberTypes && item.allowedMemberTypes.length > 0) {
+            if (item.allowedMemberTypes.includes(user.memberType)) return true;
+          }
+          
+          return false;
+        })
+      }))
+      .filter(group => group.items.length > 0);
+  };
+
+  const filteredGroups = getFilteredGroups();
+
   return (
     <aside
       className={cn(
@@ -200,7 +260,7 @@ export function Sidebar({
 
       {/* Navigation Groups */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 scrollbar-thin scrollbar-thumb-[var(--border-default)] scrollbar-track-transparent">
-        {navigationGroups.map((group) => (
+        {filteredGroups.map((group) => (
           <div key={group.section}>
             {/* Section Title - Hidden when collapsed */}
             <div

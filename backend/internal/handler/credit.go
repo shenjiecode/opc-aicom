@@ -306,3 +306,49 @@ func parseUintParam(c *gin.Context, key string, defaultValue uint) uint {
 	}
 	return uint(parsed)
 }
+
+// GiftPoints adds points to a user's account as a gift (e.g., enterprise verification bonus)
+// This is a helper function that can be called from other handlers like verification
+func (h *CreditHandler) GiftPoints(userID uint, amount int, reason string) error {
+	if amount <= 0 {
+		return fmt.Errorf("gift amount must be positive")
+	}
+
+	// Get or create user asset
+	var asset model.UserAsset
+	if err := h.db.Where("user_id = ?", userID).First(&asset).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			asset = model.UserAsset{
+				UserID:       userID,
+				Points:       0,
+				TotalGifted: 0,
+			}
+			if err := h.db.Create(&asset).Error; err != nil {
+				return fmt.Errorf("创建资产记录失败: %w", err)
+			}
+		} else {
+			return fmt.Errorf("查询资产失败: %w", err)
+		}
+	}
+
+	// Use transaction for atomic operation
+	return h.db.Transaction(func(tx *gorm.DB) error {
+		// Update points and total gifted
+		asset.Points += amount
+		asset.TotalGifted += amount
+		if err := tx.Save(&asset).Error; err != nil {
+			return err
+		}
+
+		// Create transaction record
+		transaction := model.CreditTransaction{
+			UserID:       userID,
+			Type:         model.CreditTypeGift,
+			Amount:       amount,
+			BalanceAfter: asset.Points,
+			Description:  reason,
+			RelatedType:  "gift",
+		}
+		return tx.Create(&transaction).Error
+	})
+}

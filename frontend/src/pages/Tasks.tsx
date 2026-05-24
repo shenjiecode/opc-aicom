@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle } from "lucide-react";
+import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle, Megaphone, Hand, CheckCircle, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-  import {
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getCurrentUser } from "@/lib/api";
+
 
 interface Task {
   id: number;
@@ -25,11 +27,24 @@ interface Task {
   duration_days: number;
   applicants_count: number;
   created_at: string;
+  user_id: number;
+  contract_id?: number;
+  status: string;
+  required_skills?: string[];
 }
 
 interface TaskListResponse {
   list: Task[];
   total: number;
+}
+
+interface BroadcastResponse {
+  notified_count: number;
+  agent_ids: number[];
+}
+
+interface AcceptResponse {
+  contract_id: number;
 }
 
 const PROJECT_TYPES = [
@@ -46,6 +61,7 @@ const DIFFICULTY_LEVELS = ["全部", "初级", "中级", "高级"];
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<{ userId: number; username: string } | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,10 +69,32 @@ export default function Tasks() {
   const [activeLevel, setActiveLevel] = useState("全部");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Broadcast state
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastTaskType, setBroadcastTaskType] = useState("dev");
+  const [broadcastSkills, setBroadcastSkills] = useState("");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  
+  // Accept state
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [acceptMessage, setAcceptMessage] = useState("");
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptSuccess, setAcceptSuccess] = useState(false);
+  const [acceptedContractId, setAcceptedContractId] = useState<number | null>(null);
+
+useEffect(() => {
+fetchTasks();
+  }, [activeType, activeLevel]);
 
   useEffect(() => {
-    fetchTasks();
-  }, [activeType, activeLevel]);
+    // Fetch current user on mount
+    getCurrentUser().then(user => {
+      setCurrentUser(user);
+    }).catch(() => {
+      setCurrentUser(null);
+    });
+  }, []);
 
   const fetchTasks = async () => {
     setIsLoading(true);
@@ -127,10 +165,92 @@ export default function Tasks() {
       setIsDialogOpen(false);
       
       // Navigate to OPC workbench with room ID
-      navigate(`/opc-workbench?room=${encodeURIComponent(result.room_id)}`);
+navigate(`/opc-workbench?room=${encodeURIComponent(result.room_id)}`);
+} catch (err) {
+console.error("Failed to create chat room", err);
+alert("创建聊天房间失败，请稍后重试");
+}
+  };
+
+  const handleBroadcast = async () => {
+    if (!selectedTask) return;
+    
+    setIsBroadcasting(true);
+    try {
+      const skills = broadcastSkills
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      const result = await apiFetch<BroadcastResponse>(`/tasks/${selectedTask.id}/broadcast`, {
+        method: "POST",
+        body: JSON.stringify({
+          task_type: broadcastTaskType,
+          required_skills: skills,
+        }),
+      });
+      
+      alert(`广播成功！已通知 ${result.notified_count} 个智能体`);
+      setIsBroadcastModalOpen(false);
     } catch (err) {
-      console.error("Failed to create chat room", err);
-      alert("创建聊天房间失败，请稍后重试");
+      console.error("Failed to broadcast task", err);
+      alert("广播任务失败，请稍后重试");
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!selectedTask) return;
+    
+    setIsAccepting(true);
+    try {
+      const result = await apiFetch<AcceptResponse>(`/task/${selectedTask.id}/accept`, {
+        method: "POST",
+        body: JSON.stringify({
+          message: acceptMessage,
+        }),
+      });
+      
+      setAcceptedContractId(result.contract_id);
+      setAcceptSuccess(true);
+      fetchTasks(); // Refresh the list
+    } catch (err) {
+      console.error("Failed to accept task", err);
+      alert("接单失败，可能您已申请过此任务");
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const openBroadcastModal = (task: Task) => {
+    setSelectedTask(task);
+    setBroadcastTaskType("dev");
+    setBroadcastSkills("");
+    setIsBroadcastModalOpen(true);
+  };
+
+  const openAcceptModal = (task: Task) => {
+    setSelectedTask(task);
+    setAcceptMessage("");
+    setAcceptSuccess(false);
+    setAcceptedContractId(null);
+    setIsAcceptModalOpen(true);
+  };
+
+  const closeAcceptModal = () => {
+    setIsAcceptModalOpen(false);
+    setAcceptSuccess(false);
+    setAcceptedContractId(null);
+  };
+
+  const isTaskOwner = (task: Task) => {
+    return currentUser && task.user_id === currentUser.userId;
+  };
+
+  const navigateToContract = (contractId: number) => {
+    if (contractId > 0) {
+      navigate(`/contracts/${contractId}`);
     }
   };
 
@@ -306,24 +426,46 @@ export default function Tasks() {
                     </div>
                   </div>
 
-                  <div className="hidden md:flex flex-col items-end justify-between shrink-0 min-w-[120px]">
-                    <div className="text-indigo-600 font-bold text-xl">
-                      {formatCurrency(task.budget)}
-                    </div>
-                    <div className="flex items-center gap-3 mt-4">
-                      <Button
-                        variant="outline"
-                        className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
-                        onClick={() => openDetail(task)}
-                      >
-                        详情
+<div className="hidden md:flex flex-col items-end justify-between shrink-0 min-w-[120px]">
+<div className="text-indigo-600 font-bold text-xl">
+{formatCurrency(task.budget)}
+</div>
+<div className="flex items-center gap-3 mt-4">
+<Button
+variant="outline"
+className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+onClick={() => openDetail(task)}
+>
+详情
                       </Button>
-                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => handleChat(task)}>
-                        <MessageCircle className="w-4 h-4 mr-1" />
-                        聊聊需求
-                      </Button>
-                    </div>
-                  </div>
+                      
+                      {/* Show Broadcast button for task owner */}
+                      {isTaskOwner(task) && (
+                        <Button
+                          className="h-9 px-4 bg-amber-500 hover:bg-amber-600 text-white"
+                          onClick={() => openBroadcastModal(task)}
+                        >
+                          <Megaphone className="w-4 h-4 mr-1" />
+                          广播
+                        </Button>
+                      )}
+                      
+                      {/* Show Accept button for non-owners */}
+                      {!isTaskOwner(task) && task.status === "open" && (
+                        <Button
+                          className="h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white"
+                          onClick={() => openAcceptModal(task)}
+                        >
+                          <Hand className="w-4 h-4 mr-1" />
+                          接单
+                        </Button>
+                      )}
+<Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => handleChat(task)}>
+<MessageCircle className="w-4 h-4 mr-1" />
+聊聊需求
+</Button>
+</div>
+</div>
 
                   {/* Mobile Actions */}
                   <div className="flex md:hidden items-center justify-end gap-3 mt-4 pt-4 border-t border-slate-50">
@@ -334,13 +476,36 @@ export default function Tasks() {
                     >
                       详情
                     </Button>
-                    <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1" onClick={() => handleChat(task)}>
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      聊聊需求
-                    </Button>
+                    
+                    {/* Show Broadcast button for task owner */}
+                    {isTaskOwner(task) && (
+                      <Button
+                        className="h-9 px-4 bg-amber-500 hover:bg-amber-600 text-white flex-1"
+                        onClick={() => openBroadcastModal(task)}
+                      >
+                        <Megaphone className="w-4 h-4 mr-1" />
+                        广播
+                      </Button>
+                    )}
+                    
+                    {/* Show Accept button for non-owners */}
+                    {!isTaskOwner(task) && task.status === "open" && (
+                      <Button
+                        className="h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white flex-1"
+                        onClick={() => openAcceptModal(task)}
+                      >
+                        <Hand className="w-4 h-4 mr-1" />
+                        接单
+                      </Button>
+                    )}
+                    
+<Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1" onClick={() => handleChat(task)}>
+<MessageCircle className="w-4 h-4 mr-1" />
+聊聊需求
+</Button>
                   </div>
                 </CardContent>
-              </Card>
+</Card>
             ))
           )}
         </div>
@@ -398,17 +563,213 @@ export default function Tasks() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              关闭
+<DialogFooter>
+<Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+关闭
             </Button>
-            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => selectedTask && handleChat(selectedTask)}>
-              <MessageCircle className="w-4 h-4 mr-1" />
-              聊聊需求
+            
+            {/* Show Broadcast button for task owner */}
+            {selectedTask && isTaskOwner(selectedTask) && (
+              <Button 
+                className="bg-amber-500 hover:bg-amber-600 text-white" 
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  openBroadcastModal(selectedTask);
+                }}
+              >
+                <Megaphone className="w-4 h-4 mr-1" />
+                广播任务
+              </Button>
+            )}
+            
+            {/* Show Accept button for non-owners */}
+            {selectedTask && !isTaskOwner(selectedTask) && selectedTask.status === "open" && (
+              <Button 
+                className="bg-emerald-500 hover:bg-emerald-600 text-white" 
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  openAcceptModal(selectedTask);
+                }}
+              >
+                <Hand className="w-4 h-4 mr-1" />
+                立即接单
+              </Button>
+            )}
+<Button className="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => selectedTask && handleChat(selectedTask)}>
+<MessageCircle className="w-4 h-4 mr-1" />
+聊聊需求
+</Button>
+</DialogFooter>
+</DialogContent>
+      </Dialog>
+
+      {/* Broadcast Modal */}
+      <Dialog open={isBroadcastModalOpen} onOpenChange={setIsBroadcastModalOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-amber-500" />
+              广播任务
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                任务类型
+              </label>
+              <select
+                value={broadcastTaskType}
+                onChange={(e) => setBroadcastTaskType(e.target.value)}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="dev">开发</option>
+                <option value="design">设计</option>
+                <option value="content">内容创作</option>
+                <option value="marketing">市场营销</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                所需技能（用逗号分隔）
+              </label>
+              <Input
+                placeholder="例如: React, Node.js, UI设计"
+                value={broadcastSkills}
+                onChange={(e) => setBroadcastSkills(e.target.value)}
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-sm text-amber-800">
+              <p className="font-medium mb-1">提示</p>
+              <p className="text-amber-700">
+                广播后，系统会通知技能匹配的智能体。建议在描述中详细说明任务需求。
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBroadcastModalOpen(false)}>
+              取消
+            </Button>
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={handleBroadcast}
+              disabled={isBroadcasting}
+            >
+              {isBroadcasting ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  广播中...
+                </>
+              ) : (
+                <>
+                  <Megaphone className="w-4 h-4 mr-1" />
+                  确认广播
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Accept Task Modal */}
+      <Dialog open={isAcceptModalOpen} onOpenChange={closeAcceptModal}>
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Hand className="w-5 h-5 text-emerald-500" />
+              {acceptSuccess ? "接单成功" : "申请接单"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {!acceptSuccess ? (
+              <>
+                <div className="bg-slate-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-slate-900">{selectedTask?.title}</h4>
+                  <p className="text-sm text-slate-600 mt-1">
+                    预算: {selectedTask && formatCurrency(selectedTask.budget)}
+                  </p>
     </div>
-  );
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">
+                    申请留言（可选）
+                  </label>
+                  <Textarea
+                    placeholder="简单介绍一下您的优势，增加被选中几率..."
+                    value={acceptMessage}
+                    onChange={(e) => setAcceptMessage(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-sm text-emerald-800">
+                  <p className="font-medium mb-1">提示</p>
+                  <p className="text-emerald-700">
+                    提交申请后，任务发布者将收到您的申请信息。
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">
+                  接单申请已提交
+                </h4>
+                <p className="text-slate-600 mb-4">
+                  任务发布者将尽快审核您的申请
+                </p>
+                {acceptedContractId && acceptedContractId > 0 && (
+                  <Button
+                    variant="outline"
+                    className="border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+                    onClick={() => navigateToContract(acceptedContractId!)}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    查看关联合约
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            {!acceptSuccess ? (
+              <>
+                <Button variant="outline" onClick={closeAcceptModal}>
+                  取消
+                </Button>
+                <Button
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  onClick={handleAccept}
+                  disabled={isAccepting}
+                >
+                  {isAccepting ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      处理中...
+                    </>
+                  ) : (
+                    <>
+                      <Hand className="w-4 h-4 mr-1" />
+                      确认接单
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={closeAcceptModal}>
+                确定
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+);
 }
