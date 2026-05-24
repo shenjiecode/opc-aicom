@@ -12,7 +12,9 @@ import {
   LogIn,
   Pencil,
   Circle,
+  UserPlus,
 } from "lucide-react";
+import { InviteUserDialog } from "./InviteUserDialog";
 
 interface MatrixRoomListProps {
   className?: string;
@@ -30,6 +32,12 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
   const [renamingRoomId, setRenamingRoomId] = useState<string | null>(null);
   const [renamingValue, setRenamingValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Invite dialog state
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteRoomId, setInviteRoomId] = useState<string>("");
+  const [inviteRoomName, setInviteRoomName] = useState<string>("");
+  const [inviteRoomMembers, setInviteRoomMembers] = useState<string[]>([]);
 
   useEffect(() => {
     if (renamingRoomId && renameInputRef.current) {
@@ -91,6 +99,14 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
       setRenamingRoomId(null);
       setRenamingValue("");
     }
+  };
+
+  const handleOpenInvite = (roomId: string, roomName: string, members: string[], e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInviteRoomId(roomId);
+    setInviteRoomName(roomName);
+    setInviteRoomMembers(members);
+    setInviteDialogOpen(true);
   };
 
   const displayRooms = allRooms.length > 0 ? allRooms : [];
@@ -186,12 +202,20 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
                     <div className="flex items-center gap-1.5 group">
                       <span className="text-sm font-medium truncate">{room.name}</span>
                       {isJoined && (
-                        <button
-                          onClick={(e) => handleStartRename(room.roomId, room.name, e)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        >
-                          <Pencil className="w-3 h-3 text-slate-500 hover:text-violet-400" />
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => handleStartRename(room.roomId, room.name, e)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          >
+                            <Pencil className="w-3 h-3 text-slate-500 hover:text-violet-400" />
+                          </button>
+                          <button
+                            onClick={(e) => handleOpenInvite(room.roomId, room.name, room.members, e)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          >
+                            <UserPlus className="w-3 h-3 text-slate-500 hover:text-violet-400" />
+                          </button>
+                        </>
                       )}
                     </div>
                   )}
@@ -319,6 +343,15 @@ export function MatrixRoomList({ className }: MatrixRoomListProps) {
           </div>
         </div>
       )}
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        roomId={inviteRoomId}
+        roomName={inviteRoomName}
+        existingMembers={inviteRoomMembers}
+      />
     </Card>
   );
 }
