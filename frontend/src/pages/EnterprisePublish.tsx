@@ -23,6 +23,7 @@ import {
   Building2,
   AlertCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AnalysisResult {
   title: string;
@@ -35,11 +36,16 @@ interface AnalysisResult {
   urgency: boolean;
 }
 
+interface EnterprisePublishProps {
+  modalMode?: boolean;
+  onClose?: () => void;
+  onPublishSuccess?: () => void;
+}
 interface ConfirmResponse {
-  task_id: number;
+task_id: number;
 }
 
-export default function EnterprisePublish() {
+export default function EnterprisePublish({ modalMode, onClose, onPublishSuccess }: EnterprisePublishProps) {
   const navigate = useNavigate();
   const [inputType, setInputType] = useState<"text" | "pdf">("text");
   const [requirementText, setRequirementText] = useState("");
@@ -124,8 +130,11 @@ export default function EnterprisePublish() {
         body: JSON.stringify(analysisResult),
       });
 
-      // Redirect to the created task
-      navigate(`/tasks`);
+      if (modalMode && onPublishSuccess) {
+        onPublishSuccess();
+      } else {
+        navigate(`/tasks`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "发布失败，请重试");
       setIsConfirming(false);
@@ -147,12 +156,21 @@ export default function EnterprisePublish() {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-50 flex flex-col overflow-hidden">
+    <div className={cn(
+      "bg-slate-50 flex flex-col overflow-hidden",
+      modalMode ? "flex-1 h-full w-full relative" : "absolute inset-0"
+    )}>
       {/* Header */}
       <div className="shrink-0 w-full px-6 py-4 flex items-center justify-between z-10 bg-white border-b border-slate-200">
         <div>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (modalMode && onClose) {
+                onClose();
+              } else {
+                navigate(-1);
+              }
+            }}
             className="flex items-center text-slate-500 hover:text-slate-800 mb-2 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
@@ -443,7 +461,10 @@ export default function EnterprisePublish() {
 
       {/* Fixed Action Bar */}
       {analysisResult && (
-        <div className="fixed bottom-0 left-0 lg:left-[260px] right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-20 flex justify-center">
+        <div className={cn(
+          "p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-20 flex justify-center",
+          modalMode ? "shrink-0" : "fixed bottom-0 left-0 lg:left-[260px] right-0"
+        )}>
           <div className="flex gap-4 w-full max-w-3xl px-4">
             <Button
               type="button"

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationDropdownWithMatrix } from "@/components/NotificationDropdownWithMatrix";
 import { VerificationDialog } from "@/components/VerificationDialog";
 import {
   DropdownMenu,
@@ -113,13 +114,6 @@ const navigationGroups: NavGroup[] = [
         path: "/contracts/0",
         icon: FileText,
         label: "我的合同",
-      },
-      {
-        id: "enterprise-publish",
-        path: "/enterprise-publish",
-        icon: Building2,
-        label: "企业发包",
-        allowedMemberTypes: ["enterprise"]
       },
     ],
   },
@@ -353,6 +347,11 @@ export function Sidebar({
           </div>
         ))}
       </nav>
+
+      {/* Notification Button - Above user section */}
+      <div className="border-t border-[var(--sidebar-border)] p-3">
+        <NotificationDropdownWithMatrix />
+      </div>
 
       {/* User Section - Bottom of sidebar */}
       {isAuthenticated && user && (

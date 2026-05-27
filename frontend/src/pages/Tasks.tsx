@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { apiFetch, getCurrentUser } from "@/lib/api";
+import EnterprisePublish from "./EnterprisePublish";
 
 
 interface Task {
@@ -76,12 +77,14 @@ export default function Tasks() {
   const [broadcastSkills, setBroadcastSkills] = useState("");
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   
-  // Accept state
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [acceptMessage, setAcceptMessage] = useState("");
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptSuccess, setAcceptSuccess] = useState(false);
   const [acceptedContractId, setAcceptedContractId] = useState<number | null>(null);
+  
+  // Publish modal state
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
 useEffect(() => {
 fetchTasks();
@@ -267,7 +270,6 @@ alert("创建聊天房间失败，请稍后重试");
             发现优质任务，用技能赚取收益和积分
           </p>
         </div>
-
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -278,7 +280,10 @@ alert("创建聊天房间失败，请稍后重试");
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-6 h-9">
+          <Button 
+            className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-6 h-9"
+            onClick={() => setIsPublishModalOpen(true)}
+          >
             <Pin className="w-4 h-4 mr-2" />
             发布任务
           </Button>
@@ -768,6 +773,20 @@ onClick={() => openDetail(task)}
               </Button>
             )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish Task Modal */}
+      <Dialog open={isPublishModalOpen} onOpenChange={setIsPublishModalOpen}>
+        <DialogContent className="sm:max-w-5xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-white">
+          <EnterprisePublish
+            modalMode
+            onClose={() => setIsPublishModalOpen(false)}
+            onPublishSuccess={() => {
+              setIsPublishModalOpen(false);
+              fetchTasks();
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

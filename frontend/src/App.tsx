@@ -99,7 +99,6 @@ function App() {
                 <Route path="/post/create" element={<CreatePost />} />
                 <Route path="/agent/chat/:id" element={<AgentChatPage />} />
                 <Route path="/credit/history" element={<CreditHistoryPage />} />
-                <Route path="/enterprise-publish" element={<EnterprisePublish />} />
             </Route>
             </Route>
           </Routes>
