@@ -16,6 +16,7 @@ import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import MyOPC from "./pages/MyOPC";
 import OPCWorkbench from "./pages/OPCWorkbench";
+import OPCChannel from "./pages/OPCChannel";
 import AiBit from './pages/AiBit';
 import CreateEvent from './pages/CreateEvent';
 import EnterprisePublish from './pages/EnterprisePublish';
@@ -55,6 +56,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/opc-workbench" element={<MatrixProvider><OPCWorkbench /></MatrixProvider>} />
+            <Route path="/opc-channel" element={<MatrixProvider><OPCChannel /></MatrixProvider>} />
             {/* Event share page - fullscreen, no layout */}
             <Route path="/event/share/:code" element={<EventShare />} />
 

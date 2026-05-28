@@ -21,6 +21,7 @@ import {
   FileText,
   Building2,
   Receipt,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,10 +99,10 @@ const navigationGroups: NavGroup[] = [
         badgeType: "new",
       },
       {
-        id: "opc-workbench",
-        path: "/opc-workbench",
-        icon: Briefcase,
-        label: "OPC工作台",
+        id: "opc-channel",
+        path: "/opc-channel",
+        icon: MessageCircle,
+        label: "OPC Channel",
       },
       {
         id: "points-mall",
