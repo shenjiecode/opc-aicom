@@ -47,16 +47,21 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config << EOF
+          Host server
+            HostName ${{ env.SERVER_HOST }}
+            User ${{ env.SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            IdentitiesOnly yes
+          EOF
+          ssh server 'echo SSH connection OK'
 
       - name: Deploy backend
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
-            systemctl stop opc-aicom-backend || true
-          "
-          scp -i ~/.ssh/deploy_key backend/opc-aicom-backend \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+          ssh server "systemctl stop opc-aicom-backend || true"
+          scp backend/opc-aicom-backend server:${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
+          ssh server "
             chmod +x ${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
             systemctl start opc-aicom-backend
             sleep 2
@@ -65,20 +70,13 @@ jobs:
 
       - name: Deploy frontend
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
-            rm -rf ${{ env.REMOTE_DIR }}/frontend/dist
-          "
-          scp -i ~/.ssh/deploy_key -r frontend/dist \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.REMOTE_DIR }}/frontend/dist
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
-            nginx -s reload
-          "
+          ssh server "rm -rf ${{ env.REMOTE_DIR }}/frontend/dist"
+          scp -r frontend/dist server:${{ env.REMOTE_DIR }}/frontend/dist
+          ssh server "nginx -s reload"
 
       - name: Health check
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
-            curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'
-          "
+          ssh server "curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'"
 
       - name: Cleanup SSH key
         if: always()
