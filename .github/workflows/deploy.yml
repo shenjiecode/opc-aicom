@@ -46,22 +46,28 @@ jobs:
 
       - name: Deploy backend
         run: |
-          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
-          $SSH_CMD "systemctl stop opc-aicom-backend || true"
-          cat backend/opc-aicom-backend | $SSH_CMD "cat > /opt/opc-aicom/backend/opc-aicom-backend"
-          $SSH_CMD "chmod +x /opt/opc-aicom/backend/opc-aicom-backend && systemctl start opc-aicom-backend && sleep 2 && systemctl is-active opc-aicom-backend"
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
+          $SSH "systemctl stop opc-aicom-backend || true"
+          cat backend/opc-aicom-backend | $SSH "cat > /opt/opc-aicom/backend/opc-aicom-backend"
+          $SSH "
+            chmod +x /opt/opc-aicom/backend/opc-aicom-backend
+            cp /opt/opc-aicom/backend/config/config.yaml /opt/opc-aicom/backend/config.yaml
+            systemctl start opc-aicom-backend
+            sleep 3
+            systemctl is-active opc-aicom-backend
+          "
 
       - name: Deploy frontend
         run: |
-          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
-          $SSH_CMD "rm -rf /opt/opc-aicom/frontend/dist"
-          tar czf - -C frontend dist | $SSH_CMD "tar xzf - -C /opt/opc-aicom/frontend"
-          $SSH_CMD "nginx -s reload"
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
+          $SSH "rm -rf /opt/opc-aicom/frontend/dist"
+          tar czf - -C frontend dist | $SSH "tar xzf - -C /opt/opc-aicom/frontend"
+          $SSH "nginx -s reload"
 
       - name: Health check
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
-            "curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'"
+            "curl -sf -X POST http://127.0.0.1:18081/api/home/stats"
 
       - name: Cleanup SSH key
         if: always()
