@@ -4,11 +4,6 @@ on:
   push:
     branches: [deploy]
 
-env:
-  SERVER_HOST: 8.217.143.228
-  SERVER_USER: root
-  REMOTE_DIR: /opt/opc-aicom
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -47,36 +42,26 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          cat >> ~/.ssh/config << 'SSHEOF'
-          Host server
-            HostName 8.217.143.228
-            User root
-            IdentityFile ~/.ssh/deploy_key
-            StrictHostKeyChecking no
-            IdentitiesOnly yes
-          SSHEOF
-          ssh server 'echo SSH connection OK'
+          ssh-keyscan -H 8.217.143.228 >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy backend
         run: |
-          ssh server "systemctl stop opc-aicom-backend || true"
-          cat backend/opc-aicom-backend | ssh server "cat > /opt/opc-aicom/backend/opc-aicom-backend"
-          ssh server "
-            chmod +x /opt/opc-aicom/backend/opc-aicom-backend
-            systemctl start opc-aicom-backend
-            sleep 2
-            systemctl is-active opc-aicom-backend
-          "
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
+          $SSH_CMD "systemctl stop opc-aicom-backend || true"
+          cat backend/opc-aicom-backend | $SSH_CMD "cat > /opt/opc-aicom/backend/opc-aicom-backend"
+          $SSH_CMD "chmod +x /opt/opc-aicom/backend/opc-aicom-backend && systemctl start opc-aicom-backend && sleep 2 && systemctl is-active opc-aicom-backend"
 
       - name: Deploy frontend
         run: |
-          ssh server "rm -rf /opt/opc-aicom/frontend/dist"
-          tar czf - -C frontend dist | ssh server "tar xzf - -C /opt/opc-aicom/frontend"
-          ssh server "nginx -s reload"
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
+          $SSH_CMD "rm -rf /opt/opc-aicom/frontend/dist"
+          tar czf - -C frontend dist | $SSH_CMD "tar xzf - -C /opt/opc-aicom/frontend"
+          $SSH_CMD "nginx -s reload"
 
       - name: Health check
         run: |
-          ssh server "curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
+            "curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'"
 
       - name: Cleanup SSH key
         if: always()
