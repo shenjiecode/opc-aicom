@@ -1,0 +1,85 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [deploy]
+
+env:
+  SERVER_HOST: 8.217.143.228
+  SERVER_USER: root
+  REMOTE_DIR: /opt/opc-aicom
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+
+      - name: Build backend
+        run: |
+          cd backend
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o opc-aicom-backend ./cmd/server/main.go
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_MATRIX_HOMESERVER: http://8.217.143.228:8008
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy backend
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+            systemctl stop opc-aicom-backend || true
+          "
+          scp -i ~/.ssh/deploy_key backend/opc-aicom-backend \
+            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+            chmod +x ${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
+            systemctl start opc-aicom-backend
+            sleep 2
+            systemctl is-active opc-aicom-backend
+          "
+
+      - name: Deploy frontend
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+            rm -rf ${{ env.REMOTE_DIR }}/frontend/dist
+          "
+          scp -i ~/.ssh/deploy_key -r frontend/dist \
+            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.REMOTE_DIR }}/frontend/dist
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+            nginx -s reload
+          "
+
+      - name: Health check
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "
+            curl -sf http://127.0.0.1:18081/api/home/stats || echo 'Warning: health check failed'
+          "
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
