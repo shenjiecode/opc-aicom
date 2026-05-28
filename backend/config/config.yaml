@@ -23,11 +23,11 @@ jwt:
     max_age: 86400     # 24小时，单位秒
 
 matrix:
-  homeserver_url: http://localhost:8008
-  server_name: localhost
+  homeserver_url: http://8.217.143.228:8008
+  server_name: 8.217.143.228
   shared_secret: nexus_matrix_secret_xK9mP2vL7qR4wY6j
-  admin_user: admin
-  admin_password: admin123
+  admin_user: bite
+  admin_password: 123bite123321
   workers:
     - worker-001
     - worker-002

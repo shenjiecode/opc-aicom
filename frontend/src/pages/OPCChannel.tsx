@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Search,
   Hash,
   Bell,
   Settings,
@@ -36,13 +34,6 @@ export default function OPCChannel() {
 
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Filter rooms by search
-  const filteredRooms = rooms.filter((room) =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const handleSend = async () => {
     if (!inputText.trim() || isSending) return;
     setIsSending(true);
@@ -159,25 +150,41 @@ export default function OPCChannel() {
 
         {/* Channel List */}
         <div className="flex-1 overflow-y-auto py-2 px-2">
-          {/* Search */}
-          <div className="px-2 mb-2">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
-              <Input
-                className="pl-8 h-8 bg-[#13141f] border-slate-700 text-slate-300 placeholder:text-slate-500 text-sm"
-                placeholder="搜索频道..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          {/* System Section */}
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-slate-500 px-2 py-1 uppercase mb-1">
+              系统
             </div>
+            <button
+              onClick={() => {
+                // 连接到 bite 系统
+                initialize();
+              }}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left",
+                isInitialized
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              )}
+            >
+              {/* 章鱼图标 SVG */}
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                <path d="M12 2C10.34 2 9 3.34 9 5v2.5c-3.5 0.5-6 2.5-6 5.5 0 2 1 3.5 2.5 4.5-0.5 1.5-1.5 2.5-2.5 3 1.5 0 3-1 4-2 1 0.5 2 1 3.5 1s2.5-0.5 3.5-1c1 1 2.5 2 4 2-1-0.5-2-1.5-2.5-3 1.5-1 2.5-2.5 2.5-4.5 0-3-2.5-5-6-5.5V5c0-1.66-1.34-3-3-3zm0 2c0.55 0 1 0.45 1 1v2h-2V5c0-0.55 0.45-1 1-1zm-3 7c0.55 0 1 0.45 1 1s-0.45 1-1 1-1-0.45-1-1 0.45-1 1-1zm6 0c0.55 0 1 0.45 1 1s-0.45 1-1 1-1-0.45-1-1 0.45-1 1-1z"/>
+              </svg>
+              <span className="truncate text-sm font-medium">bite</span>
+              {isInitialized ? (
+                <span className="ml-auto text-xs text-emerald-400">已连接</span>
+              ) : (
+                <span className="ml-auto text-xs text-slate-500">离线</span>
+              )}
+            </button>
           </div>
 
-          {/* Channels */}
           <div className="space-y-0.5">
             <div className="text-xs font-semibold text-slate-500 px-2 py-1 uppercase">
               文字频道
             </div>
-            {filteredRooms.map((room) => (
+            {rooms.map((room) => (
               <button
                 key={room.roomId}
                 onClick={() => selectRoom(room.roomId)}
