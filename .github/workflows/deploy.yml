@@ -47,22 +47,22 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          cat >> ~/.ssh/config << EOF
+          cat >> ~/.ssh/config << 'SSHEOF'
           Host server
-            HostName ${{ env.SERVER_HOST }}
-            User ${{ env.SERVER_USER }}
+            HostName 8.217.143.228
+            User root
             IdentityFile ~/.ssh/deploy_key
             StrictHostKeyChecking no
             IdentitiesOnly yes
-          EOF
+          SSHEOF
           ssh server 'echo SSH connection OK'
 
       - name: Deploy backend
         run: |
           ssh server "systemctl stop opc-aicom-backend || true"
-          scp backend/opc-aicom-backend server:${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
+          cat backend/opc-aicom-backend | ssh server "cat > /opt/opc-aicom/backend/opc-aicom-backend"
           ssh server "
-            chmod +x ${{ env.REMOTE_DIR }}/backend/opc-aicom-backend
+            chmod +x /opt/opc-aicom/backend/opc-aicom-backend
             systemctl start opc-aicom-backend
             sleep 2
             systemctl is-active opc-aicom-backend
@@ -70,8 +70,8 @@ jobs:
 
       - name: Deploy frontend
         run: |
-          ssh server "rm -rf ${{ env.REMOTE_DIR }}/frontend/dist"
-          scp -r frontend/dist server:${{ env.REMOTE_DIR }}/frontend/dist
+          ssh server "rm -rf /opt/opc-aicom/frontend/dist"
+          tar czf - -C frontend dist | ssh server "tar xzf - -C /opt/opc-aicom/frontend"
           ssh server "nginx -s reload"
 
       - name: Health check
