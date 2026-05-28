@@ -97,7 +97,7 @@ export default function OPCChannel() {
   );
 
   return (
-    <div className="min-h-screen bg-[#13141f] flex">
+    <div className="h-screen bg-[#13141f] flex overflow-hidden">
       {/* Server/Workspace Sidebar - Discord style narrow bar */}
       <div className="w-[72px] bg-[#1e1f2e] flex flex-col items-center py-3 shrink-0 gap-2">
         {/* Home Button */}
