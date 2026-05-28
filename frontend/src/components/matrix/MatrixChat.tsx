@@ -23,9 +23,19 @@ export function MatrixChat({ className }: MatrixChatProps) {
   const [mentionIndex, setMentionIndex] = useState(-1);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStart, setMentionStart] = useState(-1);
+  // history collapse state
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set(['today', '今天']));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const toggleDateExpand = (date: string) => {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
 
 
   // Get filtered members for @ mention autocomplete
@@ -255,13 +265,31 @@ export function MatrixChat({ className }: MatrixChatProps) {
         {groupedMessages.map((group) => (
           <div key={group.date}>
             {/* Date separator */}
+            {/* Date separator with collapse/expand */}
             <div className="flex items-center justify-center my-4">
-              <div className="bg-slate-800 text-xs text-slate-500 px-3 py-1 rounded-full">
+              <button
+                onClick={() => toggleDateExpand(group.date)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer",
+                  expandedDates.has(group.date)
+                    ? "bg-violet-500/20 border border-violet-500/40 text-violet-400 hover:bg-violet-500/30"
+                    : "bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30"
+                )}
+              >
+                {!expandedDates.has(group.date) && (
+                  <span className="text-[10px]">
+                    {group.messages.length} 
+                  </span>
+                )}
                 {group.date}
-              </div>
+                <span className="text-[10px] opacity-60 ml-1">
+                  {expandedDates.has(group.date) ? "[-]" : "[+]"}
+                </span>
+              </button>
             </div>
 
-            {/* Messages */}
+            {/* Messages - only render when expanded */}
+            {expandedDates.has(group.date) && (
             <div className="space-y-4">
               {group.messages.map((message, index) => {
                 const showAvatar =
@@ -316,8 +344,9 @@ export function MatrixChat({ className }: MatrixChatProps) {
                     </div>
                   </div>
                 );
-              })}
+})}
             </div>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />

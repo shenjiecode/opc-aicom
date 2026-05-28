@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle, Megaphone, Hand, CheckCircle, ExternalLink } from "lucide-react";
+import { ClipboardList, Search, Pin, Clock, Flame, MessageCircle, Megaphone, Hand, CheckCircle, ExternalLink, FolderKanban } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +14,29 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { apiFetch, getCurrentUser } from "@/lib/api";
-import EnterprisePublish from "./EnterprisePublish";
-
+import { listProjects } from '@/lib/api/project';
+import { ProjectCard } from '@/components/ProjectCard';
+import EnterprisePublish from './EnterprisePublish';
+// Project type defined inline (interfaces imported from modules cause Vite issues)
+interface ProjectType {
+  id: number;
+  contract_id: number;
+  task_id: number;
+  title: string;
+  description: string;
+  status: string;
+  progress: number;
+  budget: number;
+  owner_id: number;
+  owner_name: string;
+  agent_id: number;
+  agent_name: string;
+  chat_room_id: string;
+  chat_room_name: string;
+  prd_document: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 interface Task {
   id: number;
@@ -85,7 +106,10 @@ export default function Tasks() {
   
   // Publish modal state
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-
+  
+  // Projects state
+  const [projects, setProjects] = useState<ProjectType[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 useEffect(() => {
 fetchTasks();
   }, [activeType, activeLevel]);
@@ -97,6 +121,22 @@ fetchTasks();
     }).catch(() => {
       setCurrentUser(null);
     });
+  }, []);
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setIsLoadingProjects(true);
+      try {
+        const result = await listProjects(1, 10);
+        setProjects(result.projects || []);
+      } catch (err) {
+        console.error("Failed to load projects", err);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+    fetchProjects();
   }, []);
 
   const fetchTasks = async () => {
@@ -291,57 +331,74 @@ alert("创建聊天房间失败，请稍后重试");
       </div>
 
       <div className="w-full flex-1">
-        {/* Filters Section */}
-        <div className="pt-6 px-6 mb-6">
-          <div className="flex flex-col gap-4">
-            {/* Project Type Filter */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-slate-600 shrink-0">
-                项目类型：
+        {/* My Projects Section */}
+        {projects.length > 0 && (
+          <div className="px-6 pt-6 pb-2">
+            <div className="flex items-center gap-2 mb-4">
+              <FolderKanban className="w-5 h-5 text-violet-600" />
+              <h2 className="text-lg font-bold text-slate-900">我的项目</h2>
+              <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {projects.length} 个进行中
               </span>
-              <div className="flex flex-wrap gap-2">
-                {PROJECT_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setActiveType(type)}
-                    className={cn(
-                      "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
-                      activeType === type
-                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
-                    )}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((project) => (
+                <ProjectCard key={project.contract_id} project={project} />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Filters Section */}
+        <div className="flex flex-col gap-4">
+          {/* Project Type Filter */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-600 shrink-0">
+              项目类型：
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {PROJECT_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setActiveType(type)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
+                    activeType === type
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {/* Difficulty Level Filter */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-slate-600 shrink-0">
-                难度级别：
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {DIFFICULTY_LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setActiveLevel(level)}
-                    className={cn(
-                      "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
-                      activeLevel === level
-                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
-                    )}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
+          {/* Difficulty Level Filter */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-600 shrink-0">
+              难度级别：
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {DIFFICULTY_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setActiveLevel(level)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm transition-all duration-200",
+                    activeLevel === level
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200",
+                  )}
+                >
+                  {level}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
+        {/* Task List */}
         {/* Task List */}
         <div className="px-6 pb-8 space-y-4">
           {isLoading ? (
@@ -430,18 +487,18 @@ alert("创建聊天房间失败，请稍后重试");
                       </div>
                     </div>
                   </div>
-
-<div className="hidden md:flex flex-col items-end justify-between shrink-0 min-w-[120px]">
-<div className="text-indigo-600 font-bold text-xl">
-{formatCurrency(task.budget)}
-</div>
-<div className="flex items-center gap-3 mt-4">
-<Button
-variant="outline"
-className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
-onClick={() => openDetail(task)}
->
-详情
+                  {/* Desktop Actions */}
+                  <div className="hidden md:flex flex-col items-end justify-between shrink-0 min-w-[120px]">
+                    <div className="text-indigo-600 font-bold text-xl">
+                      {formatCurrency(task.budget)}
+                    </div>
+                    <div className="flex items-center gap-3 mt-4">
+                      <Button
+                        variant="outline"
+                        className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+                        onClick={() => openDetail(task)}
+                      >
+                        详情
                       </Button>
                       
                       {/* Show Broadcast button for task owner */}
@@ -465,12 +522,12 @@ onClick={() => openDetail(task)}
                           接单
                         </Button>
                       )}
-<Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => handleChat(task)}>
-<MessageCircle className="w-4 h-4 mr-1" />
-聊聊需求
-</Button>
-</div>
-</div>
+                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => handleChat(task)}>
+                        <MessageCircle className="w-4 h-4 mr-1" />
+                        聊聊需求
+                      </Button>
+                    </div>
+                  </div>
 
                   {/* Mobile Actions */}
                   <div className="flex md:hidden items-center justify-end gap-3 mt-4 pt-4 border-t border-slate-50">
@@ -503,14 +560,13 @@ onClick={() => openDetail(task)}
                         接单
                       </Button>
                     )}
-                    
-<Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1" onClick={() => handleChat(task)}>
-<MessageCircle className="w-4 h-4 mr-1" />
-聊聊需求
-</Button>
-                  </div>
-                </CardContent>
-</Card>
+                      <Button className="h-9 px-4 bg-indigo-500 hover:bg-indigo-600 text-white flex-1" onClick={() => handleChat(task)}>
+                        <MessageCircle className="w-4 h-4 mr-1" />
+                        聊聊需求
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
             ))
           )}
         </div>

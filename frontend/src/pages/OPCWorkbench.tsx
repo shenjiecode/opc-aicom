@@ -19,11 +19,12 @@ import {
   Flag,
 } from "lucide-react";
 import { useMatrix } from "@/contexts/MatrixContext";
-import { MatrixRoomList, MatrixChat, WorkerStatusPanel, ServerLogTerminal, MatrixUserList } from "@/components/matrix";
+import { MatrixRoomList, MatrixChat, ServerLogTerminal, MatrixUserList, MessageCenter } from "@/components/matrix";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { X, Eye } from "lucide-react";
+import { PRDDocumentPanel } from "@/components/PRDDocumentPanel";
 
 // SOP阶段定义
 type SOPStage = 'contract' | 'execution' | 'completed';
@@ -296,7 +297,6 @@ export default function OPCWorkbench() {
     initialize,
     currentRoom,
     selectRoom,
-    homeserverUrl,
     matrixUserId,
     userOnline,
     updateActivity,
@@ -391,70 +391,46 @@ export default function OPCWorkbench() {
                       </span>
                     </div>
                   </div>
-                  {matrixUserId && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <AtSign className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-slate-400">Matrix:</span>
-                      <span className="text-emerald-400 font-medium">{matrixUserId.split(':')[0].replace('@', '')}</span>
-                      {isInitialized && (
-                        <div className="flex items-center gap-1 ml-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          <span className="text-emerald-400 text-[10px]">已连接</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-xs">
+                    <AtSign className={cn(
+                      "w-3.5 h-3.5",
+                      isInitialized ? "text-emerald-400" : error ? "text-red-400" : "text-slate-500"
+                    )} />
+                    <span className="text-slate-400">Matrix:</span>
+                    <span className={cn(
+                      "font-medium",
+                      isInitialized ? "text-emerald-400" : error ? "text-red-400" : "text-slate-500"
+                    )}>
+                      {matrixUserId ? matrixUserId.split(':')[0].replace('@', '') : '未连接'}
+                    </span>
+                    {isLoading ? (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <RefreshCw className="w-3 h-3 animate-spin text-violet-400" />
+                        <span className="text-violet-400 text-[10px]">连接中...</span>
+                      </div>
+                    ) : isInitialized ? (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="text-emerald-400 text-[10px]">已连接</span>
+                      </div>
+                    ) : error ? (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <WifiOff className="w-3 h-3 text-red-400" />
+                        <button onClick={initialize} className="text-red-400 text-[10px] hover:text-red-300">重试</button>
+                      </div>
+                    ) : (
+                      <button onClick={initialize} className="text-xs text-violet-400 hover:text-violet-300 ml-auto">连接</button>
+                    )}
+                  </div>
                 </div>
               )}
             </CardHeader>
           </Card>
-
-          <Card className="bg-[#1a1b26] border-slate-800">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  {isLoading ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-violet-400" />
-                      <span>正在连接 Matrix...</span>
-                    </>
-                  ) : isInitialized ? (
-                    <>
-                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <span className="text-emerald-400">Matrix 已连接</span>
-                      <span className="text-slate-500 ml-1">
-                        | {homeserverUrl ? homeserverUrl.replace('http://', '').replace('https://', '') : 'localhost:8008'}
-                      </span>
-                    </>
-                  ) : error ? (
-                    <>
-                      <WifiOff className="w-3.5 h-3.5 text-red-400" />
-                      <span className="text-red-400">连接失败</span>
-                    </>
-                  ) : (
-                    <>
-                      <WifiOff className="w-3.5 h-3.5 text-slate-500" />
-                      <span>未连接</span>
-                    </>
-                  )}
-                </div>
-                {!isInitialized && !isLoading && (
-                  <button
-                    onClick={initialize}
-                    className="text-xs text-violet-400 hover:text-violet-300"
-                  >
-                    重试
-                  </button>
-                )}
-              </div>
-            </CardHeader>
-          </Card>
+          {/* Message Center */}
+          <MessageCenter />
 
           {/* Matrix Room List */}
           <MatrixRoomList className="flex-1" />
-
-          {/* Worker Status Panel */}
-          <WorkerStatusPanel />
 
           {/* Server User List */}
           <MatrixUserList />
@@ -472,6 +448,9 @@ export default function OPCWorkbench() {
 
         {/* Right Panel: Workspace & Status */}
         <div className="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto scrollbar-thin shrink-0 pb-4">
+          {/* PRD Document Panel - PRD 文档 */}
+          <PRDDocumentPanel className="shrink-0 h-44" />
+          
           {/* Workspace Panel - 项目工作区 */}
           <WorkspacePanel />
           

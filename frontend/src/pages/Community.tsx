@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Search,
   PenLine,
   Globe,
   MessageCircle,
@@ -90,7 +88,6 @@ export default function Community() {
   const [activeTab, setActiveTab] = useState<"forum" | "events">("events"); // Defaulting to events for now
   const [activeForumCategory, setActiveForumCategory] = useState("全部");
   const [activeEventCategory, setActiveEventCategory] = useState("全部活动");
-  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchPosts = async (category: string) => {
     setIsLoading(true);
@@ -194,34 +191,13 @@ export default function Community() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              className="pl-10 w-72 bg-slate-100/50 border-transparent focus-visible:ring-indigo-500 rounded-lg h-9 text-sm"
-              placeholder={
-                activeTab === "forum"
-                  ? "搜索社区内容..."
-                  : "搜索活动名称或城市..."
-              }
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          {activeTab === "forum" ? (
+          {activeTab === "forum" && (
             <Button
               className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-6 h-9"
               onClick={handleCreatePost}
             >
               <PenLine className="w-4 h-4 mr-2" />
               发布帖子
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              className="rounded-lg bg-white border-slate-200 h-9 text-slate-500"
-            >
-              <Ticket className="w-4 h-4 mr-2 text-rose-500" />
-              导出日历
             </Button>
           )}
         </div>
