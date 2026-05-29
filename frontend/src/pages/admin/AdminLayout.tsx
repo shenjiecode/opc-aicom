@@ -34,7 +34,6 @@ const navigationItems = [
   { path: "/admin/agents", label: "智能体设置", icon: Bot },
   { path: "/admin/billing", label: "计费管理", icon: CreditCard },
   { path: "/admin/api-gateway", label: "AI 模型网关", icon: Globe },
-  { path: "/admin/api-gateway", label: "AI 模型网关", icon: Globe },
 ];
 export default function AdminLayout() {
   const navigate = useNavigate();
