@@ -123,11 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(data.message || '登录失败');
     }
 
-    // Set user from response
-
     if (data.data) {
-
-      setUser({
+      const userData: User = {
         userId: data.data.userId,
         username: data.data.username,
         matrixUsername: data.data.matrixUsername,
@@ -137,8 +134,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         vipLevel: data.data.vipLevel || 0,
         memberType: data.data.memberType || 'normal',
         verificationStatus: data.data.verificationStatus || 'none',
-      });
+      };
+      setUser(userData);
 
+      // Auto Matrix login after OPC login succeeds
+      (async () => {
+        try {
+          console.log('[Auth] OPC login successful, starting Matrix auto-login...');
+          console.log('[Auth] OPC username:', username);
+
+          // Wait a short time for the backend async Matrix registration to complete
+          await new Promise(r => setTimeout(r, 1500));
+
+          // Call Matrix login API (backend will auto-register if user doesn't exist)
+          console.log('[Auth] Calling Matrix login API...');
+          const matrixResp = await fetchWithTimeout(`${API_BASE}/matrix/login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          }, 15000);
+
+          const matrixData = await matrixResp.json();
+          console.log('[Auth] Matrix login response:', matrixData.code === 0 ? 'success' : 'failed', matrixData.message || '');
+
+          if (matrixData.code === 0 && matrixData.data) {
+            console.log('[Auth] Matrix user ID:', matrixData.data.user_id);
+            console.log('[Auth] Matrix username:', matrixData.data.matrix_username);
+            console.log('[Auth] Matrix auto-login completed successfully');
+            setUser(prev => prev ? {
+              ...prev,
+              matrixToken: matrixData.data.access_token,
+              matrixUserId: matrixData.data.user_id,
+              matrixUsername: matrixData.data.matrix_username || prev.matrixUsername,
+            } : prev);
+          } else {
+            console.warn('[Auth] Matrix auto-login failed:', matrixData.message);
+          }
+        } catch (matrixErr) {
+          console.warn('[Auth] Matrix auto-login error:', matrixErr instanceof Error ? matrixErr.message : matrixErr);
+        }
+      })();
     }
   }, []);
 
