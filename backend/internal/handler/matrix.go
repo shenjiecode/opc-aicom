@@ -117,9 +117,10 @@ json.NewDecoder(resp.Body).Decode(&existingRooms)
 
 		// Create the room
 		roomBody := map[string]interface{}{
-			"name":  roomConfig.Name,
-			"topic": roomConfig.Topic,
-			"preset": "public_chat",
+			"name":       roomConfig.Name,
+			"topic":      roomConfig.Topic,
+			"preset":     "public_chat",
+			"visibility": "public",
 		}
 		bodyBytes, _ := json.Marshal(roomBody)
 		createURL := fmt.Sprintf("%s/_matrix/client/v3/createRoom", mc.config.Matrix.HomeserverURL)
@@ -614,58 +615,79 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 
 	// If login failed, try to register first
-
 	if resp.StatusCode != http.StatusOK {
-
+		respBodyStr := string(respBody)
+		
 		// Try to register the user using shared secret
-
 		regErr := registerMatrixUserInternal(matrixClient, username, password)
-
+		
 		if regErr != nil {
-
-			return "", "", fmt.Errorf("login failed and registration failed. Login: %s, Register: %v", string(respBody), regErr)
-
+			// If user already exists, try to reset password using admin API
+			if strings.Contains(regErr.Error(), "M_USER_IN_USE") || strings.Contains(regErr.Error(), "already taken") {
+				// Get admin token and reset password
+				// Get admin token and reset password
+				adminToken, adminErr := matrixClient.getAdminToken()
+				if adminErr == nil {
+					// Use Synapse admin API v2 to set user password
+					userID := fmt.Sprintf("@%s:%s", username, matrixClient.config.Matrix.ServerName)
+					resetURL := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", matrixClient.config.Matrix.HomeserverURL, userID)
+					
+					resetBody := map[string]string{"password": password}
+					resetBytes, _ := json.Marshal(resetBody)
+					
+					resetReq, _ := http.NewRequest("PUT", resetURL, bytes.NewBuffer(resetBytes))
+					resetReq.Header.Set("Content-Type", "application/json")
+					resetReq.Header.Set("Authorization", "Bearer "+adminToken)
+					
+					resetClient := &http.Client{Timeout: 10 * time.Second}
+					resetResp, resetErr := resetClient.Do(resetReq)
+					
+					if resetErr == nil {
+						io.ReadAll(resetResp.Body)
+						resetResp.Body.Close()
+						if resetResp.StatusCode == http.StatusOK {
+							// Password reset successful, retry login
+							bodyBytes2, _ := json.Marshal(loginBody)
+							httpReq2, _ := http.NewRequest("POST", loginURL, bytes.NewBuffer(bodyBytes2))
+							httpReq2.Header.Set("Content-Type", "application/json")
+							
+							resp2, loginErr := client.Do(httpReq2)
+							if loginErr == nil {
+								defer resp2.Body.Close()
+								respBody, _ = io.ReadAll(resp2.Body)
+								if resp2.StatusCode == http.StatusOK {
+									goto Success
+								}
+							}
+						}
+					}
+				}
+			}
+			return "", "", fmt.Errorf("login failed and registration failed. Login: %s, Register: %v", respBodyStr, regErr)
 		}
-
-
 
 		// Retry login after registration
-
 		bodyBytes2, _ := json.Marshal(loginBody)
-
 		httpReq2, err := http.NewRequest("POST", loginURL, bytes.NewBuffer(bodyBytes2))
-
 		if err != nil {
-
 			return "", "", fmt.Errorf("failed to create login request after registration: %w", err)
-
 		}
-
 		httpReq2.Header.Set("Content-Type", "application/json")
 
-
-
 		resp2, err := client.Do(httpReq2)
-
 		if err != nil {
-
 			return "", "", fmt.Errorf("failed to login after registration: %w", err)
-
 		}
-
 		defer resp2.Body.Close()
-
-
 
 		respBody, _ = io.ReadAll(resp2.Body)
 
 		if resp2.StatusCode != http.StatusOK {
-
 			return "", "", fmt.Errorf("login failed after registration: %s", string(respBody))
-
 		}
-
 	}
+
+Success:
 
 
 
@@ -1013,6 +1035,12 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 			}
 		}
 
+		// Build official rooms map from config
+		officialRoomNames := make(map[string]bool)
+		for _, oc := range matrixClient.config.Matrix.OfficialRooms {
+			officialRoomNames[oc.Name] = true
+		}
+
 		// Build response
 		allRooms := make([]gin.H, 0, len(synapseRooms.Rooms))
 		for _, r := range synapseRooms.Rooms {
@@ -1025,6 +1053,8 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 			}
 			// Get message count for this room
 			messageCount, _ := matrixClient.getRoomMessageCount(r.RoomID)
+			// Check if this is an official room
+			isOfficial := officialRoomNames[roomName]
 			allRooms = append(allRooms, gin.H{
 				"room_id":              r.RoomID,
 				"name":                 roomName,
@@ -1035,6 +1065,7 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 				"public":               r.Public,
 				"joined":               joinedMap[r.RoomID],
 				"message_count":        messageCount,
+				"is_official":          isOfficial,
 			})
 		}
 
@@ -1725,14 +1756,17 @@ func (mc *MatrixClient) getAdminToken() (string, error) {
 
 	// Need to login
 	loginURL := fmt.Sprintf("%s/_matrix/client/v3/login", mc.config.Matrix.HomeserverURL)
-	loginBody := map[string]string{
-		"type":     "m.login.password",
-		"user":     mc.config.Matrix.AdminUser,
+	loginBody := map[string]interface{}{
+		"type": "m.login.password",
+		"identifier": map[string]string{
+			"type": "m.id.user",
+			"user": mc.config.Matrix.AdminUser,
+		},
 		"password": mc.config.Matrix.AdminPassword,
 	}
-	bodyBytes, _ := json.Marshal(loginBody)
+	reqBody, _ := json.Marshal(loginBody)
 
-	resp, err := http.Post(loginURL, "application/json", bytes.NewBuffer(bodyBytes))
+	resp, err := http.Post(loginURL, "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("admin login failed: %w", err)
 	}
@@ -1741,7 +1775,14 @@ func (mc *MatrixClient) getAdminToken() (string, error) {
 	var result struct {
 		AccessToken string `json:"access_token"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if err := json.Unmarshal(respBody, &result); err != nil {
 		return "", fmt.Errorf("parse admin login response failed: %w", err)
 	}
 	if result.AccessToken == "" {

@@ -9,9 +9,11 @@ interface MatrixRoom {
   avatarUrl?: string;
   members: string[];
   unreadCount: number;
+  messageCount?: number; // Total messages/posts in room
   joined?: boolean;
   isDirect?: boolean; // 是否是私聊房间
   directWith?: string; // 如果是私聊，对方的 userId
+  isOfficial?: boolean; // 是否是官方房间
 }
 
 interface MatrixMessage {
@@ -649,7 +651,9 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
           avatarUrl: r.avatar_url || undefined,
           members: [],
           unreadCount: 0,
+          messageCount: r.message_count || 0,
           joined: r.joined || false,
+          isOfficial: r.is_official || false,
         }));
         setAllRooms(apiRooms);
       }
