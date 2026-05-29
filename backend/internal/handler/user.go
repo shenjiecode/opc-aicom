@@ -1,9 +1,9 @@
 package handler
 
 import (
-
-
+	"fmt"
 	"net/http"
+	"time"
 
 	"strconv"
 
@@ -22,7 +22,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"gorm.io/gorm"
-
 )
 
 // RegisterRequest represents the user registration request body
@@ -178,19 +177,17 @@ type LoginRequest struct {
 // LoginResponse represents the user login response
 
 type LoginResponse struct {
+	Token string `json:"token"`
 
-	Token          string `json:"token"`
+	UserID uint `json:"userId"`
 
-	UserID         uint   `json:"userId"`
+	Username string `json:"username"`
 
-	Username       string `json:"username"`
+	MatrixToken string `json:"matrixToken,omitempty"`
 
-	MatrixToken    string `json:"matrixToken,omitempty"`
-
-	MatrixUserID   string `json:"matrixUserId,omitempty"`
+	MatrixUserID string `json:"matrixUserId,omitempty"`
 
 	MatrixUsername string `json:"matrixUsername,omitempty"`
-
 }
 
 // Login handles user login
@@ -209,17 +206,14 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 			c.JSON(http.StatusBadRequest, UnifiedResponse{
 
-				Code:    400,
+				Code: 400,
 
 				Message: "Invalid request body",
-
 			})
 
 			return
 
 		}
-
-
 
 		// Find user by username
 
@@ -231,10 +225,9 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 				c.JSON(http.StatusUnauthorized, UnifiedResponse{
 
-					Code:    401,
+					Code: 401,
 
 					Message: "Invalid username or password",
-
 				})
 
 				return
@@ -243,17 +236,14 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
 
-				Code:    500,
+				Code: 500,
 
 				Message: "Database error",
-
 			})
 
 			return
 
 		}
-
-
 
 		// Verify password
 
@@ -261,17 +251,14 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 
-				Code:    401,
+				Code: 401,
 
 				Message: "Invalid username or password",
-
 			})
 
 			return
 
 		}
-
-
 
 		// Generate JWT token
 
@@ -281,52 +268,66 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
 
-				Code:    500,
+				Code: 500,
 
 				Message: "Failed to generate token",
-
 			})
 
 			return
 
 		}
 
-
-
 		// Set httpOnly cookie
 
 		setAuthCookie(c, token, cfg)
 
-
-
-		// Auto-login/register Matrix user (async - don't block login response)
 		matrixUsername := user.MatrixUsername
 		if matrixUsername == "" {
 			matrixUsername = sanitizeMatrixUsername(user.Username)
 		}
 		matrixPassword := req.Password
 
+		var matrixToken string
+		var matrixUserID string
+
 		if matrixClient != nil {
-			// Run Matrix login in background to avoid blocking the login response
+			type matrixResult struct {
+				accessToken string
+				userID      string
+				err         error
+			}
+			ch := make(chan matrixResult, 1)
 			go func() {
-				accessToken, _, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
+				accessToken, uid, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
 				if err != nil {
-					// Fallback to default password
-					accessToken, _, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
+					accessToken, uid, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
 				}
-				if err == nil {
-					setMatrixToken(user.ID, accessToken)
+				ch <- matrixResult{accessToken, uid, err}
+			}()
+
+			select {
+			case res := <-ch:
+				if res.err == nil {
+					matrixToken = res.accessToken
+					matrixUserID = res.userID
+					setMatrixToken(user.ID, res.accessToken)
 					if user.MatrixUsername == "" {
 						db.Model(&user).Update("matrix_username", matrixUsername)
 					}
 				}
-			}()
+			case <-time.After(3 * time.Second):
+				go func() {
+					res := <-ch
+					if res.err == nil {
+						setMatrixToken(user.ID, res.accessToken)
+						if user.MatrixUsername == "" {
+							db.Model(&user).Update("matrix_username", matrixUsername)
+						}
+					}
+				}()
+			}
 		}
 
-
-
-		// Return success response with user info (token in cookie only)
-		// Matrix token will be set async - can be fetched via /api/matrix/login
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
@@ -334,8 +335,8 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 				Token:          "",
 				UserID:         user.ID,
 				Username:       user.Username,
-				MatrixToken:    "", // Set async
-				MatrixUserID:   "", // Set async
+				MatrixToken:    matrixToken,
+				MatrixUserID:   matrixUserID,
 				MatrixUsername: matrixUsername,
 			},
 		})
@@ -349,6 +350,8 @@ type GetUserInfoResponse struct {
 	UserID             uint       `json:"userId"`
 	Username           string     `json:"username"`
 	MatrixUsername     string     `json:"matrixUsername,omitempty"`
+	MatrixToken        string     `json:"matrixToken,omitempty"`
+	MatrixUserID       string     `json:"matrixUserId,omitempty"`
 	Role               string     `json:"role"`
 	VipLevel           int        `json:"vipLevel"`
 	MemberType         string     `json:"memberType"`
@@ -368,9 +371,8 @@ type UserAssets struct {
 
 // GetUserInfo handles getting user info
 // POST /api/user/info (requires auth)
-func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
+func GetUserInfo(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user ID from context (set by auth middleware)
 		userID, ok := middleware.GetUserID(c)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
@@ -380,7 +382,6 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find user by ID
 		var user model.User
 		if err := db.First(&user, userID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -397,21 +398,46 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find user assets
 		var userAsset model.UserAsset
 		if err := db.Where("user_id = ?", userID).First(&userAsset).Error; err != nil {
-			// Assets not found is not an error, use defaults
 			userAsset = model.UserAsset{UserID: userID}
 		}
 
-		// Return user info
+		matrixUsername := user.MatrixUsername
+		var matrixToken string
+		var matrixUserID string
+
+		if matrixClient != nil {
+			if matrixUsername == "" {
+				matrixUsername = sanitizeMatrixUsername(user.Username)
+			}
+
+			cachedToken, hasCached := getMatrixToken(user.ID)
+			if hasCached && cachedToken != "" {
+				matrixToken = cachedToken
+				matrixUserID = fmt.Sprintf("@%s:%s", matrixUsername, matrixClient.config.Matrix.ServerName)
+			} else {
+				accessToken, mUserID, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
+				if err == nil {
+					matrixToken = accessToken
+					matrixUserID = mUserID
+					setMatrixToken(user.ID, accessToken)
+					if user.MatrixUsername == "" {
+						db.Model(&user).Update("matrix_username", matrixUsername)
+					}
+				}
+			}
+		}
+
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
 			Message: "success",
 			Data: GetUserInfoResponse{
 				UserID:             user.ID,
 				Username:           user.Username,
-				MatrixUsername:     user.MatrixUsername,
+				MatrixUsername:     matrixUsername,
+				MatrixToken:        matrixToken,
+				MatrixUserID:       matrixUserID,
 				Role:               user.Role,
 				VipLevel:           user.VipLevel,
 				MemberType:         user.MemberType,
@@ -429,7 +455,6 @@ func GetUserInfo(db *gorm.DB) gin.HandlerFunc {
 		})
 	}
 }
-
 
 // Logout handles user logout
 // POST /api/user/logout

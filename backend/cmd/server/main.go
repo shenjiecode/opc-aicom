@@ -106,7 +106,7 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 		userAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		userAuth.Use(middleware.ActivityTracker(db))
 		{
-			userAuth.POST("/info", handler.GetUserInfo(db))
+			userAuth.POST("/info", handler.GetUserInfo(db, matrixClient))
 			userAuth.POST("/refresh", handler.RefreshToken(cfg))
 			userAuth.GET("/posts", handler.GetUserPosts(db))
 			userAuth.GET("/events", handler.GetUserEvents(db))
