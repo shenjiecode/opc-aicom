@@ -1622,9 +1622,11 @@ func MatrixSyncSSE(matrixClient *MatrixClient) gin.HandlerFunc {
 
 // MatrixUserInfo represents a user on the Matrix server
 type MatrixUserInfo struct {
-	UserID      string `json:"user_id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name,omitempty"`
+	UserID       string     `json:"user_id"`
+	Name         string     `json:"name"`
+	DisplayName  string     `json:"display_name,omitempty"`
+	IsOnline     bool       `json:"is_online"`
+	LastActivity *time.Time `json:"last_activity,omitempty"`
 }
 
 // getAdminToken logs in as admin and returns access token for Synapse Admin API
@@ -1727,6 +1729,40 @@ func ListMatrixUsers(matrixClient *MatrixClient) gin.HandlerFunc {
 			return
 		}
 
+		// Look up online status from local database
+		onlineThreshold := time.Now().Add(-15 * time.Minute)
+
+		// Collect localparts for batch query
+		localparts := make([]string, 0, len(synapseUsers.Users))
+		for _, u := range synapseUsers.Users {
+			lp := u.Name
+			if strings.HasPrefix(lp, "@") {
+				if idx := strings.Index(lp, ":"); idx > 0 {
+					lp = lp[1:idx]
+				}
+			}
+			localparts = append(localparts, lp)
+		}
+
+		// Query local users table for matching matrix_usernames
+		type userActivity struct {
+			MatrixUsername string
+			LastActiveAt   *time.Time
+		}
+		var userActivities []userActivity
+		if len(localparts) > 0 {
+			matrixClient.db.Table("users").
+				Select("matrix_username, last_active_at").
+				Where("matrix_username IN ?", localparts).
+				Find(&userActivities)
+		}
+
+		// Build lookup map: matrix_username -> last_active_at
+		activityMap := make(map[string]*time.Time)
+		for _, ua := range userActivities {
+			activityMap[ua.MatrixUsername] = ua.LastActiveAt
+		}
+
 		// Convert to MatrixUserInfo
 		matrixUsers := make([]MatrixUserInfo, 0, len(synapseUsers.Users))
 		for _, u := range synapseUsers.Users {
@@ -1740,10 +1776,23 @@ func ListMatrixUsers(matrixClient *MatrixClient) gin.HandlerFunc {
 			if displayName == "" {
 				displayName = localpart
 			}
+
+			// Calculate online status from local database
+			var isOnline bool
+			var lastActivity *time.Time
+			if la, ok := activityMap[localpart]; ok {
+				lastActivity = la
+				if la != nil && la.After(onlineThreshold) {
+					isOnline = true
+				}
+			}
+
 			matrixUsers = append(matrixUsers, MatrixUserInfo{
-				UserID:      u.Name,
-				Name:        localpart,
-				DisplayName: displayName,
+				UserID:       u.Name,
+				Name:         localpart,
+				DisplayName:  displayName,
+				IsOnline:     isOnline,
+				LastActivity: lastActivity,
 			})
 		}
 

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -6,7 +5,6 @@ import {
   ChevronDown,
   Zap,
   Menu,
-  Bell,
   Sun,
   Moon,
   Circle,
@@ -22,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 interface HeaderProps {
   className?: string;
   onMenuClick?: () => void;
@@ -32,7 +30,6 @@ export function Header({ className, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuth();
-  const [notifications] = useState(3);
 
   const handleLogout = async () => {
     await logout();
@@ -97,18 +94,8 @@ export function Header({ className, onMenuClick }: HeaderProps) {
           )}
         </Button>
 
-        {/* Notification Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-muted)]"
-        >
-          <Bell className="h-5 w-5" />
-          {notifications > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--primary-500)] animate-pulse" />
-          )}
-        </Button>
-
+        {/* Notification Dropdown */}
+        <NotificationDropdown />
         {/* User Dropdown or Login Button */}
         {isAuthenticated && user ? (
           <DropdownMenu>

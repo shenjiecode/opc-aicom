@@ -1,7 +1,12 @@
 package handler
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,21 +15,65 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	maxCertifyFileSize = 10 << 20 // 10MB
+	certifyUploadDir   = "uploads/certify"
+)
+
 // PersonalVerificationRequest 个人实名认证请求
 type PersonalVerificationRequest struct {
-	RealName     string `json:"realName" binding:"required"`
-	IDCardNumber string `json:"idCardNumber" binding:"required"`
-	IDCardFront  string `json:"idCardFront"`
-	IDCardBack   string `json:"idCardBack"`
+	RealName     string `form:"realName" binding:"required"`
+	IDCardNumber string `form:"idCardNumber" binding:"required"`
 }
 
 // EnterpriseVerificationRequest 企业认证请求
 type EnterpriseVerificationRequest struct {
-	EnterpriseName    string `json:"enterpriseName" binding:"required"`
-	LicenseNumber     string `json:"licenseNumber" binding:"required"`
-	LegalPersonName   string `json:"legalPersonName" binding:"required"`
-	UnifiedSocialCode string `json:"unifiedSocialCode" binding:"required"`
-	BusinessLicense   string `json:"businessLicense"`
+	EnterpriseName    string `form:"enterpriseName" binding:"required"`
+	LicenseNumber     string `form:"licenseNumber" binding:"required"`
+	LegalPersonName   string `form:"legalPersonName" binding:"required"`
+	UnifiedSocialCode string `form:"unifiedSocialCode" binding:"required"`
+}
+
+// saveCertifyFile 保存认证文件到指定目录
+// 文件名格式: {prefix}_{suffix}.{ext}
+func saveCertifyFile(fileData []byte, prefix, suffix, originalExt string) (string, error) {
+	// 清理文件名中的非法字符
+	cleanPrefix := cleanFileName(prefix)
+	cleanSuffix := cleanFileName(suffix)
+
+	// 生成文件名
+	ext := strings.ToLower(originalExt)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	saveFilename := fmt.Sprintf("%s_%s%s", cleanPrefix, cleanSuffix, ext)
+
+	// 确保目录存在
+	if err := os.MkdirAll(certifyUploadDir, os.ModePerm); err != nil {
+		return "", fmt.Errorf("failed to create upload directory: %w", err)
+	}
+
+	// 保存文件
+	filePath := filepath.Join(certifyUploadDir, saveFilename)
+	if err := ioutil.WriteFile(filePath, fileData, 0644); err != nil {
+		return "", fmt.Errorf("failed to save file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+// cleanFileName 清理文件名，移除非法字符
+func cleanFileName(name string) string {
+	// 移除可能导致安全问题的字符
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, "..", "_")
+	name = strings.ReplaceAll(name, " ", "_")
+	// 限制长度
+	if len(name) > 50 {
+		name = name[:50]
+	}
+	return name
 }
 
 // SubmitPersonalVerification 提交个人实名认证
@@ -37,8 +86,14 @@ func SubmitPersonalVerification(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var req PersonalVerificationRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
+		// 手动从表单中获取数据（支持 multipart/form-data）
+		req := PersonalVerificationRequest{
+			RealName:     c.PostForm("realName"),
+			IDCardNumber: c.PostForm("idCardNumber"),
+		}
+		
+		// 验证必填字段
+		if req.RealName == "" || req.IDCardNumber == "" {
 			c.JSON(http.StatusBadRequest, UnifiedResponse{Code: 400, Message: "请填写完整的认证信息"})
 			return
 		}
@@ -60,6 +115,66 @@ func SubmitPersonalVerification(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
+		// 处理身份证正面照片上传
+		idCardFrontFile, err := c.FormFile("idCardFront")
+		var idCardFrontPath string
+		if err == nil && idCardFrontFile != nil {
+			if idCardFrontFile.Size > maxCertifyFileSize {
+				c.JSON(http.StatusBadRequest, UnifiedResponse{Code: 400, Message: "身份证正面照片大小超过10MB限制"})
+				return
+			}
+			
+			file, err := idCardFrontFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取身份证正面照片"})
+				return
+			}
+			defer file.Close()
+			
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取身份证正面照片"})
+				return
+			}
+			
+			ext := filepath.Ext(idCardFrontFile.Filename)
+			idCardFrontPath, err = saveCertifyFile(content, req.RealName, "身份证正面", ext)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "保存身份证正面照片失败"})
+				return
+			}
+		}
+
+		// 处理身份证背面照片上传
+		idCardBackFile, err := c.FormFile("idCardBack")
+		var idCardBackPath string
+		if err == nil && idCardBackFile != nil {
+			if idCardBackFile.Size > maxCertifyFileSize {
+				c.JSON(http.StatusBadRequest, UnifiedResponse{Code: 400, Message: "身份证背面照片大小超过10MB限制"})
+				return
+			}
+			
+			file, err := idCardBackFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取身份证背面照片"})
+				return
+			}
+			defer file.Close()
+			
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取身份证背面照片"})
+				return
+			}
+			
+			ext := filepath.Ext(idCardBackFile.Filename)
+			idCardBackPath, err = saveCertifyFile(content, req.RealName, "身份证背面", ext)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "保存身份证背面照片失败"})
+				return
+			}
+		}
+
 		// 创建认证记录
 		verification := model.Verification{
 			UserID:       userID,
@@ -67,8 +182,8 @@ func SubmitPersonalVerification(db *gorm.DB) gin.HandlerFunc {
 			Status:       model.VerificationStatusPending,
 			RealName:     req.RealName,
 			IDCardNumber: req.IDCardNumber,
-			IDCardFront:  req.IDCardFront,
-			IDCardBack:   req.IDCardBack,
+			IDCardFront:  idCardFrontPath,
+			IDCardBack:   idCardBackPath,
 		}
 
 		if err := db.Create(&verification).Error; err != nil {
@@ -106,8 +221,16 @@ func SubmitEnterpriseVerification(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var req EnterpriseVerificationRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
+		// 手动从表单中获取数据（支持 multipart/form-data）
+		req := EnterpriseVerificationRequest{
+			EnterpriseName:    c.PostForm("enterpriseName"),
+			LicenseNumber:     c.PostForm("licenseNumber"),
+			LegalPersonName:   c.PostForm("legalPersonName"),
+			UnifiedSocialCode: c.PostForm("unifiedSocialCode"),
+		}
+		
+		// 验证必填字段
+		if req.EnterpriseName == "" || req.LicenseNumber == "" || req.LegalPersonName == "" || req.UnifiedSocialCode == "" {
 			c.JSON(http.StatusBadRequest, UnifiedResponse{Code: 400, Message: "请填写完整的企业认证信息"})
 			return
 		}
@@ -129,6 +252,36 @@ func SubmitEnterpriseVerification(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
+		// 处理营业执照上传
+		businessLicenseFile, err := c.FormFile("businessLicense")
+		var businessLicensePath string
+		if err == nil && businessLicenseFile != nil {
+			if businessLicenseFile.Size > maxCertifyFileSize {
+				c.JSON(http.StatusBadRequest, UnifiedResponse{Code: 400, Message: "营业执照文件大小超过10MB限制"})
+				return
+			}
+			
+			file, err := businessLicenseFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取营业执照"})
+				return
+			}
+			defer file.Close()
+			
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "无法读取营业执照"})
+				return
+			}
+			
+			ext := filepath.Ext(businessLicenseFile.Filename)
+			businessLicensePath, err = saveCertifyFile(content, req.EnterpriseName, "营业执照", ext)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, UnifiedResponse{Code: 500, Message: "保存营业执照失败"})
+				return
+			}
+		}
+
 		// 创建认证记录
 		verification := model.Verification{
 			UserID:            userID,
@@ -138,7 +291,7 @@ func SubmitEnterpriseVerification(db *gorm.DB) gin.HandlerFunc {
 			LicenseNumber:     req.LicenseNumber,
 			LegalPersonName:   req.LegalPersonName,
 			UnifiedSocialCode: req.UnifiedSocialCode,
-			BusinessLicense:   req.BusinessLicense,
+			BusinessLicense:   businessLicensePath,
 		}
 
 		if err := db.Create(&verification).Error; err != nil {
@@ -209,9 +362,9 @@ func approveVerification(db *gorm.DB, verificationID uint, reviewerID uint, rema
 
 	// 更新认证记录状态
 	db.Model(&model.Verification{}).Where("id = ?", verificationID).Updates(map[string]interface{}{
-		"status":       model.VerificationStatusApproved,
-		"reviewed_at":  now,
-		"reviewed_by":  reviewerID,
+		"status":        model.VerificationStatusApproved,
+		"reviewed_at":   now,
+		"reviewed_by":   reviewerID,
 		"review_remark": remark,
 	})
 

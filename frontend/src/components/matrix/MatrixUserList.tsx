@@ -52,8 +52,8 @@ export function MatrixUserList({ className }: MatrixUserListProps) {
         ) : (
           users.map((user) => {
             const worker = isWorker(user.userId);
-            // Non-worker users are assumed online (they must be logged in to appear)
-            const online = worker ? isWorkerOnline(user.userId) : true;
+            // Worker users: check worker online status; Regular users: use isOnline field
+            const online = worker ? isWorkerOnline(user.userId) : (user.isOnline ?? false);
             const displayName = user.displayName || user.name || user.userId.split(':')[0].replace('@', '');
             return (
               <div

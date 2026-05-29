@@ -166,6 +166,16 @@ cfg, err := config.Load()
 			taskAuth.POST("/:id/accept", handler.AcceptTask(db))
 		}
 
+		// Project routes
+		projectHandler := handler.NewProjectHandler(db)
+		projectsAuth := api.Group("/projects")
+		projectsAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			projectsAuth.GET("/list", projectHandler.ListProjects)
+			projectsAuth.GET("/:id", projectHandler.GetProject)
+		}
+
+
 		// PRD routes
 		api.GET("/prds", handler.ListPRDs)
 		api.POST("/prds", handler.SavePRD)
@@ -352,7 +362,7 @@ cfg, err := config.Load()
 	}
 
 	// Contract routes
-	contractHandler := handler.NewContractHandler(db)
+	contractHandler := handler.NewContractHandler(db, matrixClient)
 	contractsAuth := api.Group("/contracts")
 	contractsAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 	{

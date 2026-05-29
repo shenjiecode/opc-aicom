@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   Shield,
   Upload,
   Loader2,
+  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,6 +109,12 @@ export function VerificationDialog({
   });
   const [personalErrors, setPersonalErrors] = useState<Partial<PersonalFormData>>({});
 
+  // Personal file upload state
+  const [idCardFrontFile, setIdCardFrontFile] = useState<File | null>(null);
+  const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
+  const idCardFrontInputRef = useRef<HTMLInputElement>(null);
+  const idCardBackInputRef = useRef<HTMLInputElement>(null);
+
   // Enterprise form state
   const [enterpriseForm, setEnterpriseForm] = useState<EnterpriseFormData>({
     enterpriseName: "",
@@ -117,6 +124,10 @@ export function VerificationDialog({
   });
   const [enterpriseErrors, setEnterpriseErrors] = useState<Partial<EnterpriseFormData>>({});
 
+  // Enterprise file upload state
+  const [businessLicenseFile, setBusinessLicenseFile] = useState<File | null>(null);
+  const businessLicenseInputRef = useRef<HTMLInputElement>(null);
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
@@ -124,6 +135,9 @@ export function VerificationDialog({
       setSubmitError("");
       setPersonalErrors({});
       setEnterpriseErrors({});
+      setIdCardFrontFile(null);
+      setIdCardBackFile(null);
+      setBusinessLicenseFile(null);
 
       // Set initial tab based on user's current member type
       if (user?.memberType === "enterprise") {
@@ -171,6 +185,14 @@ export function VerificationDialog({
       errors.phoneNumber = "请输入有效的11位手机号";
     }
 
+    // 验证是否上传了身份证照片
+    if (!idCardFrontFile) {
+      errors.realName = "请上传身份证正面照片";
+    }
+    if (!idCardBackFile) {
+      errors.idCardNumber = "请上传身份证背面照片";
+    }
+
     setPersonalErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -202,6 +224,11 @@ export function VerificationDialog({
       errors.contactPhone = "请输入有效的11位手机号";
     }
 
+    // 验证是否上传了营业执照
+    if (!businessLicenseFile) {
+      errors.enterpriseName = "请上传营业执照";
+    }
+
     setEnterpriseErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -213,18 +240,21 @@ export function VerificationDialog({
     setSubmitError("");
 
     try {
-      // Map frontend fields to backend
-      const backendData = {
-        realName: personalForm.realName,
-        idCardNumber: personalForm.idCardNumber,
-      };
+      // 创建 FormData 对象用于文件上传
+      const formData = new FormData();
+      formData.append("realName", personalForm.realName);
+      formData.append("idCardNumber", personalForm.idCardNumber);
+      if (idCardFrontFile) {
+        formData.append("idCardFront", idCardFrontFile);
+      }
+      if (idCardBackFile) {
+        formData.append("idCardBack", idCardBackFile);
+      }
+
       const response = await fetch("/api/verification/personal", {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(backendData),
+        body: formData, // 不要设置 Content-Type，让浏览器自动设置
       });
 
       const data = await response.json();
@@ -251,20 +281,20 @@ export function VerificationDialog({
     setSubmitError("");
 
     try {
-      // Map frontend fields to backend fields
-      const backendData = {
-        enterpriseName: enterpriseForm.enterpriseName,
-        licenseNumber: enterpriseForm.businessLicenseNumber,
-        legalPersonName: enterpriseForm.legalRepresentative,
-        unifiedSocialCode: enterpriseForm.businessLicenseNumber,
-      };
+      // 创建 FormData 对象用于文件上传
+      const formData = new FormData();
+      formData.append("enterpriseName", enterpriseForm.enterpriseName);
+      formData.append("licenseNumber", enterpriseForm.businessLicenseNumber);
+      formData.append("legalPersonName", enterpriseForm.legalRepresentative);
+      formData.append("unifiedSocialCode", enterpriseForm.businessLicenseNumber);
+      if (businessLicenseFile) {
+        formData.append("businessLicense", businessLicenseFile);
+      }
+
       const response = await fetch("/api/verification/enterprise", {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(backendData),
+        body: formData, // 不要设置 Content-Type，让浏览器自动设置
       });
 
       const data = await response.json();
@@ -522,19 +552,103 @@ export function VerificationDialog({
               )}
             </div>
 
+            {/* ID Card Front Upload */}
             <div className="space-y-2">
               <Label className="text-[var(--text-primary)] flex items-center gap-1">
                 身份证正面照片
                 <span className="text-red-500">*</span>
               </Label>
-              <div className="border-2 border-dashed border-[var(--border-default)] rounded-xl p-8 text-center hover:border-[var(--primary-500)]/50 transition-colors cursor-pointer">
-                <Upload className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
-                <p className="text-sm text-[var(--text-secondary)]">
-                  点击上传身份证正面照片
-                </p>
-                <p className="text-xs text-[var(--text-muted)] mt-1">
-                  支持 JPG、PNG 格式，大小不超过 5MB
-                </p>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/jpg"
+                className="hidden"
+                ref={idCardFrontInputRef}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setIdCardFrontFile(e.target.files[0]);
+                  }
+                }}
+              />
+              <div 
+                onClick={() => idCardFrontInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-xl p-8 text-center hover:border-[var(--primary-500)]/50 transition-colors cursor-pointer",
+                  idCardFrontFile 
+                    ? "border-green-500/50 bg-green-500/5" 
+                    : "border-[var(--border-default)]"
+                )}
+              >
+                {idCardFrontFile ? (
+                  <>
+                    <FileCheck className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm text-green-500 font-medium">
+                      已选择: {idCardFrontFile.name}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      点击更换文件
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      点击上传身份证正面照片
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      支持 JPG、PNG 格式，大小不超过 10MB
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ID Card Back Upload */}
+            <div className="space-y-2">
+              <Label className="text-[var(--text-primary)] flex items-center gap-1">
+                身份证背面照片
+                <span className="text-red-500">*</span>
+              </Label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/jpg"
+                className="hidden"
+                ref={idCardBackInputRef}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setIdCardBackFile(e.target.files[0]);
+                  }
+                }}
+              />
+              <div 
+                onClick={() => idCardBackInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-xl p-8 text-center hover:border-[var(--primary-500)]/50 transition-colors cursor-pointer",
+                  idCardBackFile 
+                    ? "border-green-500/50 bg-green-500/5" 
+                    : "border-[var(--border-default)]"
+                )}
+              >
+                {idCardBackFile ? (
+                  <>
+                    <FileCheck className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm text-green-500 font-medium">
+                      已选择: {idCardBackFile.name}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      点击更换文件
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      点击上传身份证背面照片
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      支持 JPG、PNG 格式，大小不超过 10MB
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -670,19 +784,53 @@ export function VerificationDialog({
               )}
             </div>
 
+            {/* Business License Upload */}
             <div className="space-y-2">
               <Label className="text-[var(--text-primary)] flex items-center gap-1">
                 营业执照
                 <span className="text-red-500">*</span>
               </Label>
-              <div className="border-2 border-dashed border-[var(--border-default)] rounded-xl p-8 text-center hover:border-[var(--primary-500)]/50 transition-colors cursor-pointer">
-                <Upload className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
-                <p className="text-sm text-[var(--text-secondary)]">
-                  点击上传营业执照
-                </p>
-                <p className="text-xs text-[var(--text-muted)] mt-1">
-                  支持 JPG、PNG、PDF 格式，大小不超过 10MB
-                </p>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/jpg,application/pdf"
+                className="hidden"
+                ref={businessLicenseInputRef}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setBusinessLicenseFile(e.target.files[0]);
+                  }
+                }}
+              />
+              <div 
+                onClick={() => businessLicenseInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-xl p-8 text-center hover:border-[var(--primary-500)]/50 transition-colors cursor-pointer",
+                  businessLicenseFile 
+                    ? "border-green-500/50 bg-green-500/5" 
+                    : "border-[var(--border-default)]"
+                )}
+              >
+                {businessLicenseFile ? (
+                  <>
+                    <FileCheck className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm text-green-500 font-medium">
+                      已选择: {businessLicenseFile.name}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      点击更换文件
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      点击上传营业执照
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      支持 JPG、PNG、PDF 格式，大小不超过 10MB
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>

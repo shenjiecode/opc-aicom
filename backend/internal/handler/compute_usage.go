@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -167,9 +168,88 @@ func (h *ComputeUsageHandler) CreateComputeUsage(c *gin.Context) {
 			return err
 		}
 
-		// Deduct credits from user's asset
-		asset.Points -= creditsInt
+		// Check if this is a task-related compute usage with escrow
+		deductAmount := creditsInt
+		if req.ResourceType == "task" && req.ResourceID > 0 {
+			var task model.Task
+			if err := tx.First(&task, req.ResourceID).Error; err == nil && task.EscrowPoints > 0 {
+				// Task has escrow points, use them first
+				if task.EscrowPoints >= deductAmount {
+					// Sufficient escrow - deduct from escrow only
+					if err := tx.Model(&model.Task{}).Where("id = ?", task.ID).Update("escrow_points", gorm.Expr("escrow_points - ?", deductAmount)).Error; err != nil {
+						return err
+					}
+					// Create credit transaction for escrow deduction
+					transaction := model.CreditTransaction{
+						UserID:       userID,
+						Type:         model.CreditTypeEscrowDeduct,
+						Amount:       -deductAmount,
+						BalanceAfter: asset.Points,
+						Description:  fmt.Sprintf("算力使用扣除托管积分: 任务 #%d, 金额 %d", req.ResourceID, deductAmount),
+						RelatedID:    &req.ResourceID,
+						RelatedType:  "task_escrow",
+					}
+					if err := tx.Create(&transaction).Error; err != nil {
+						return err
+					}
+					return nil
+				}
+				// Insufficient escrow - deduct partial from escrow, remainder from user
+				partialEscrow := task.EscrowPoints
+				if err := tx.Model(&model.Task{}).Where("id = ?", task.ID).Update("escrow_points", gorm.Expr("escrow_points - ?", partialEscrow)).Error; err != nil {
+					return err
+				}
+				// Create credit transaction for escrow deduction
+				escrowTransaction := model.CreditTransaction{
+					UserID:       userID,
+					Type:         model.CreditTypeEscrowDeduct,
+					Amount:       -partialEscrow,
+					BalanceAfter: asset.Points,
+					Description:  fmt.Sprintf("算力使用扣除托管积分(部分): 任务 #%d, 金额 %d", req.ResourceID, partialEscrow),
+					RelatedID:    &req.ResourceID,
+					RelatedType:  "task_escrow",
+				}
+				if err := tx.Create(&escrowTransaction).Error; err != nil {
+					return err
+				}
+				// Deduct remaining from user asset
+				remainder := deductAmount - partialEscrow
+				asset.Points -= remainder
+				if err := tx.Save(&asset).Error; err != nil {
+					return err
+				}
+				// Create credit transaction for direct deduction
+				directTransaction := model.CreditTransaction{
+					UserID:       userID,
+					Type:         model.CreditTypeConsume,
+					Amount:       -remainder,
+					BalanceAfter: asset.Points,
+					Description:  fmt.Sprintf("算力使用积分消费: 金额 %d", remainder),
+					RelatedID:    &req.ResourceID,
+					RelatedType:  "compute_usage",
+				}
+				if err := tx.Create(&directTransaction).Error; err != nil {
+					return err
+				}
+				return nil
+			}
+		}
+
+		// No escrow or not a task - deduct from user asset directly
+		asset.Points -= deductAmount
 		if err := tx.Save(&asset).Error; err != nil {
+			return err
+		}
+
+		// Create credit transaction for direct deduction
+		transaction := model.CreditTransaction{
+			UserID:       userID,
+			Type:         model.CreditTypeConsume,
+			Amount:       -deductAmount,
+			BalanceAfter: asset.Points,
+			Description:  fmt.Sprintf("算力使用积分消费: 金额 %d", deductAmount),
+		}
+		if err := tx.Create(&transaction).Error; err != nil {
 			return err
 		}
 

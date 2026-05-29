@@ -23,6 +23,7 @@ VipLevel     int            `gorm:"default:0" json:"vip_level"`
 	RealName           string `gorm:"size:100" json:"real_name"`                 // 实名认证姓名
 	EnterpriseName     string `gorm:"size:255" json:"enterprise_name"`           // 企业认证公司名
 MatrixUsername string       `gorm:"size:255" json:"matrix_username"` // Matrix username for OPC-Matrix integration
+	IsOnline      bool           `gorm:"default:false" json:"is_online"` // User online status
 LastActiveAt *time.Time     `json:"last_active_at"`
 CreatedAt    time.Time      `json:"created_at"`
 UpdatedAt    time.Time      `json:"updated_at"`

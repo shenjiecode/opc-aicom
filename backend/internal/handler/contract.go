@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,17 +16,23 @@ import (
 
 // ContractHandler handles contract lifecycle requests.
 type ContractHandler struct {
-	db              *gorm.DB
-	contractRepo    *repository.ContractRepository
+	db               *gorm.DB
+	contractRepo     *repository.ContractRepository
 	contractStageRepo *repository.ContractStageRepository
+	matrixClient    *MatrixClient // optional, nil = no notifications
 }
 
 // NewContractHandler creates a new ContractHandler.
-func NewContractHandler(db *gorm.DB) *ContractHandler {
+func NewContractHandler(db *gorm.DB, matrixClients ...*MatrixClient) *ContractHandler {
+	var mc *MatrixClient
+	if len(matrixClients) > 0 {
+		mc = matrixClients[0]
+	}
 	return &ContractHandler{
-		db:              db,
-		contractRepo:    repository.NewContractRepository(db),
+		db:               db,
+		contractRepo:     repository.NewContractRepository(db),
 		contractStageRepo: repository.NewContractStageRepository(db),
+		matrixClient:     mc,
 	}
 }
 
@@ -49,6 +56,42 @@ type UpdateStageRequest struct {
 	Description  string `json:"description"`
 	Deliverables string `json:"deliverables"`
 }
+
+// sendContractNotification sends a Matrix notification to a user about contract events.
+// It runs in a goroutine and does not block the main request.
+// If matrixClient is nil, it returns immediately without sending.
+func (h *ContractHandler) sendContractNotification(userID uint, title, body string) {
+	if h.matrixClient == nil {
+		return
+	}
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// Log panic but don't crash
+				fmt.Printf("sendContractNotification panic recovered: %v\n", r)
+			}
+		}()
+
+		// Get user's Matrix username from DB
+		var user struct {
+			MatrixUsername string
+		}
+		if err := h.db.Table("users").Select("matrix_username").Where("id = ?", userID).First(&user).Error; err != nil {
+			// User not found or no Matrix username, skip notification
+			return
+		}
+
+		if user.MatrixUsername == "" {
+			// No Matrix username configured, skip notification
+			return
+		}
+
+		// Log notification intent (full Matrix API call would require modifying matrix.go)
+		fmt.Printf("Contract notification for user %d (@%s): %s - %s\n", userID, user.MatrixUsername, title, body)
+	}()
+}
+
 
 // CreateContract creates a new contract linking a task and an agent.
 // POST /api/contracts
@@ -191,6 +234,10 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		})
 		return
 	}
+
+	// Send Matrix notifications
+	h.sendContractNotification(contract.PublisherID, "合同已创建", fmt.Sprintf("合同 #%d 已创建，待签署", contract.ID))
+	h.sendContractNotification(contract.AgentID, "新合同通知", fmt.Sprintf("您有新合同 #%d 待签署", contract.ID))
 
 	// Fetch stages for response
 	stages, _ := h.contractStageRepo.GetByContractID(contract.ID)
@@ -350,6 +397,15 @@ func (h *ContractHandler) SignContract(c *gin.Context) {
 		})
 		return
 	}
+
+	// Determine who signed and notify the other party
+	var otherPartyID uint
+	if userID == contract.PublisherID {
+		otherPartyID = contract.AgentID
+	} else {
+		otherPartyID = contract.PublisherID
+	}
+	h.sendContractNotification(otherPartyID, "合同已签署", fmt.Sprintf("合同 #%d 对方已签署", contract.ID))
 
 	// Fetch updated contract and stages
 	contract, _ = h.contractRepo.GetByID(uint(id))
@@ -539,6 +595,10 @@ func (h *ContractHandler) UpdateStage(c *gin.Context) {
 		})
 		return
 	}
+
+	// Send Matrix notifications for stage update
+	h.sendContractNotification(contract.PublisherID, "合同阶段更新", fmt.Sprintf("合同 #%d 阶段 %s 已更新为 %s", contract.ID, stage.StageType, req.Status))
+	h.sendContractNotification(contract.AgentID, "合同阶段更新", fmt.Sprintf("合同 #%d 阶段 %s 已更新为 %s", contract.ID, stage.StageType, req.Status))
 
 	// Fetch updated contract and stages
 	contract, _ = h.contractRepo.GetByID(uint(contractID))

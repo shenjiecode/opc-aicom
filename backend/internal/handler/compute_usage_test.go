@@ -27,6 +27,8 @@ func setupComputeUsageTestDB(t *testing.T) *gorm.DB {
 		&model.UserAsset{},
 		&model.ComputePackage{},
 		&model.ComputeUsage{},
+		&model.Task{},
+		&model.CreditTransaction{},
 	)
 
 	return db
@@ -70,6 +72,21 @@ func createComputeUsageTestPackage(db *gorm.DB, name string, price int, credits 
 	return pkg.ID
 }
 
+// createTestTaskWithEscrow creates a test task with escrow points
+func createComputeUsageTestTaskWithEscrow(db *gorm.DB, userID uint, escrowPoints int, t *testing.T) uint {
+	task := model.Task{
+		UserID:       userID,
+		Title:        "Test Task",
+		Description:  "Test task description",
+		Budget:       1000,
+		EscrowPoints: escrowPoints,
+	}
+	if err := db.Create(&task).Error; err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+	return task.ID
+}
+
 // setupRouter creates a gin engine with authenticated context
 func setupComputeUsageRouter(db *gorm.DB, userID uint) *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -77,7 +94,7 @@ func setupComputeUsageRouter(db *gorm.DB, userID uint) *gin.Engine {
 
 	// Add auth middleware simulation
 	router.Use(func(c *gin.Context) {
-	c.Set("userID", userID)
+		c.Set("userID", userID)
 		c.Next()
 	})
 
@@ -152,6 +169,131 @@ func TestCreateComputeUsage_InsufficientCredits(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("Expected status 400, got %d", w.Code)
+	}
+}
+
+// TestCreateComputeUsage_WithEscrow tests escrow deduction when task has sufficient escrow points
+func TestCreateComputeUsage_WithEscrow(t *testing.T) {
+	db := setupComputeUsageTestDB(t)
+	handler := NewComputeUsageHandler(db)
+
+	// Setup test data
+	userID := createComputeUsageTestUser(db, 1000, t)
+	packageID := createComputeUsageTestPackage(db, "GPU Pack", 100, 100, 30, t)
+	taskID := createComputeUsageTestTaskWithEscrow(db, userID, 100, t) // Task has 100 escrow points
+
+	router := setupComputeUsageRouter(db, userID)
+	router.POST("/api/compute/usage", handler.CreateComputeUsage)
+
+	// Create request with task resource
+	reqBody := map[string]interface{}{
+		"package_id":     packageID,
+		"credits_used":   "50",
+		"compute_hours": 1.0,
+		"resource_type": "task",
+		"resource_id":   taskID,
+		"description":   "Compute usage for task",
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/compute/usage", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp["code"].(float64) != 0 {
+		t.Fatalf("Expected code 0, got %v", resp["code"])
+	}
+
+	// Verify escrow was deducted
+	var task model.Task
+	if err := db.First(&task, taskID).Error; err != nil {
+		t.Fatalf("Failed to find task: %v", err)
+	}
+	if task.EscrowPoints != 50 {
+		t.Fatalf("Expected escrow points to be 50, got %d", task.EscrowPoints)
+	}
+
+	// Verify credit transaction was created
+	var txCount int64
+	db.Model(&model.CreditTransaction{}).Where("related_id = ? AND type = ?", taskID, model.CreditTypeEscrowDeduct).Count(&txCount)
+	if txCount != 1 {
+		t.Fatalf("Expected 1 escrow deduct transaction, got %d", txCount)
+	}
+}
+
+// TestCreateComputeUsage_EscrowInsufficient tests fallback when escrow is insufficient
+func TestCreateComputeUsage_EscrowInsufficient(t *testing.T) {
+	db := setupComputeUsageTestDB(t)
+	handler := NewComputeUsageHandler(db)
+
+	// Setup test data - user has both escrow and points
+	userID := createComputeUsageTestUser(db, 100, t) // User also has 100 direct points
+	packageID := createComputeUsageTestPackage(db, "GPU Pack", 100, 100, 30, t)
+	taskID := createComputeUsageTestTaskWithEscrow(db, userID, 30, t) // Task has only 30 escrow points (less than needed 50)
+
+	router := setupComputeUsageRouter(db, userID)
+	router.POST("/api/compute/usage", handler.CreateComputeUsage)
+
+	// Create request with task resource requiring 50 credits
+	reqBody := map[string]interface{}{
+		"package_id":     packageID,
+		"credits_used":   "50",
+		"compute_hours": 1.0,
+		"resource_type": "task",
+		"resource_id":   taskID,
+		"description":   "Compute usage for task",
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/compute/usage", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp["code"].(float64) != 0 {
+		t.Fatalf("Expected code 0, got %v", resp["code"])
+	}
+
+	// Verify escrow was fully deducted
+	var task model.Task
+	if err := db.First(&task, taskID).Error; err != nil {
+		t.Fatalf("Failed to find task: %v", err)
+	}
+	if task.EscrowPoints != 0 {
+		t.Fatalf("Expected escrow points to be 0, got %d", task.EscrowPoints)
+	}
+
+	// Verify user points were deducted (50 - 30 = 20)
+	var asset model.UserAsset
+	if err := db.Where("user_id = ?", userID).First(&asset).Error; err != nil {
+		t.Fatalf("Failed to find asset: %v", err)
+	}
+	if asset.Points != 80 { // 100 - 20 = 80
+		t.Fatalf("Expected user points to be 80, got %d", asset.Points)
+	}
+
+	// Verify credit transactions were created (one for escrow, one for consume)
+	var txCount int64
+	db.Model(&model.CreditTransaction{}).Where("user_id = ?", userID).Count(&txCount)
+	if txCount != 2 {
+		t.Fatalf("Expected 2 credit transactions, got %d", txCount)
 	}
 }
 

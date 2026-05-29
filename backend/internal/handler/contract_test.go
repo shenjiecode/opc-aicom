@@ -1029,6 +1029,36 @@ func TestContractHandler_UpdateStage_StageNotBelongToContract(t *testing.T) {
 	}
 }
 
+// TestContractHandler_NilMatrixClient_NoPanic tests that the handler works without a MatrixClient
+func TestContractHandler_NilMatrixClient_NoPanic(t *testing.T) {
+	db := setupContractTestDB(t)
+	handler := NewContractHandler(db) // No MatrixClient - should work fine
+
+	publisherID := createContractTestUser(db, "publisher_nil_mc", t)
+	agentUserID := createContractTestUser(db, "agent_nil_mc", t)
+	taskID := createContractTestTask(db, publisherID, 1000.0, t)
+	agentID := createContractTestAgent(db, agentUserID, t)
+
+	body, _ := json.Marshal(CreateContractRequest{
+		TaskID:      taskID,
+		AgentID:     agentID,
+		TotalAmount: 1000.0,
+	})
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/contracts", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("userID", publisherID)
+
+	handler.CreateContract(c)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 
 // strconvFormatUint is a helper to format uint64 as string
 func strconvFormatUint(v uint64) string {
