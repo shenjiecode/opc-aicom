@@ -38,7 +38,13 @@ cfg, err := config.Load()
 		&model.CreditTransaction{}, &model.LLMGateway{},
 		&model.Verification{},
 		&model.ComputePackage{}, &model.ComputeUsage{},
-		&model.UserPackage{},
+	&model.Contract{}, &model.ContractStage{},
+		&model.TaskNotification{}, &model.RequirementSession{},
+		&model.Project{}, &model.ProjectMember{}, &model.ProjectRoom{},
+		&model.ProjectDeliverable{}, &model.ProjectPayment{},
+		&model.ProjectWorkspace{}, &model.ProjectWorkspaceFile{},
+		&model.ProjectActivity{},
+
 		&model.Contract{}, &model.ContractStage{},
 		&model.TaskNotification{}, &model.RequirementSession{},
 	); err != nil {
@@ -176,9 +182,29 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 		projectsAuth := api.Group("/projects")
 		projectsAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 		{
+			// CRUD
 			projectsAuth.GET("/list", projectHandler.ListProjects)
 			projectsAuth.GET("/:id", projectHandler.GetProject)
+			projectsAuth.POST("", projectHandler.CreateProject)
+			projectsAuth.PUT("/:id", projectHandler.UpdateProject)
+			projectsAuth.DELETE("/:id", projectHandler.DeleteProject)
+			// Members
+			projectsAuth.POST("/:id/members", projectHandler.AddMember)
+			projectsAuth.DELETE("/:id/members/:uid", projectHandler.RemoveMember)
+			projectsAuth.GET("/:id/members", projectHandler.ListMembers)
+			projectsAuth.POST("/:id/follow", projectHandler.FollowProject)
+			projectsAuth.DELETE("/:id/follow", projectHandler.UnfollowProject)
+			// Rooms
+			projectsAuth.POST("/:id/rooms", projectHandler.CreateRoom)
+			projectsAuth.GET("/:id/rooms", projectHandler.ListRooms)
+			// Deliverables
+			projectsAuth.POST("/:id/deliverables", projectHandler.CreateDeliverable)
+			projectsAuth.GET("/:id/deliverables", projectHandler.ListDeliverables)
+			projectsAuth.POST("/:id/deliverables/:did/submit", projectHandler.SubmitDeliverable)
+			projectsAuth.POST("/:id/deliverables/:did/approve", projectHandler.ApproveDeliverable)
+			projectsAuth.POST("/:id/deliverables/:did/reject", projectHandler.RejectDeliverable)
 		}
+		
 
 
 		// PRD routes
