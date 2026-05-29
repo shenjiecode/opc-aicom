@@ -10,6 +10,8 @@ interface MatrixRoom {
   members: string[];
   unreadCount: number;
   joined?: boolean;
+  isDirect?: boolean; // 是否是私聊房间
+  directWith?: string; // 如果是私聊，对方的 userId
 }
 
 interface MatrixMessage {
@@ -17,8 +19,9 @@ interface MatrixMessage {
   sender: string;
   senderName: string;
   content: string;
-  timestamp: number;
+timestamp: number;
   isOwn: boolean;
+  msgtype?: string;
 }
 
 export interface MatrixWorker {
@@ -35,6 +38,26 @@ interface MatrixUser {
   displayName?: string;
   lastActivity?: number; // Last activity timestamp
   isOnline?: boolean; // Online status based on activity
+}
+
+export interface MatrixInvitation {
+  roomId: string;
+  roomName: string;
+  inviterId: string;
+  inviterName?: string;
+  timestamp: number;
+}
+
+export interface MatrixNotification {
+  type: 'invitation' | 'message' | 'system';
+  id: string;
+  roomId?: string;
+  roomName?: string;
+  content?: string;
+  senderId?: string;
+  senderName?: string;
+  timestamp: number;
+  read: boolean;
 }
 
 interface MatrixContextType {
@@ -82,6 +105,15 @@ interface MatrixContextType {
   // User state
   users: MatrixUser[];
   refreshUsers: () => Promise<void>;
+  
+  // Notifications state
+  invitations: MatrixInvitation[];
+  notifications: MatrixNotification[];
+  unreadNotificationCount: number;
+  acceptInvitation: (roomId: string) => Promise<void>;
+  rejectInvitation: (roomId: string) => Promise<void>;
+  markNotificationRead: (notificationId: string) => void;
+  clearAllNotifications: () => void;
 }
 
 const MatrixContext = createContext<MatrixContextType | undefined>(undefined);
@@ -121,6 +153,9 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   const [messages, setMessages] = useState<MatrixMessage[]>([]);
   const [workers, setWorkers] = useState<MatrixWorker[]>([]);
   const [users, setUsers] = useState<MatrixUser[]>([]);
+  const [invitations, setInvitations] = useState<MatrixInvitation[]>([]);
+  const [notifications, setNotifications] = useState<MatrixNotification[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const clientRef = useRef<matrixSdk.MatrixClient | null>(null);
   const workerStatusRef = useRef<Map<string, boolean>>(new Map());
@@ -160,6 +195,13 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     const topic = room.currentState.getStateEvents('m.room.topic')[0]?.getContent()?.topic;
     const avatarUrl = room.currentState.getStateEvents('m.room.avatar')[0]?.getContent()?.url;
     
+    // 检测是否是私聊房间（只有2个成员）
+    const currentUserId = clientRef.current?.getUserId();
+    const isDirect = members.length === 2;
+    const directWith = isDirect && currentUserId 
+      ? members.find(m => m !== currentUserId) 
+      : undefined;
+    
     return {
       roomId: room.roomId,
       name,
@@ -167,6 +209,8 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       avatarUrl: avatarUrl || undefined,
       members,
       unreadCount: room.getUnreadNotificationCount(),
+      isDirect,
+      directWith,
     };
   }, []);
 
@@ -175,28 +219,65 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     const timeline = room.getLiveTimeline();
     const events = timeline.getEvents();
     
-    const matrixMessages: MatrixMessage[] = [];
+    // Use Map for deduplication by sender + content (not event ID)
+    // This handles cases where the same message is sent with different event IDs
+    // (e.g., m.text and m.emote versions of the same content from bite)
+    // m.emote messages have "* " prefix in body which we strip for deduplication
+    const messageMap = new Map<string, MatrixMessage>();
     
     events.forEach((event: MatrixEvent) => {
       if (event.getType() === 'm.room.message') {
         const content = event.getContent();
         const sender = event.getSender();
+        const eventId = event.getId();
+        const msgtype = content.msgtype || 'm.text';
         
-        if (content.body && sender) {
-          const member = room.getMember(sender);
-          matrixMessages.push({
-            id: event.getId() || '',
-            sender,
-            senderName: member?.name || sender,
-            content: content.body,
-            timestamp: event.getTs(),
-            isOwn: sender === clientRef.current?.getUserId(),
-          });
+        if (content.body && sender && eventId) {
+          // Strip "* " prefix for messages that might be duplicates
+          // bite agent sometimes sends duplicate messages with "* " prefix
+          let normalizedBody = content.body;
+          // Check if body starts with "* " and strip it
+          if (normalizedBody.startsWith('* ')) {
+            normalizedBody = normalizedBody.substring(2);
+          }
+          // Create dedupe key based on sender + normalized content
+          const dedupeKey = `${sender}:${normalizedBody}`;
+          
+          // Check if we already have this message
+          const existing = messageMap.get(dedupeKey);
+          
+          // Prefer m.text over m.emote (show normal message, not emote)
+          if (existing && existing.msgtype === 'm.emote' && msgtype === 'm.text') {
+            // Replace emote with text version
+            const member = room.getMember(sender);
+            messageMap.set(dedupeKey, {
+              id: eventId,
+              sender,
+              senderName: member?.name || sender,
+              content: content.body,
+              timestamp: event.getTs(),
+              isOwn: sender === clientRef.current?.getUserId(),
+              msgtype,
+            });
+          } else if (!existing) {
+            // New message, add it
+            const member = room.getMember(sender);
+            messageMap.set(dedupeKey, {
+              id: eventId,
+              sender,
+              senderName: member?.name || sender,
+              content: content.body,
+              timestamp: event.getTs(),
+              isOwn: sender === clientRef.current?.getUserId(),
+              msgtype,
+            });
+          }
+          // If existing is m.text and new is m.emote, skip (keep m.text version)
         }
       }
     });
     
-    setMessages(matrixMessages);
+    setMessages(Array.from(messageMap.values()));
   }, []);
 
   // Initialize Matrix client
@@ -266,6 +347,9 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
           setIsInitialized(true);
           setIsLoading(false);
           refreshUsers();
+          
+          // Scan for invitations (rooms where membership is 'invite')
+          scanInvitations(matrixClient);
         }
       });
       
@@ -597,7 +681,14 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       const resp = await fetchApi(`${API_BASE}/matrix/users`);
       const data = await resp.json();
       if (data.code === 0 && data.data?.users) {
-        setUsers(data.data.users);
+        // Map API snake_case to frontend camelCase
+        setUsers(data.data.users.map((u: any) => ({
+          userId: u.user_id,
+          name: u.name,
+          displayName: u.display_name,
+          isOnline: u.is_online,
+          lastActivity: u.last_activity,
+        })));
       }
     } catch (e) {
       console.error('Failed to fetch users:', e);
@@ -617,6 +708,66 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     // Refresh workers after joining
     await refreshWorkers();
   }, [refreshWorkers]);
+
+  // Scan for room invitations
+  const scanInvitations = useCallback((client: matrixSdk.MatrixClient) => {
+    const allRooms = client.getRooms();
+    const invitationList: MatrixInvitation[] = [];
+    
+    allRooms.forEach(room => {
+      const membership = room.getMyMembership();
+      if (membership === 'invite') {
+        const roomId = room.roomId;
+        const roomName = room.name || room.roomId;
+        const inviterEvent = room.currentState.getStateEvents('m.room.member', client.getUserId() || '');
+        const inviterId = inviterEvent?.getSender() || '';
+        const inviter = room.getMember(inviterId);
+        
+        invitationList.push({
+          roomId,
+          roomName,
+          inviterId,
+          inviterName: inviter?.name || inviterId,
+          timestamp: Date.now(),
+        });
+      }
+    });
+    
+    setInvitations(invitationList);
+    setUnreadNotificationCount(prev => invitationList.length + prev);
+  }, []);
+  
+  // Accept invitation to join a room
+  const acceptInvitation = useCallback(async (roomId: string) => {
+    if (!clientRef.current) throw new Error('Matrix client not initialized');
+    await clientRef.current.joinRoom(roomId);
+    setInvitations(prev => prev.filter(inv => inv.roomId !== roomId));
+    setUnreadNotificationCount(prev => Math.max(0, prev - 1));
+    // Refresh rooms after accepting
+    if (fetchAllRooms) await fetchAllRooms();
+  }, [fetchAllRooms]);
+  
+  // Reject invitation (leave room)
+  const rejectInvitation = useCallback(async (roomId: string) => {
+    if (!clientRef.current) throw new Error('Matrix client not initialized');
+    await clientRef.current.leave(roomId);
+    setInvitations(prev => prev.filter(inv => inv.roomId !== roomId));
+    setUnreadNotificationCount(prev => Math.max(0, prev - 1));
+  }, []);
+  
+  // Mark notification as read
+  const markNotificationRead = useCallback((notificationId: string) => {
+    setNotifications(prev => prev.map(n => 
+      n.id === notificationId ? { ...n, read: true } : n
+    ));
+  }, []);
+  
+  // Clear all notifications
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+    setInvitations([]);
+    setUnreadNotificationCount(0);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -667,6 +818,14 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     userOnline,
     lastActivityTime,
     updateActivity,
+    // Notifications state
+    invitations,
+    notifications,
+    unreadNotificationCount,
+    acceptInvitation,
+    rejectInvitation,
+    markNotificationRead,
+    clearAllNotifications,
   };
 
   return <MatrixContext.Provider value={value}>{children}</MatrixContext.Provider>;

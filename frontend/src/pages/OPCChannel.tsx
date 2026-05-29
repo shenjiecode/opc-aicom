@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Hash,
@@ -14,7 +14,9 @@ import {
   Bot,
   User,
   Crown,
-  Star,
+  ChevronDown,
+  ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { useMatrix } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,23 @@ export default function OPCChannel() {
 
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  
+  // @提及功能状态
+  const [showMentionPopup, setShowMentionPopup] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // bite私聊房间展开/折叠状态
+  const [isBiteDMExpanded, setIsBiteDMExpanded] = useState(true);
+  
+  // 分离bite私聊房间和其他房间
+  const biteUserPattern = /@bite:/i; // bite用户ID模式
+  const biteDMRooms = rooms.filter(room => 
+    room.isDirect && room.directWith && biteUserPattern.test(room.directWith)
+  );
+  const otherRooms = rooms.filter(room => 
+    !(room.isDirect && room.directWith && biteUserPattern.test(room.directWith))
+  );
   const handleSend = async () => {
     if (!inputText.trim() || isSending) return;
     setIsSending(true);
@@ -45,6 +64,54 @@ export default function OPCChannel() {
     } finally {
       setIsSending(false);
     }
+  };
+  
+  // 处理输入变化，检测@提及
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputText(value);
+    
+    // 检测@符号
+    const lastAtIndex = value.lastIndexOf("@");
+    if (lastAtIndex !== -1) {
+      const cursorPos = e.target.selectionStart || 0;
+      if (cursorPos > lastAtIndex) {
+        const textAfterAt = value.substring(lastAtIndex + 1, cursorPos);
+        if (!textAfterAt.includes(" ")) {
+          setMentionFilter(textAfterAt);
+          setShowMentionPopup(true);
+          return;
+        }
+      }
+    }
+    setShowMentionPopup(false);
+  };
+  
+  // 获取过滤后的成员列表
+  const getFilteredMembers = () => {
+    if (!currentRoom) return [];
+    return currentRoom.members
+      .map(memberId => {
+        const worker = workers.find(w => w.userId === memberId);
+        const displayName = worker?.name || memberId.split(":")[0].replace("@", "");
+        return { memberId, displayName };
+      })
+      .filter(m => 
+        m.displayName.toLowerCase().includes(mentionFilter.toLowerCase()) ||
+        m.memberId.toLowerCase().includes(mentionFilter.toLowerCase())
+      );
+  };
+  
+  // 插入@提及
+  const insertMention = (displayName: string) => {
+    if (!inputRef.current) return;
+    const lastAtIndex = inputText.lastIndexOf("@");
+    const beforeAt = inputText.substring(0, lastAtIndex);
+    const afterMention = inputText.substring(lastAtIndex + mentionFilter.length + 1);
+    setInputText(beforeAt + `@${displayName} ` + afterMention);
+    setShowMentionPopup(false);
+    setMentionFilter("");
+    inputRef.current.focus();
   };
 
   const formatTime = (timestamp: number) => {
@@ -178,13 +245,55 @@ export default function OPCChannel() {
                 <span className="ml-auto text-xs text-slate-500">离线</span>
               )}
             </button>
+            
+            {/* bite 私聊房间树状结构 */}
+            {biteDMRooms.length > 0 && (
+              <div className="mt-1 ml-2">
+                <button
+                  onClick={() => setIsBiteDMExpanded(!isBiteDMExpanded)}
+                  className="w-full flex items-center gap-1 px-2 py-1 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  {isBiteDMExpanded ? (
+                    <ChevronDown className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
+                  <span className="font-medium">私聊房间 ({biteDMRooms.length})</span>
+                </button>
+                
+                {isBiteDMExpanded && (
+                  <div className="space-y-0.5 ml-4 mt-1">
+                    {biteDMRooms.map((room) => (
+                      <button
+                        key={room.roomId}
+                        onClick={() => selectRoom(room.roomId)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1 rounded transition-colors text-left",
+                          currentRoom?.roomId === room.roomId
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        )}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate text-sm">{room.name}</span>
+                        {room.unreadCount > 0 && (
+                          <span className="ml-auto bg-red-500 text-white text-xs px-1.5 rounded-full min-w-[18px] text-center">
+                            {room.unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
+          
           <div className="space-y-0.5">
             <div className="text-xs font-semibold text-slate-500 px-2 py-1 uppercase">
               文字频道
             </div>
-            {rooms.map((room) => (
+            {otherRooms.map((room) => (
               <button
                 key={room.roomId}
                 onClick={() => selectRoom(room.roomId)}
@@ -362,15 +471,16 @@ export default function OPCChannel() {
         </div>
 
         {/* Message Input */}
-        <div className="p-4 border-t border-slate-800 bg-[#13141f] shrink-0">
+        <div className="relative p-4 border-t border-slate-800 bg-[#13141f] shrink-0">
           <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-4 py-2">
             <button className="text-slate-400 hover:text-white">
               <Plus className="w-5 h-5" />
             </button>
             <input
+              ref={inputRef}
               type="text"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -393,6 +503,31 @@ export default function OPCChannel() {
               <Send className="w-5 h-5" />
             </button>
           </div>
+
+          {/* @ Mention Popup */}
+          {showMentionPopup && currentRoom && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+              <div className="p-2">
+                <div className="text-xs text-slate-500 mb-1 px-2">选择要提及的成员</div>
+                {getFilteredMembers().length === 0 ? (
+                  <div className="text-sm text-slate-400 px-2 py-1.5">没有匹配的成员</div>
+                ) : (
+                  getFilteredMembers().map((member) => (
+                    <button
+                      key={member.memberId}
+                      onClick={() => insertMention(member.displayName)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-left"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
+                        <span className="text-white text-xs">{member.displayName.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <span className="text-sm text-white">{member.displayName}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
