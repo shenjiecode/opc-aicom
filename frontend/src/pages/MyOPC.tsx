@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { Contract, ContractStage, ContractStatus } from "@/types/models";
 import {
   Coins,
   Ticket,
@@ -23,6 +24,8 @@ import {
   Clock3,
   XCircle,
   PlusCircle,
+  DollarSign,
+  User,
 } from "lucide-react";
 
 // Types
@@ -84,7 +87,15 @@ interface UserInfo {
   appliedTasks: Task[];
 }
 
-type TabType = "posts" | "events" | "tasks";
+type TabType = "posts" | "events" | "tasks" | "contracts";
+
+interface ContractItem {
+  contract: Contract;
+  stages: ContractStage[];
+  publisher_name: string;
+  agent_name: string;
+  task_title: string;
+}
 
 // Helper functions
 const getTimeAgo = (dateString: string) => {
@@ -169,12 +180,29 @@ const getEventStatusBadge = (status: string) => {
   );
 };
 
+const getContractStatusBadge = (status: ContractStatus) => {
+  const config: Record<ContractStatus, { className: string; label: string; icon: typeof CheckCircle }> = {
+    signing: { className: "bg-amber-100 text-amber-700 border-amber-200", label: "待签署", icon: Clock3 },
+    executing: { className: "bg-blue-100 text-blue-700 border-blue-200", label: "执行中", icon: Clock },
+    accepting: { className: "bg-violet-100 text-violet-700 border-violet-200", label: "验收中", icon: FileText },
+    completed: { className: "bg-emerald-100 text-emerald-700 border-emerald-200", label: "已完成", icon: CheckCircle },
+  };
+  const { className, label, icon: Icon } = config[status];
+  return (
+    <Badge variant="outline" className={cn("flex items-center gap-1", className)}>
+      <Icon className="h-3 w-3" />
+      {label}
+    </Badge>
+  );
+};
+
 export default function MyOPC() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userEvents, setUserEvents] = useState<Event[]>([]);
+  const [userContracts, setUserContracts] = useState<ContractItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -200,6 +228,12 @@ export default function MyOPC() {
           method: "GET",
         });
         setUserEvents(eventsResult.list || []);
+
+        // Load user's contracts
+        const contractsResult = await apiFetch<ContractItem[]>("/contracts/my", {
+          method: "GET",
+        });
+        setUserContracts(contractsResult || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "加载数据失败");
       } finally {
@@ -244,6 +278,7 @@ export default function MyOPC() {
     { id: "posts" as TabType, label: "我的帖子", icon: FileText },
     { id: "events" as TabType, label: "我的活动", icon: Calendar },
     { id: "tasks" as TabType, label: "我的任务", icon: ListTodo },
+    { id: "contracts" as TabType, label: "我的合同", icon: FileText },
   ];
 
   const handlePostClick = (postId: number) => {
@@ -641,6 +676,61 @@ export default function MyOPC() {
                   </div>
                 )}
               </section>
+            </div>
+          )}
+
+          {/* 我的合同 Tab */}
+          {activeTab === "contracts" && (
+            <div>
+              {userContracts.length === 0 ? (
+                <div className="py-20 text-center bg-white rounded-2xl border border-slate-100">
+                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">您还没有合同</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userContracts.map((item) => (
+                    <Card
+                      key={item.contract.id}
+                      className="border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-white"
+                      onClick={() => navigate(`/contracts/${item.contract.id}`)}
+                    >
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-slate-900 mb-2">
+                              {item.task_title || `合同 #${item.contract.id}`}
+                            </h3>
+                            <div className="flex items-center gap-4 text-sm text-slate-500 mb-2">
+                              <span className="flex items-center gap-1">
+                                <User className="w-3.5 h-3.5" />
+                                发布者: {item.publisher_name}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <User className="w-3.5 h-3.5" />
+                                执行代理: {item.agent_name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-500">
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <DollarSign className="w-3.5 h-3.5" />
+                                合同金额: ¥{item.contract.total_amount?.toFixed(2) || "0.00"}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                创建于 {new Date(item.contract.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {getContractStatusBadge(item.contract.status)}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -614,6 +614,72 @@ func (h *ContractHandler) UpdateStage(c *gin.Context) {
 	})
 }
 
+// ListMyContracts retrieves contracts for the current user (as publisher or agent).
+// GET /api/contracts/my
+func (h *ContractHandler) ListMyContracts(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, UnifiedResponse{
+			Code:    401,
+			Message: "unauthorized",
+		})
+		return
+	}
+
+	contracts, err := h.contractRepo.GetByUser(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, UnifiedResponse{
+			Code:    500,
+			Message: "database error",
+		})
+		return
+	}
+
+	type ContractWithNames struct {
+		Contract      *model.Contract       `json:"contract"`
+		Stages        []*model.ContractStage `json:"stages"`
+		PublisherName string                `json:"publisher_name"`
+		AgentName     string                `json:"agent_name"`
+		TaskTitle     string                `json:"task_title"`
+	}
+
+	var result []*ContractWithNames
+	for _, c := range contracts {
+		stages, _ := h.contractStageRepo.GetByContractID(c.ID)
+
+		var publisherName, agentName string
+		var pubUser, agentUser struct {
+			Username string
+		}
+		if err := h.db.Table("users").Select("username").Where("id = ?", c.PublisherID).First(&pubUser).Error; err == nil {
+			publisherName = pubUser.Username
+		}
+		if err := h.db.Table("users").Select("username").Where("id = ?", c.AgentID).First(&agentUser).Error; err == nil {
+			agentName = agentUser.Username
+		}
+
+		var task struct {
+			Title string
+		}
+		if err := h.db.Table("tasks").Select("title").Where("id = ?", c.TaskID).First(&task).Error; err == nil {
+		}
+
+		result = append(result, &ContractWithNames{
+			Contract:      c,
+			Stages:        stages,
+			PublisherName: publisherName,
+			AgentName:     agentName,
+			TaskTitle:     task.Title,
+		})
+	}
+
+	c.JSON(http.StatusOK, UnifiedResponse{
+		Code:    0,
+		Message: "success",
+		Data:    result,
+	})
+}
+
 // GetContractByTask retrieves a contract for a specific task.
 // GET /api/contracts/task/:taskId
 func (h *ContractHandler) GetContractByTask(c *gin.Context) {

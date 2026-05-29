@@ -367,6 +367,7 @@ cfg, err := config.Load()
 	contractsAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
 	{
 		contractsAuth.POST("", contractHandler.CreateContract)
+		contractsAuth.GET("/my", contractHandler.ListMyContracts)
 		contractsAuth.GET("/:id", contractHandler.GetContract)
 		contractsAuth.PUT("/:id/sign", contractHandler.SignContract)
 		contractsAuth.PUT("/:id/stage/:stageId", contractHandler.UpdateStage)
