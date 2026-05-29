@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Hash,
@@ -33,6 +33,13 @@ export default function OPCChannel() {
     selectRoom,
     initialize,
   } = useMatrix();
+
+  // 进入页面自动连接Matrix服务器
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
 
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
