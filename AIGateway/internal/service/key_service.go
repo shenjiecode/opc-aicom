@@ -56,7 +56,7 @@ func (s *KeyService) GenerateVirtualKey(userID uint, name string) (*model.AIVirt
 // ValidateKey checks if a key string is valid and returns the virtual key.
 func (s *KeyService) ValidateKey(keyString string) (*model.AIVirtualKey, error) {
 	var vk model.AIVirtualKey
-	if err := s.db.Where("key = ? AND status = ?", keyString, model.VirtualKeyStatusActive).First(&vk).Error; err != nil {
+	if err := s.db.Where("api_key = ? AND status = ?", keyString, model.VirtualKeyStatusActive).First(&vk).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrKeyNotFound
 		}

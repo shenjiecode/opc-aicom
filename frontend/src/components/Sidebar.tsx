@@ -17,7 +17,6 @@ import {
   ChevronUp,
   Sparkles,
   ShieldCheck,
-  Receipt,
   Hash,
   MessageCircle,
 } from "lucide-react";
@@ -113,18 +112,6 @@ const navigationGroups: NavGroup[] = [
         path: "/points-mall",
         icon: ShoppingBag,
         label: "积分商城",
-      },
-    ],
-  },
-  {
-    section: "管理后台",
-    items: [
-      {
-        id: "admin-billing",
-        path: "/admin/billing",
-        icon: Receipt,
-        label: "算力账单",
-        allowedRoles: ["admin"]
       },
     ],
   },

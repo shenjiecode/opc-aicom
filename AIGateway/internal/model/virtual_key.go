@@ -17,7 +17,7 @@ const (
 // AIVirtualKey represents a sub-account API key for the AI gateway.
 type AIVirtualKey struct {
 	ID        uint             `gorm:"primaryKey" json:"id"`
-	Key       string           `gorm:"size:64;uniqueIndex;not null" json:"key"`       // The virtual API key (sk-xxx format)
+	Key       string           `gorm:"column:api_key;size:128;uniqueIndex;not null" json:"key"`       // The virtual API key (sk-xxx format)
 	UserID    uint             `gorm:"not null;index" json:"user_id"`                 // OPC user ID
 	Name      string           `gorm:"size:255;not null" json:"name"`                 // Key name/label
 	Quota     int64            `gorm:"not null;default:0" json:"quota"`               // Token quota balance
