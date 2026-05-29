@@ -203,6 +203,15 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			projectsAuth.POST("/:id/deliverables/:did/submit", projectHandler.SubmitDeliverable)
 			projectsAuth.POST("/:id/deliverables/:did/approve", projectHandler.ApproveDeliverable)
 			projectsAuth.POST("/:id/deliverables/:did/reject", projectHandler.RejectDeliverable)
+			// Milestones
+			projectsAuth.GET("/:id/milestones", projectHandler.ListMilestones)
+			// Workspace
+			projectsAuth.GET("/:id/workspace", projectHandler.GetWorkspace)
+			projectsAuth.GET("/:id/workspace/files", projectHandler.ListFiles)
+			// Payments
+			projectsAuth.GET("/:id/payments", projectHandler.ListPayments)
+			// Activities
+			projectsAuth.GET("/:id/activities", projectHandler.ListActivities)
 		}
 		
 
