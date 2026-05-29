@@ -7,7 +7,6 @@ import {
   Bot,
   Palette,
   User,
-  Briefcase,
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
@@ -18,8 +17,8 @@ import {
   ChevronUp,
   Sparkles,
   ShieldCheck,
-  Building2,
   Receipt,
+  Hash,
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Navigation item type
+
 // Navigation item type
 interface NavItem {
   id: string;
@@ -77,6 +76,12 @@ const navigationGroups: NavGroup[] = [
         path: "/ai-resources",
         icon: Bot,
         label: "AI资源",
+      },
+      {
+        id: "bite-plaza",
+        path: "/bite-plaza",
+        icon: Hash,
+        label: "Bite广场",
       },
       {
         id: "service-center",

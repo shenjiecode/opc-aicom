@@ -11,7 +11,6 @@ import {
   Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listProjects } from '@/lib/api/project';
 import { useNavigate } from 'react-router-dom';
 // Project type defined inline (interfaces imported from modules cause Vite issues)
 interface ProjectType {
@@ -36,9 +35,6 @@ interface ProjectType {
 
 interface ProjectCardProps {
   project: ProjectType;
-}
-interface ProjectCardProps {
-  project: Project;
 }
 
 const STATUS_CONFIG = {
@@ -110,7 +106,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            <span>{new Date(project.updated_at).toLocaleDateString()}</span>
+            <span>{project.updated_at ? new Date(project.updated_at).toLocaleDateString() : '-'}</span>
           </div>
         </div>
 

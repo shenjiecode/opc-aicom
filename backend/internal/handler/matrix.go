@@ -8,6 +8,7 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "log"
     "net/http"
     "net/url"
     "strings"
@@ -65,10 +66,88 @@ type MatrixClient struct {
 	config *config.Config
 	db     *gorm.DB           // main opc_aicom database
 }
-
 // NewMatrixClient creates a new Matrix client
 func NewMatrixClient(cfg *config.Config, db *gorm.DB) *MatrixClient {
 	return &MatrixClient{config: cfg, db: db}
+}
+
+// InitOfficialRooms creates official rooms on startup if they don't exist
+func (mc *MatrixClient) InitOfficialRooms() error {
+	if len(mc.config.Matrix.OfficialRooms) == 0 {
+		return nil // No official rooms configured
+	}
+
+	// Get admin token for creating rooms
+	adminToken, err := mc.getAdminToken()
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	// First, get existing rooms to check for duplicates
+	existingRoomsURL := fmt.Sprintf("%s/_synapse/admin/v1/rooms?limit=100", mc.config.Matrix.HomeserverURL)
+	req, _ := http.NewRequest("GET", existingRoomsURL, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to query existing rooms: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var existingRooms struct {
+		Rooms []struct {
+			RoomID string `json:"room_id"`
+			Name  string `json:"name"`
+		} `json:"rooms"`
+}
+json.NewDecoder(resp.Body).Decode(&existingRooms)
+
+	// Create a map of existing room names for fast lookup
+	existingNames := make(map[string]bool)
+	for _, r := range existingRooms.Rooms {
+		existingNames[r.Name] = true
+	}
+
+	// Create rooms that don't exist
+	for _, roomConfig := range mc.config.Matrix.OfficialRooms {
+		if existingNames[roomConfig.Name] {
+			continue // Room already exists
+		}
+
+		// Create the room
+		roomBody := map[string]interface{}{
+			"name":  roomConfig.Name,
+			"topic": roomConfig.Topic,
+			"preset": "public_chat",
+		}
+		bodyBytes, _ := json.Marshal(roomBody)
+		createURL := fmt.Sprintf("%s/_matrix/client/v3/createRoom", mc.config.Matrix.HomeserverURL)
+		httpReq, err := http.NewRequest("POST", createURL, bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			log.Printf("Failed to create request for room %s: %v", roomConfig.Name, err)
+			continue
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			log.Printf("Failed to create room %s: %v", roomConfig.Name, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Failed to create room %s (status %d): %s", roomConfig.Name, resp.StatusCode, string(respBody))
+			continue
+		}
+
+		log.Printf("Created official room: %s", roomConfig.Name)
+	}
+
+	return nil
 }
 
 // MatrixRegisterRequest is the request body for user registration
@@ -944,15 +1023,18 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 			if roomName == "" {
 				roomName = r.RoomID
 			}
+			// Get message count for this room
+			messageCount, _ := matrixClient.getRoomMessageCount(r.RoomID)
 			allRooms = append(allRooms, gin.H{
-				"room_id":             r.RoomID,
-				"name":                roomName,
-				"canonical_alias":     r.CanonicalAlias,
-				"joined_members":      r.JoinedMembers,
+				"room_id":              r.RoomID,
+				"name":                 roomName,
+				"canonical_alias":      r.CanonicalAlias,
+				"joined_members":       r.JoinedMembers,
 				"joined_local_members": r.JoinedLocalMembers,
-				"creator":             r.Creator,
-				"public":              r.Public,
-				"joined":              joinedMap[r.RoomID],
+				"creator":              r.Creator,
+				"public":               r.Public,
+				"joined":               joinedMap[r.RoomID],
+				"message_count":        messageCount,
 			})
 		}
 
@@ -1673,6 +1755,34 @@ func (mc *MatrixClient) getAdminToken() (string, error) {
 	adminTokenMutex.Unlock()
 
 	return result.AccessToken, nil
+}
+
+// getRoomMessageCount returns the total number of events (messages) in a room
+func (mc *MatrixClient) getRoomMessageCount(roomID string) (int, error) {
+	adminToken, err := mc.getAdminToken()
+	if err != nil {
+		return 0, err
+	}
+
+	eventURL := fmt.Sprintf("%s/_synapse/admin/v1/rooms/%s/event?limit=0", mc.config.Matrix.HomeserverURL, roomID)
+	req, _ := http.NewRequest("GET", eventURL, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query room events: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Total int `json:"total"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to parse event response: %w", err)
+	}
+
+	return result.Total, nil
 }
 
 // ListMatrixUsers lists all users on the Matrix server via Synapse Admin API

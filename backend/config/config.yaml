@@ -31,6 +31,16 @@ matrix:
   workers:
     - worker-001
     - worker-002
+  official_rooms:
+    - name: "OPC之家"
+      topic: "OPC社区官方讨论区，欢迎所有成员"
+      alias: "opc-home"
+    - name: "AI技术交流"
+      topic: "讨论AI技术、分享学习资源"
+      alias: "ai-discussion"
+    - name: "项目展示"
+      topic: "展示你的项目，获取反馈"
+      alias: "project-showcase"
 llm:
   default_provider: openai
   openai:

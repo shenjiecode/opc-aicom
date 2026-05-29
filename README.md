@@ -80,6 +80,23 @@ All APIs return unified format: `{code, message, data}`
 | POST | /api/task/create | Yes | 发布任务 |
 | POST | /api/task/apply | Yes | 接单申请 |
 
+### Bite广场 (BitePlaza)
+
+A public room square where users can browse, join, and create Matrix public rooms as forum topics.
+
+**Features**:
+
+- Browse public Matrix rooms
+
+- Join/leave rooms
+
+- Create new public rooms
+
+- Search and filter rooms (全部, 官方, 热门, 推荐, 我加入的)
+
+- View room statistics (members, posts)
+
+**Access**: Navigate to `/bite-plaza` from the sidebar (核心板块)
 ## Configuration
 
 Database config in `docker-compose.yaml`:

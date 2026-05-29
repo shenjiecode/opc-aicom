@@ -44,9 +44,14 @@ cfg, err := config.Load()
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
+// Initialize Matrix client
+matrixClient := handler.NewMatrixClient(cfg, db)
 
-	// Initialize Matrix client
-	matrixClient := handler.NewMatrixClient(cfg, db)
+	// Initialize official rooms on startup
+	if err := matrixClient.InitOfficialRooms(); err != nil {
+		log.Printf("Warning: Failed to initialize official rooms: %v", err)
+	}
+
 
 	// Initialize Gin router
 	router := gin.Default()

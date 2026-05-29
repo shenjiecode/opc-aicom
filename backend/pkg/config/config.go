@@ -11,7 +11,7 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-Server    ServerConfig    `mapstructure:"server"`
+	Server    ServerConfig    `mapstructure:"server"`
 	Database  DatabaseConfig  `mapstructure:"database"`
 	JWT       JWTConfig       `mapstructure:"jwt"`
 	Matrix    MatrixConfig    `mapstructure:"matrix"`
@@ -19,15 +19,22 @@ Server    ServerConfig    `mapstructure:"server"`
 	Workspace WorkspaceConfig  `mapstructure:"workspace"`
 }
 
-// MatrixConfig holds Matrix server configuration
+// OfficialRoom represents an official room configuration
+type OfficialRoom struct {
+	Name     string `mapstructure:"name"`
+	Topic    string `mapstructure:"topic"`
+	Alias    string `mapstructure:"alias"`
+}
 
+// MatrixConfig holds Matrix server configuration
 type MatrixConfig struct {
-	HomeserverURL string   `mapstructure:"homeserver_url"`
-	ServerName    string   `mapstructure:"server_name"`
-	SharedSecret  string   `mapstructure:"shared_secret"`
-	AdminUser     string   `mapstructure:"admin_user"`     // Admin username for Synapse Admin API
-	AdminPassword string   `mapstructure:"admin_password"` // Admin password for Synapse Admin API
-	Workers       []string `mapstructure:"workers"`        // List of worker usernames
+	HomeserverURL  string         `mapstructure:"homeserver_url"`
+	ServerName      string         `mapstructure:"server_name"`
+	SharedSecret   string         `mapstructure:"shared_secret"`
+	AdminUser      string         `mapstructure:"admin_user"`
+	AdminPassword  string         `mapstructure:"admin_password"`
+	Workers        []string       `mapstructure:"workers"`
+	OfficialRooms  []OfficialRoom `mapstructure:"official_rooms"`
 }
 
 // LLMConfig holds LLM provider configuration
