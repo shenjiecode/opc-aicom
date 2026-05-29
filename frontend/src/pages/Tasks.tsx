@@ -109,7 +109,7 @@ export default function Tasks() {
   
   // Projects state
   const [projects, setProjects] = useState<ProjectType[]>([]);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [, setIsLoadingProjects] = useState(false);
 useEffect(() => {
 fetchTasks();
   }, [activeType, activeLevel]);

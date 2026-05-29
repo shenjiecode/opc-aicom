@@ -18,8 +18,8 @@ import MyOPC from "./pages/MyOPC";
 import OPCWorkbench from "./pages/OPCWorkbench";
 import OPCChannel from "./pages/OPCChannel";
 import AiBit from './pages/AiBit';
+import BitePlaza from './pages/BitePlaza';
 import CreateEvent from './pages/CreateEvent';
-import EnterprisePublish from './pages/EnterprisePublish';
 import EventDetail from './pages/EventDetail';
 import EventShare from './pages/EventShare';
 import PostDetail from './pages/PostDetail';
@@ -82,6 +82,7 @@ function App() {
               <Route path="/ai-resources" element={<AiResources />} />
               <Route path="/service-center" element={<ServiceCenter />} />
               <Route path="/aibit" element={<AiBit />} />
+              <Route path="/bite-plaza" element={<BitePlaza />} />
               <Route path="/event/:id" element={<EventDetail />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />
               <Route path="/post/:id" element={<PostDetail />} />
