@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/opc-aicom/aigateway/internal/config"
 	"github.com/opc-aicom/aigateway/internal/middleware"
@@ -45,6 +46,7 @@ func main() {
 
 	keyService := service.NewKeyService(db, &cfg.Gateway)
 	channelService := service.NewChannelService(db)
+	modelService := service.NewModelService(db)
 	usageService := service.NewUsageService(db)
 
 	gin.SetMode(cfg.Server.Mode)
@@ -94,13 +96,14 @@ func main() {
 		adminGroup.POST("/channels/:id/test", testChannelHandler())
 
 		// Model CRUD
-		adminGroup.GET("/models", listModelsAdminHandler(channelService))
-		adminGroup.POST("/models", createModelHandler(channelService))
-		adminGroup.PUT("/models/:id", updateModelHandler(channelService))
-		adminGroup.DELETE("/models/:id", deleteModelHandler(channelService))
+		adminGroup.GET("/models", listModelsAdminHandler(modelService))
+		adminGroup.POST("/models", createModelAdminHandler(modelService))
+		adminGroup.PUT("/models/:id", updateModelAdminHandler(modelService))
+		adminGroup.DELETE("/models/:id", deleteModelAdminHandler(modelService))
+		adminGroup.POST("/models/sync-bailian", syncBailianModelsHandler(channelService, modelService))
 
 		// Virtual Key CRUD
-		adminGroup.GET("/keys", listKeysHandler(keyService))
+		adminGroup.GET("/keys", listKeysAdminHandler(keyService))
 		adminGroup.POST("/keys", createKeyHandler(keyService))
 		adminGroup.DELETE("/keys/:id", revokeKeyHandler(keyService))
 
@@ -108,6 +111,9 @@ func main() {
 		adminGroup.GET("/usage", usageHandler(usageService))
 		adminGroup.GET("/usage/user/:user_id", userUsageHandler(usageService))
 		adminGroup.GET("/usage/key/:key_id", keyUsageHandler(usageService))
+
+		// Bailian models
+		adminGroup.GET("/bailian/models", bailianModelsHandler(channelService))
 	}
 
 	engine.GET("/health", func(c *gin.Context) {
@@ -154,6 +160,8 @@ func chatCompletionHandler(cs *service.ChannelService, us *service.UsageService)
 			p = provider.NewDeepSeekProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
 		case "anthropic":
 			p = provider.NewAnthropicProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
+		case "alibaba":
+			p = provider.NewBailianProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
 		default:
 			p = provider.NewOpenAIProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
 		}
@@ -370,33 +378,111 @@ func testChannelHandler() gin.HandlerFunc {
 	}
 }
 
-func listModelsAdminHandler(cs *service.ChannelService) gin.HandlerFunc {
+func listModelsAdminHandler(ms *service.ModelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": []interface{}{}})
+		models, err := ms.ListModels()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": models})
 	}
 }
 
-func createModelHandler(cs *service.ChannelService) gin.HandlerFunc {
+func createModelAdminHandler(ms *service.ModelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "model created"})
+		var req struct {
+			Name        string `json:"name" binding:"required"`
+			Provider    string `json:"provider" binding:"required"`
+			ChannelID   uint   `json:"channel_id" binding:"required"`
+			InputPrice  string `json:"input_price"`
+			OutputPrice string `json:"output_price"`
+			MaxTokens   int    `json:"max_tokens" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+
+		inputPrice, _ := decimal.NewFromString(req.InputPrice)
+		if inputPrice.IsZero() {
+			inputPrice = decimal.NewFromFloat(0.002)
+		}
+		outputPrice, _ := decimal.NewFromString(req.OutputPrice)
+		if outputPrice.IsZero() {
+			outputPrice = decimal.NewFromFloat(0.006)
+		}
+
+		m, err := ms.CreateModel(req.Name, req.Provider, req.ChannelID, inputPrice, outputPrice, req.MaxTokens)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": m})
 	}
 }
 
-func updateModelHandler(cs *service.ChannelService) gin.HandlerFunc {
+func updateModelAdminHandler(ms *service.ModelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "model updated"})
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		var updates map[string]interface{}
+		if err := c.ShouldBindJSON(&updates); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		if err := ms.UpdateModel(uint(id), updates); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok"})
 	}
 }
 
-func deleteModelHandler(cs *service.ChannelService) gin.HandlerFunc {
+func deleteModelAdminHandler(ms *service.ModelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "model deleted"})
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		if err := ms.DeleteModel(uint(id)); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok"})
 	}
 }
 
-func listKeysHandler(ks *service.KeyService) gin.HandlerFunc {
+func syncBailianModelsHandler(cs *service.ChannelService, ms *service.ModelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": []interface{}{}})
+		channels, err := cs.GetChannelsByProvider("alibaba")
+		if err != nil || len(channels) == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"code": 1, "message": "no alibaba channel configured"})
+			return
+		}
+
+		ch := channels[0]
+		p := provider.NewBailianProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
+		bailianModels, err := p.ListModels(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": "failed to fetch bailian models: " + err.Error()})
+			return
+		}
+
+		synced, err := ms.SyncBailianModels(ch.ID, bailianModels)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": "failed to sync models: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": gin.H{"synced": synced, "total": len(bailianModels)}})
+	}
+}
+
+func listKeysAdminHandler(ks *service.KeyService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var keys []model.AIVirtualKey
+		if err := ks.DB().Find(&keys).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": keys})
 	}
 }
 
@@ -476,5 +562,25 @@ func keyUsageHandler(us *service.UsageService) gin.HandlerFunc {
 }
 
 func calculateCost(promptTokens, completionTokens int, modelName string) decimal.Decimal {
-	return decimal.NewFromInt(int64(promptTokens+completionTokens)).Mul(decimal.NewFromFloat(0.001))
+	return decimal.NewFromInt(int64(promptTokens + completionTokens)).Mul(decimal.NewFromFloat(0.001))
+}
+
+func bailianModelsHandler(cs *service.ChannelService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		channels, err := cs.GetChannelsByProvider("alibaba")
+		if err != nil || len(channels) == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"code": 1, "message": "no alibaba channel configured"})
+			return
+		}
+
+		ch := channels[0]
+		p := provider.NewBailianProvider(provider.ProviderConfig{APIKey: ch.APIKey, BaseURL: ch.BaseURL})
+		models, err := p.ListModels(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "message": "failed to fetch bailian models: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": models})
+	}
 }

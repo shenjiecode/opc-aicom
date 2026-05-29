@@ -12,13 +12,13 @@ import (
 
 // UsageSummary represents aggregated usage statistics.
 type UsageSummary struct {
-	TotalPromptTokens     int
-	TotalCompletionTokens int
-	TotalTokens           int
-	TotalCost             decimal.Decimal
-	RequestCount          int
-	SuccessCount          int
-	FailedCount           int
+	TotalPromptTokens     int             `json:"total_prompt_tokens"`
+	TotalCompletionTokens int             `json:"total_completion_tokens"`
+	TotalTokens           int             `json:"total_tokens"`
+	TotalCost             decimal.Decimal `json:"total_cost"`
+	RequestCount          int             `json:"request_count"`
+	SuccessCount          int             `json:"success_count"`
+	FailedCount           int             `json:"failed_count"`
 }
 
 // UsageService manages token usage tracking.
@@ -83,13 +83,13 @@ func (s *UsageService) GetUserUsage(userID uint, startTime, endTime time.Time) (
 
 	err := s.db.Model(&model.AITokenLog{}).
 		Select(`
-			COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
-			COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
-			COALESCE(SUM(total_tokens), 0) as total_tokens,
-			COALESCE(SUM(cost), 0) as total_cost,
+			COALESCE(SUM(ai_token_logs.prompt_tokens), 0) as total_prompt_tokens,
+			COALESCE(SUM(ai_token_logs.completion_tokens), 0) as total_completion_tokens,
+			COALESCE(SUM(ai_token_logs.total_tokens), 0) as total_tokens,
+			COALESCE(SUM(ai_token_logs.cost), 0) as total_cost,
 			COUNT(*) as request_count,
-			SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
-			SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
+			SUM(CASE WHEN ai_token_logs.status = 'success' THEN 1 ELSE 0 END) as success_count,
+			SUM(CASE WHEN ai_token_logs.status = 'failed' THEN 1 ELSE 0 END) as failed_count
 		`).
 		Joins("JOIN ai_virtual_keys ON ai_virtual_keys.id = ai_token_logs.virtual_key_id").
 		Where("ai_virtual_keys.user_id = ?", userID).

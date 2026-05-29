@@ -91,6 +91,10 @@ func (s *KeyService) RevokeKey(keyID uint) error {
 	return nil
 }
 
+func (s *KeyService) DB() *gorm.DB {
+	return s.db
+}
+
 // GetUserKeys returns all virtual keys for a user.
 func (s *KeyService) GetUserKeys(userID uint) ([]model.AIVirtualKey, error) {
 	var keys []model.AIVirtualKey
