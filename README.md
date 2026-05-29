@@ -80,6 +80,68 @@ All APIs return unified format: `{code, message, data}`
 | POST | /api/task/create | Yes | 发布任务 |
 | POST | /api/task/apply | Yes | 接单申请 |
 
+## B2B Project API
+Project management API for B2B collaboration, supporting team member management, room coordination, and deliverable tracking.
+
+### Authentication
+All B2B project endpoints require JWT authentication. Include token in request header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+### Project Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/project/list | Yes | Get project list |
+| POST | /api/project/create | Yes | Create new project |
+| GET | /api/project/:id | Yes | Get project details |
+| PUT | /api/project/:id | Yes | Update project |
+| DELETE | /api/project/:id | Yes | Delete project |
+
+### Member Management
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/project/:id/members | Yes | List project members |
+| POST | /api/project/:id/members | Yes | Add member to project |
+| DELETE | /api/project/:id/members/:uid | Yes | Remove member |
+| PUT | /api/project/:id/members/:uid/role | Yes | Update member role |
+
+### Rooms & Deliverables
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/project/:id/rooms | Yes | List project rooms |
+| POST | /api/project/:id/rooms | Yes | Create project room |
+| GET | /api/project/:id/deliverables | Yes | List deliverables |
+| POST | /api/project/:id/deliverables | Yes | create deliverable |
+| PUT | /api/project/:id/deliverables/:did | Yes | Update deliverable |
+| DELETE | /api/project/:id/deliverables/:did | Yes | Delete deliverable |
+
+### Usage Examples
+
+**Create a project:**
+```bash
+curl -X POST http://localhost:8080/api/project/create \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "AI Platform", "description": "Building AI infra", "budget": 50000}'
+```
+
+**Add member to project:**
+```bash
+curl -X POST http://localhost:8080/api/project/1/members \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 123, "role": "developer"}'
+```
+
+**List project deliverables:**
+```bash
+curl http://localhost:8080/api/project/1/deliverables \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
 ### Bite广场 (BitePlaza)
 
 A public room square where users can browse, join, and create Matrix public rooms as forum topics.
