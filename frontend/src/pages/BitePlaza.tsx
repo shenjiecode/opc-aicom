@@ -28,6 +28,7 @@ interface Room {
   topic?: string;
   avatarUrl?: string;
   members: string[];
+  memberCount: number;
   unreadCount: number;
   messageCount?: number;
   joined?: boolean;
