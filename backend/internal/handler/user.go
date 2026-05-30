@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -290,7 +291,23 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 		if user.MatrixToken != "" {
 			matrixToken = user.MatrixToken
 			matrixUserID = user.MatrixUserID
+			log.Printf("[Matrix] User %s (id=%d) has cached matrix token, skipping login", user.Username, user.ID)
 		} else if matrixClient != nil {
+			matrixUserExists := checkMatrixUserExists(matrixClient, matrixUsername)
+			log.Printf("[Matrix] User %s (id=%d) matrix_username=%s, exists_in_synapse=%v", user.Username, user.ID, matrixUsername, matrixUserExists)
+
+			if !matrixUserExists {
+				log.Printf("[Matrix] Creating new Matrix user %s for OPC user %s (id=%d)", matrixUsername, user.Username, user.ID)
+				regErr := registerMatrixUserInternal(matrixClient, matrixUsername, req.Password)
+				if regErr != nil {
+					log.Printf("[Matrix] Failed to register Matrix user %s: %v", matrixUsername, regErr)
+				} else {
+					log.Printf("[Matrix] Successfully registered Matrix user %s", matrixUsername)
+				}
+			} else {
+				log.Printf("[Matrix] Matrix user %s already exists, proceeding to login", matrixUsername)
+			}
+
 			accessToken, uid, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, req.Password)
 			if err == nil {
 				matrixToken = accessToken
@@ -301,6 +318,9 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 					"matrix_user_id":  uid,
 				})
 				setMatrixToken(user.ID, accessToken)
+				log.Printf("[Matrix] User %s (id=%d) logged in successfully, matrix_user_id=%s", user.Username, user.ID, uid)
+			} else {
+				log.Printf("[Matrix] User %s (id=%d) login failed: %v", user.Username, user.ID, err)
 			}
 		}
 
@@ -398,7 +418,22 @@ func GetUserInfo(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 			if hasCached && cachedToken != "" {
 				matrixToken = cachedToken
 				matrixUserID = fmt.Sprintf("@%s:%s", matrixUsername, matrixClient.config.Matrix.ServerName)
+				log.Printf("[Matrix] GetUserInfo: user %s (id=%d) using cached token", user.Username, user.ID)
 			} else {
+				log.Printf("[Matrix] GetUserInfo: user %s (id=%d) no cached token, checking synapse user", user.Username, user.ID)
+				matrixUserExists := checkMatrixUserExists(matrixClient, matrixUsername)
+				log.Printf("[Matrix] GetUserInfo: user %s matrix_username=%s, exists_in_synapse=%v", user.Username, matrixUsername, matrixUserExists)
+
+				if !matrixUserExists {
+					log.Printf("[Matrix] GetUserInfo: creating new Matrix user %s", matrixUsername)
+					regErr := registerMatrixUserInternal(matrixClient, matrixUsername, "password")
+					if regErr != nil {
+						log.Printf("[Matrix] GetUserInfo: failed to register Matrix user %s: %v", matrixUsername, regErr)
+					} else {
+						log.Printf("[Matrix] GetUserInfo: successfully registered Matrix user %s", matrixUsername)
+					}
+				}
+
 				accessToken, mUserID, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
 				if err == nil {
 					matrixToken = accessToken
@@ -409,6 +444,9 @@ func GetUserInfo(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 						"matrix_token":    accessToken,
 						"matrix_user_id":  mUserID,
 					})
+					log.Printf("[Matrix] GetUserInfo: user %s logged in successfully", user.Username)
+				} else {
+					log.Printf("[Matrix] GetUserInfo: user %s login failed: %v", user.Username, err)
 				}
 			}
 		}

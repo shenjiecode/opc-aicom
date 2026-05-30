@@ -527,6 +527,30 @@ func registerMatrixUserInternal(matrixClient *MatrixClient, username, password s
 	return nil
 }
 
+func checkMatrixUserExists(matrixClient *MatrixClient, username string) bool {
+	adminToken, err := matrixClient.getAdminToken()
+	if err != nil {
+		log.Printf("[Matrix] Failed to get admin token for user existence check: %v", err)
+		return false
+	}
+
+	userID := fmt.Sprintf("@%s:%s", username, matrixClient.config.Matrix.ServerName)
+	checkURL := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", matrixClient.config.Matrix.HomeserverURL, url.PathEscape(userID))
+
+	req, _ := http.NewRequest("GET", checkURL, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("[Matrix] Failed to check user %s existence: %v", username, err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
+
 // LoginOrRegisterMatrixUser logs in or registers a Matrix user with given credentials
 
 // Returns access_token, user_id, and error
