@@ -544,7 +544,7 @@ export default function OPCChannel() {
         <div className="p-4 border-b border-slate-800 shrink-0">
           <div className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-2">
             <Users className="w-4 h-4" />
-            成员 — {currentRoom?.members.length || 0}
+            成员 — {currentRoom?.memberCount || 0}
           </div>
         </div>
         

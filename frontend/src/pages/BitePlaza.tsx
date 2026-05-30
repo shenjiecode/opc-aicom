@@ -69,7 +69,7 @@ function RoomCard({ room, onJoin, onEnter, onLeave, isJoining, isLeaving }: Room
             <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
               <span className="flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                {room.members.length}
+                {room.memberCount}
               </span>
               <span className="flex items-center gap-1">
                 <MessageSquare className="w-3 h-3" />
@@ -250,13 +250,13 @@ export default function BitePlaza() {
         break;
       case "hot":
         // Sort by member count
-        result = result.sort((a, b) => b.members.length - a.members.length);
+        result = result.sort((a, b) => b.memberCount - a.memberCount);
         break;
       case "recommended":
         // Rooms with topics, sorted by member count
         result = result
           .filter((r) => r.topic && r.topic.length > 0)
-          .sort((a, b) => b.members.length - a.members.length);
+          .sort((a, b) => b.memberCount - a.memberCount);
         break;
       default:
         break;

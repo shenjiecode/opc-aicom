@@ -1,71 +1,73 @@
 package handler
 
 import (
-    "bytes"
-    "crypto/hmac"
-    "crypto/sha1"
-    "encoding/hex"
-    "encoding/json"
-    "fmt"
-    "io"
-    "log"
-    "net/http"
-    "net/url"
-    "strings"
-    "sync"
-    "time"
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/opc-aicom/backend/pkg/config"
 	"gorm.io/gorm"
 )
 
 var (
-    matrixTokenCache = make(map[uint]string)
-    tokenCacheMutex  sync.RWMutex
+	matrixTokenCache = make(map[uint]string)
+	tokenCacheMutex  sync.RWMutex
 
-    // Admin token cache for Synapse Admin API
-    adminTokenCache     string
-    adminTokenExpiry    time.Time
-    adminTokenMutex     sync.RWMutex
+	// Admin token cache for Synapse Admin API
+	adminTokenCache  string
+	adminTokenExpiry time.Time
+	adminTokenMutex  sync.RWMutex
 )
 
 // sanitizeMatrixUsername sanitizes a username for Matrix compatibility
 // Matrix usernames cannot contain @ (reserved for user ID format) or spaces
 func sanitizeMatrixUsername(username string) string {
-    // Replace @ with _at_
-    result := strings.ReplaceAll(username, "@", "_at_")
-    // Replace . with _dot_ for email-like usernames
-    result = strings.ReplaceAll(result, ".", "_dot_")
-    // Replace spaces with underscores
-    result = strings.ReplaceAll(result, " ", "_")
-    // Remove any other characters that aren't alphanumeric or underscore
-    var sb strings.Builder
-    for _, r := range result {
-        if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
-            sb.WriteRune(r)
-        }
-    }
-    return sb.String()
+	// Replace @ with _at_
+	result := strings.ReplaceAll(username, "@", "_at_")
+	// Replace . with _dot_ for email-like usernames
+	result = strings.ReplaceAll(result, ".", "_dot_")
+	// Replace spaces with underscores
+	result = strings.ReplaceAll(result, " ", "_")
+	// Remove any other characters that aren't alphanumeric or underscore
+	var sb strings.Builder
+	for _, r := range result {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String()
 }
 
 func setMatrixToken(opcUserID uint, token string) {
-    tokenCacheMutex.Lock()
-    defer tokenCacheMutex.Unlock()
-    matrixTokenCache[opcUserID] = token
+	tokenCacheMutex.Lock()
+	defer tokenCacheMutex.Unlock()
+	matrixTokenCache[opcUserID] = token
 }
 
 func getMatrixToken(opcUserID uint) (string, bool) {
-    tokenCacheMutex.RLock()
-    defer tokenCacheMutex.RUnlock()
-    token, ok := matrixTokenCache[opcUserID]
-    return token, ok
+	tokenCacheMutex.RLock()
+	defer tokenCacheMutex.RUnlock()
+	token, ok := matrixTokenCache[opcUserID]
+	return token, ok
 }
 
 // MatrixClient handles communication with Matrix homeserver
 type MatrixClient struct {
 	config *config.Config
-	db     *gorm.DB           // main opc_aicom database
+	db     *gorm.DB // main opc_aicom database
 }
+
 // NewMatrixClient creates a new Matrix client
 func NewMatrixClient(cfg *config.Config, db *gorm.DB) *MatrixClient {
 	return &MatrixClient{config: cfg, db: db}
@@ -98,10 +100,10 @@ func (mc *MatrixClient) InitOfficialRooms() error {
 	var existingRooms struct {
 		Rooms []struct {
 			RoomID string `json:"room_id"`
-			Name  string `json:"name"`
+			Name   string `json:"name"`
 		} `json:"rooms"`
-}
-json.NewDecoder(resp.Body).Decode(&existingRooms)
+	}
+	json.NewDecoder(resp.Body).Decode(&existingRooms)
 
 	// Create a map of existing room names for fast lookup
 	existingNames := make(map[string]bool)
@@ -315,7 +317,7 @@ func RegisterMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 			Message: "success",
 			Data: gin.H{
 				"matrix_user_id": result.UserID,
-				"openc_user_id": userID,
+				"openc_user_id":  userID,
 			},
 		})
 	}
@@ -339,8 +341,6 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		_ = c.ShouldBindJSON(&req)
 
-
-
 		// Get OPC user ID from auth context
 
 		opcUserIDRaw, exists := c.Get("userID")
@@ -349,10 +349,9 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 
-				Code:    401,
+				Code: 401,
 
 				Message: "Unauthorized",
-
 			})
 
 			return
@@ -361,33 +360,26 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		opcUserID := opcUserIDRaw.(uint)
 
-
-
 		// Get OPC user from database to retrieve username
 
 		var opcUser struct {
-
-			Username       string
+			Username string
 
 			MatrixUsername string
-
 		}
 
 		if err := matrixClient.db.Table("users").Select("username, matrix_username").Where("id = ?", opcUserID).First(&opcUser).Error; err != nil {
 
 			c.JSON(http.StatusInternalServerError, UnifiedResponse{
 
-				Code:    500,
+				Code: 500,
 
 				Message: "Failed to get user info",
-
 			})
 
 			return
 
 		}
-
-
 
 		// Determine Matrix username: use stored matrix_username first
 		// If not set, sanitize the OPC username
@@ -413,14 +405,14 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 		passwordsToTry := []string{password, "password123", "password"}
 		var accessToken, matrixUserID string
 		var err error
-		
+
 		for _, pw := range passwordsToTry {
 			accessToken, matrixUserID, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, pw)
 			if err == nil {
 				break
 			}
 		}
-		
+
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 				Code:    401,
@@ -432,17 +424,14 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 			c.JSON(http.StatusUnauthorized, UnifiedResponse{
 
-				Code:    401,
+				Code: 401,
 
 				Message: err.Error(),
-
 			})
 
 			return
 
 		}
-
-
 
 		// Update MatrixUsername in database if not set
 
@@ -452,38 +441,32 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		}
 
-
-
 		// Cache the token
 
 		setMatrixToken(opcUserID, accessToken)
 
-
-
 		c.JSON(http.StatusOK, UnifiedResponse{
 
-			Code:    0,
+			Code: 0,
 
 			Message: "success",
 
 			Data: gin.H{
 
-				"access_token":   accessToken,
+				"access_token": accessToken,
 
-				"user_id":        matrixUserID,
+				"user_id": matrixUserID,
 
-				"device_id":      deviceID,
+				"device_id": deviceID,
 
-				"home_server":    matrixClient.config.Matrix.ServerName,
+				"home_server": matrixClient.config.Matrix.ServerName,
 
 				"homeserver_url": matrixClient.config.Matrix.HomeserverURL,
 
-				"opc_username":   opcUser.Username,
+				"opc_username": opcUser.Username,
 
 				"matrix_username": matrixUsername,
-
 			},
-
 		})
 
 	}
@@ -552,13 +535,9 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 	deviceID := "WEB_CLIENT"
 
-
-
 	// Login via Matrix client-server API
 
 	loginURL := fmt.Sprintf("%s/_matrix/client/v3/login", matrixClient.config.Matrix.HomeserverURL)
-
-
 
 	loginBody := map[string]interface{}{
 
@@ -569,18 +548,14 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 			"type": "m.id.user",
 
 			"user": username,
-
 		},
 
-		"password":                    password,
+		"password": password,
 
-		"device_id":                   deviceID,
+		"device_id": deviceID,
 
 		"initial_device_display_name": "OPC Web Client",
-
 	}
-
-
 
 	bodyBytes, _ := json.Marshal(loginBody)
 
@@ -594,8 +569,6 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 	httpReq.Header.Set("Content-Type", "application/json")
 
-
-
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	resp, err := client.Do(httpReq)
@@ -608,19 +581,15 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 	defer resp.Body.Close()
 
-
-
 	respBody, _ := io.ReadAll(resp.Body)
-
-
 
 	// If login failed, try to register first
 	if resp.StatusCode != http.StatusOK {
 		respBodyStr := string(respBody)
-		
+
 		// Try to register the user using shared secret
 		regErr := registerMatrixUserInternal(matrixClient, username, password)
-		
+
 		if regErr != nil {
 			// If user already exists, try to reset password using admin API
 			if strings.Contains(regErr.Error(), "M_USER_IN_USE") || strings.Contains(regErr.Error(), "already taken") {
@@ -631,17 +600,17 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 					// Use Synapse admin API v2 to set user password
 					userID := fmt.Sprintf("@%s:%s", username, matrixClient.config.Matrix.ServerName)
 					resetURL := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", matrixClient.config.Matrix.HomeserverURL, userID)
-					
+
 					resetBody := map[string]string{"password": password}
 					resetBytes, _ := json.Marshal(resetBody)
-					
+
 					resetReq, _ := http.NewRequest("PUT", resetURL, bytes.NewBuffer(resetBytes))
 					resetReq.Header.Set("Content-Type", "application/json")
 					resetReq.Header.Set("Authorization", "Bearer "+adminToken)
-					
+
 					resetClient := &http.Client{Timeout: 10 * time.Second}
 					resetResp, resetErr := resetClient.Do(resetReq)
-					
+
 					if resetErr == nil {
 						io.ReadAll(resetResp.Body)
 						resetResp.Body.Close()
@@ -650,7 +619,7 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 							bodyBytes2, _ := json.Marshal(loginBody)
 							httpReq2, _ := http.NewRequest("POST", loginURL, bytes.NewBuffer(bodyBytes2))
 							httpReq2.Header.Set("Content-Type", "application/json")
-							
+
 							resp2, loginErr := client.Do(httpReq2)
 							if loginErr == nil {
 								defer resp2.Body.Close()
@@ -689,8 +658,6 @@ func LoginOrRegisterMatrixUser(matrixClient *MatrixClient, username, password st
 
 Success:
 
-
-
 	var result MatrixLoginResponse
 
 	if err := json.Unmarshal(respBody, &result); err != nil {
@@ -698,8 +665,6 @@ Success:
 		return "", "", fmt.Errorf("failed to parse login response: %w", err)
 
 	}
-
-
 
 	return result.AccessToken, result.UserID, nil
 
@@ -745,7 +710,7 @@ func CreateMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		roomBody := map[string]interface{}{
 			"name":   req.Name,
-			"preset":  preset,
+			"preset": preset,
 		}
 		if req.Topic != "" {
 			roomBody["topic"] = req.Topic
@@ -919,7 +884,7 @@ func JoinMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 					c.JSON(http.StatusInternalServerError, UnifiedResponse{
 						Code:    500,
 						Message: fmt.Sprintf("Failed to join room via admin: %s", string(adminRespBody)),
-				})
+					})
 					return
 				}
 
@@ -992,15 +957,16 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 
 		var synapseRooms struct {
 			Rooms []struct {
-				RoomID            string `json:"room_id"`
-				Name              string `json:"name"`
-				CanonicalAlias    string `json:"canonical_alias"`
-				JoinedMembers     int    `json:"joined_members"`
-				JoinedLocalMembers int   `json:"joined_local_members"`
-				Version           string `json:"version"`
-				Creator           string `json:"creator"`
-				Federatable       bool   `json:"federatable"`
-				Public            bool   `json:"public"`
+				RoomID             string `json:"room_id"`
+				Name               string `json:"name"`
+				CanonicalAlias     string `json:"canonical_alias"`
+				JoinedMembers      int    `json:"joined_members"`
+				JoinedLocalMembers int    `json:"joined_local_members"`
+				Version            string `json:"version"`
+				Creator            string `json:"creator"`
+				Federatable        bool   `json:"federatable"`
+				Public             bool   `json:"public"`
+				StateEvents        int    `json:"state_events"`
 			} `json:"rooms"`
 			Total  int `json:"total"`
 			Offset int `json:"offset"`
@@ -1051,9 +1017,6 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 			if roomName == "" {
 				roomName = r.RoomID
 			}
-			// Get message count for this room
-			messageCount, _ := matrixClient.getRoomMessageCount(r.RoomID)
-			// Check if this is an official room
 			isOfficial := officialRoomNames[roomName]
 			allRooms = append(allRooms, gin.H{
 				"room_id":              r.RoomID,
@@ -1064,7 +1027,7 @@ func ListMatrixRooms(matrixClient *MatrixClient) gin.HandlerFunc {
 				"creator":              r.Creator,
 				"public":               r.Public,
 				"joined":               joinedMap[r.RoomID],
-				"message_count":        messageCount,
+				"message_count":        r.StateEvents,
 				"is_official":          isOfficial,
 			})
 		}
@@ -1237,13 +1200,14 @@ func InviteToMatrixRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		})
 	}
 }
+
 // WorkerInfo represents a worker's status and rooms
 type WorkerInfo struct {
-	WorkerID  string   `json:"worker_id"`
-	UserID    string   `json:"user_id"`
-	Name      string   `json:"name"`
-	IsOnline  bool     `json:"is_online"`
-	Rooms     []string `json:"rooms"`
+	WorkerID string   `json:"worker_id"`
+	UserID   string   `json:"user_id"`
+	Name     string   `json:"name"`
+	IsOnline bool     `json:"is_online"`
+	Rooms    []string `json:"rooms"`
 }
 
 // ListMatrixWorkers lists all configured workers and their joined rooms
@@ -1329,7 +1293,7 @@ func getWorkerOnlineStatus(matrixClient *MatrixClient, workerName string, rooms 
 
 	// Check messages in all rooms for STATUS messages
 	for _, roomID := range rooms {
-		messagesURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/messages?limit=50&dir=b", 
+		messagesURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/messages?limit=50&dir=b",
 			matrixClient.config.Matrix.HomeserverURL, roomID)
 
 		msgReq, _ := http.NewRequest("GET", messagesURL, nil)
@@ -1341,7 +1305,7 @@ func getWorkerOnlineStatus(matrixClient *MatrixClient, workerName string, rooms 
 		}
 		msgRespBody, _ := io.ReadAll(msgResp.Body)
 		msgResp.Body.Close()
-		
+
 		if msgResp.StatusCode != http.StatusOK {
 			continue
 		}
@@ -1372,7 +1336,7 @@ func getWorkerOnlineStatus(matrixClient *MatrixClient, workerName string, rooms 
 							continue // Skip STATUS messages from other workers
 						}
 						status := strings.TrimPrefix(parts[0], "STATUS:")
-						
+
 						// Update latest status if this message is newer
 						if latestStatus == nil || msg.OriginServerTs > latestStatus.timestamp {
 							latestStatus = &statusInfo{
@@ -1581,122 +1545,122 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		defer joinResp.Body.Close()
 
 		joinRespBody, _ := io.ReadAll(joinResp.Body)
-        if joinResp.StatusCode != http.StatusOK {
-            // Check if it's a forbidden error (need invite)
-            var joinError struct {
-                ErrorCode string `json:"errcode"`
-                Error     string `json:"error"`
-            }
-            json.Unmarshal(joinRespBody, &joinError)
-            
-            if joinError.ErrorCode == "M_FORBIDDEN" {
-                // Need to invite the worker first using caller's Matrix token from cache
-                userID, exists := c.Get("userID")
-                if !exists {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "Unauthorized - cannot invite worker",
-                    })
-                    return
-                }
-                
-                opcUserID, ok := userID.(uint)
-                if !ok {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "Invalid user ID type",
-                    })
-                    return
-                }
-                
-                callerToken, ok := getMatrixToken(opcUserID)
-                if !ok || callerToken == "" {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "No Matrix token found for user. Please login to Matrix first.",
-                    })
-                    return
-                }
-                
-                // Extract worker's Matrix user ID
-                workerUserID := fmt.Sprintf("@%s:%s", workerID, matrixClient.config.Matrix.ServerName)
-                
-                // Invite worker to room
-                inviteURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/invite", matrixClient.config.Matrix.HomeserverURL, req.RoomID)
-                inviteBody := map[string]interface{}{"user_id": workerUserID}
-                inviteBytes, _ := json.Marshal(inviteBody)
-                inviteReq, err := http.NewRequest("POST", inviteURL, bytes.NewBuffer(inviteBytes))
-                if err != nil {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "Failed to create invite request: " + err.Error(),
-                    })
-                    return
-                }
-                inviteReq.Header.Set("Content-Type", "application/json")
-                inviteReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", callerToken))
-                
-                inviteResp, err := client.Do(inviteReq)
-                if err != nil {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "Failed to invite worker: " + err.Error(),
-                    })
-                    return
-                }
-                defer inviteResp.Body.Close()
-                
-                if inviteResp.StatusCode != http.StatusOK {
-                    inviteRespBody, _ := io.ReadAll(inviteResp.Body)
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: fmt.Sprintf("Failed to invite worker to room: %s", string(inviteRespBody)),
-                    })
-                    return
-                }
-                
-                // Now try to join again
-                joinReq2, _ := http.NewRequest("POST", joinURL, bytes.NewBuffer([]byte("{}")))
-                joinReq2.Header.Set("Content-Type", "application/json")
-                joinReq2.Header.Set("Authorization", fmt.Sprintf("Bearer %s", loginResult.AccessToken))
-                
-                joinResp2, err := client.Do(joinReq2)
-                if err != nil {
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: "Failed to join room after invite: " + err.Error(),
-                    })
-                    return
-                }
-                defer joinResp2.Body.Close()
-                
-                if joinResp2.StatusCode != http.StatusOK {
-                    joinRespBody2, _ := io.ReadAll(joinResp2.Body)
-                    c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                        Code:    500,
-                        Message: fmt.Sprintf("Worker failed to join room after invite: %s", string(joinRespBody2)),
-                    })
-                    return
-                }
-                
-                // Success!
-                c.JSON(http.StatusOK, UnifiedResponse{
-                    Code:    0,
-                    Message: "success",
-                    Data: gin.H{
-                        "worker_id": workerID,
-                        "room_id":   req.RoomID,
-                    },
-                })
-                return
-            }
-            
-            c.JSON(http.StatusInternalServerError, UnifiedResponse{
-                Code:    500,
-                Message: fmt.Sprintf("Worker failed to join room: %s", string(joinRespBody)),
-            })
-            return
-        }
+		if joinResp.StatusCode != http.StatusOK {
+			// Check if it's a forbidden error (need invite)
+			var joinError struct {
+				ErrorCode string `json:"errcode"`
+				Error     string `json:"error"`
+			}
+			json.Unmarshal(joinRespBody, &joinError)
+
+			if joinError.ErrorCode == "M_FORBIDDEN" {
+				// Need to invite the worker first using caller's Matrix token from cache
+				userID, exists := c.Get("userID")
+				if !exists {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "Unauthorized - cannot invite worker",
+					})
+					return
+				}
+
+				opcUserID, ok := userID.(uint)
+				if !ok {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "Invalid user ID type",
+					})
+					return
+				}
+
+				callerToken, ok := getMatrixToken(opcUserID)
+				if !ok || callerToken == "" {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "No Matrix token found for user. Please login to Matrix first.",
+					})
+					return
+				}
+
+				// Extract worker's Matrix user ID
+				workerUserID := fmt.Sprintf("@%s:%s", workerID, matrixClient.config.Matrix.ServerName)
+
+				// Invite worker to room
+				inviteURL := fmt.Sprintf("%s/_matrix/client/v3/rooms/%s/invite", matrixClient.config.Matrix.HomeserverURL, req.RoomID)
+				inviteBody := map[string]interface{}{"user_id": workerUserID}
+				inviteBytes, _ := json.Marshal(inviteBody)
+				inviteReq, err := http.NewRequest("POST", inviteURL, bytes.NewBuffer(inviteBytes))
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "Failed to create invite request: " + err.Error(),
+					})
+					return
+				}
+				inviteReq.Header.Set("Content-Type", "application/json")
+				inviteReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", callerToken))
+
+				inviteResp, err := client.Do(inviteReq)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "Failed to invite worker: " + err.Error(),
+					})
+					return
+				}
+				defer inviteResp.Body.Close()
+
+				if inviteResp.StatusCode != http.StatusOK {
+					inviteRespBody, _ := io.ReadAll(inviteResp.Body)
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: fmt.Sprintf("Failed to invite worker to room: %s", string(inviteRespBody)),
+					})
+					return
+				}
+
+				// Now try to join again
+				joinReq2, _ := http.NewRequest("POST", joinURL, bytes.NewBuffer([]byte("{}")))
+				joinReq2.Header.Set("Content-Type", "application/json")
+				joinReq2.Header.Set("Authorization", fmt.Sprintf("Bearer %s", loginResult.AccessToken))
+
+				joinResp2, err := client.Do(joinReq2)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: "Failed to join room after invite: " + err.Error(),
+					})
+					return
+				}
+				defer joinResp2.Body.Close()
+
+				if joinResp2.StatusCode != http.StatusOK {
+					joinRespBody2, _ := io.ReadAll(joinResp2.Body)
+					c.JSON(http.StatusInternalServerError, UnifiedResponse{
+						Code:    500,
+						Message: fmt.Sprintf("Worker failed to join room after invite: %s", string(joinRespBody2)),
+					})
+					return
+				}
+
+				// Success!
+				c.JSON(http.StatusOK, UnifiedResponse{
+					Code:    0,
+					Message: "success",
+					Data: gin.H{
+						"worker_id": workerID,
+						"room_id":   req.RoomID,
+					},
+				})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: fmt.Sprintf("Worker failed to join room: %s", string(joinRespBody)),
+			})
+			return
+		}
 
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
@@ -1708,7 +1672,6 @@ func JoinWorkerToRoom(matrixClient *MatrixClient) gin.HandlerFunc {
 		})
 	}
 }
-
 
 // MatrixSyncSSE streams Matrix sync events via SSE
 // GET /api/matrix/sync (requires auth)
@@ -1731,7 +1694,6 @@ func MatrixSyncSSE(matrixClient *MatrixClient) gin.HandlerFunc {
 		})
 	}
 }
-
 
 // MatrixUserInfo represents a user on the Matrix server
 type MatrixUserInfo struct {
@@ -1805,25 +1767,30 @@ func (mc *MatrixClient) getRoomMessageCount(roomID string) (int, error) {
 		return 0, err
 	}
 
-	eventURL := fmt.Sprintf("%s/_synapse/admin/v1/rooms/%s/event?limit=0", mc.config.Matrix.HomeserverURL, roomID)
-	req, _ := http.NewRequest("GET", eventURL, nil)
+	detailURL := fmt.Sprintf("%s/_synapse/admin/v1/rooms/%s", mc.config.Matrix.HomeserverURL, url.PathEscape(roomID))
+	req, _ := http.NewRequest("GET", detailURL, nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query room events: %w", err)
+		return 0, nil
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Total int `json:"total"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, fmt.Errorf("failed to parse event response: %w", err)
+	if resp.StatusCode != http.StatusOK {
+		return 0, nil
 	}
 
-	return result.Total, nil
+	var result struct {
+		JoinedMembers int `json:"joined_members"`
+		StateEvents   int `json:"state_events"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, nil
+	}
+
+	return result.StateEvents, nil
 }
 
 // ListMatrixUsers lists all users on the Matrix server via Synapse Admin API

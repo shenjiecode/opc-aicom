@@ -8,12 +8,13 @@ interface MatrixRoom {
   topic?: string;
   avatarUrl?: string;
   members: string[];
+  memberCount: number;
   unreadCount: number;
-  messageCount?: number; // Total messages/posts in room
+  messageCount?: number;
   joined?: boolean;
-  isDirect?: boolean; // 是否是私聊房间
-  directWith?: string; // 如果是私聊，对方的 userId
-  isOfficial?: boolean; // 是否是官方房间
+  isDirect?: boolean;
+  directWith?: string;
+  isOfficial?: boolean;
 }
 
 interface MatrixMessage {
@@ -210,7 +211,9 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       topic: topic || undefined,
       avatarUrl: avatarUrl || undefined,
       members,
+      memberCount: members.length,
       unreadCount: room.getUnreadNotificationCount(),
+      messageCount: 0,
       isDirect,
       directWith,
     };
@@ -650,6 +653,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
           topic: r.topic || undefined,
           avatarUrl: r.avatar_url || undefined,
           members: [],
+          memberCount: r.joined_members || 0,
           unreadCount: 0,
           messageCount: r.message_count || 0,
           joined: r.joined || false,

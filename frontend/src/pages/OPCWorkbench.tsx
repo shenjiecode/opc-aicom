@@ -468,7 +468,7 @@ export default function OPCWorkbench() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                     <Users className="w-3.5 h-3.5" />
-                    <span>{currentRoom.members.length} 成员</span>
+                    <span>{currentRoom.memberCount} 成员</span>
                   </div>
                 </div>
               </CardHeader>

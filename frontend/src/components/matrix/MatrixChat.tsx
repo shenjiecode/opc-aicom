@@ -241,7 +241,7 @@ export function MatrixChat({ className }: MatrixChatProps) {
                 # {currentRoom.name}
               </span>
               <span className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                {currentRoom.members.length} 成员
+                {currentRoom.memberCount} 成员
               </span>
             </div>
             {currentRoom.topic && (
