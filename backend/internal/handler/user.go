@@ -3,8 +3,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"time"
-
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -285,46 +283,24 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 		if matrixUsername == "" {
 			matrixUsername = sanitizeMatrixUsername(user.Username)
 		}
-		matrixPassword := req.Password
 
 		var matrixToken string
 		var matrixUserID string
 
-		if matrixClient != nil {
-			type matrixResult struct {
-				accessToken string
-				userID      string
-				err         error
-			}
-			ch := make(chan matrixResult, 1)
-			go func() {
-				accessToken, uid, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, matrixPassword)
-				if err != nil {
-					accessToken, uid, err = LoginOrRegisterMatrixUser(matrixClient, matrixUsername, "password")
-				}
-				ch <- matrixResult{accessToken, uid, err}
-			}()
-
-			select {
-			case res := <-ch:
-				if res.err == nil {
-					matrixToken = res.accessToken
-					matrixUserID = res.userID
-					setMatrixToken(user.ID, res.accessToken)
-					if user.MatrixUsername == "" {
-						db.Model(&user).Update("matrix_username", matrixUsername)
-					}
-				}
-			case <-time.After(3 * time.Second):
-				go func() {
-					res := <-ch
-					if res.err == nil {
-						setMatrixToken(user.ID, res.accessToken)
-						if user.MatrixUsername == "" {
-							db.Model(&user).Update("matrix_username", matrixUsername)
-						}
-					}
-				}()
+		if user.MatrixToken != "" {
+			matrixToken = user.MatrixToken
+			matrixUserID = user.MatrixUserID
+		} else if matrixClient != nil {
+			accessToken, uid, err := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, req.Password)
+			if err == nil {
+				matrixToken = accessToken
+				matrixUserID = uid
+				db.Model(&user).Updates(map[string]interface{}{
+					"matrix_username": matrixUsername,
+					"matrix_token":    accessToken,
+					"matrix_user_id":  uid,
+				})
+				setMatrixToken(user.ID, accessToken)
 			}
 		}
 
@@ -407,7 +383,13 @@ func GetUserInfo(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 		var matrixToken string
 		var matrixUserID string
 
-		if matrixClient != nil {
+		if user.MatrixToken != "" {
+			matrixToken = user.MatrixToken
+			matrixUserID = user.MatrixUserID
+			if matrixUsername == "" {
+				matrixUsername = sanitizeMatrixUsername(user.Username)
+			}
+		} else if matrixClient != nil {
 			if matrixUsername == "" {
 				matrixUsername = sanitizeMatrixUsername(user.Username)
 			}
@@ -422,9 +404,11 @@ func GetUserInfo(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 					matrixToken = accessToken
 					matrixUserID = mUserID
 					setMatrixToken(user.ID, accessToken)
-					if user.MatrixUsername == "" {
-						db.Model(&user).Update("matrix_username", matrixUsername)
-					}
+					db.Model(&user).Updates(map[string]interface{}{
+						"matrix_username": matrixUsername,
+						"matrix_token":    accessToken,
+						"matrix_user_id":  mUserID,
+					})
 				}
 			}
 		}

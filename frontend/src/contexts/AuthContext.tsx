@@ -138,33 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verificationStatus: data.data.verificationStatus || 'none',
       };
       setUser(userData);
-
-      if (!data.data.matrixToken) {
-        (async () => {
-          try {
-            console.log('[Auth] Matrix token not in login response, calling Matrix login API...');
-            await new Promise(r => setTimeout(r, 1500));
-            const matrixResp = await fetchWithTimeout(`${API_BASE}/matrix/login`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, password }),
-            }, 15000);
-
-            const matrixData = await matrixResp.json();
-            if (matrixData.code === 0 && matrixData.data) {
-              setUser(prev => prev ? {
-                ...prev,
-                matrixToken: matrixData.data.access_token,
-                matrixUserId: matrixData.data.user_id,
-                matrixUsername: matrixData.data.matrix_username || prev.matrixUsername,
-              } : prev);
-            }
-          } catch (matrixErr) {
-            console.warn('[Auth] Matrix fallback login error:', matrixErr instanceof Error ? matrixErr.message : matrixErr);
-          }
-        })();
-      }
     }
   }, []);
 
