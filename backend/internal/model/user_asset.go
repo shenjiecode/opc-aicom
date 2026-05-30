@@ -16,6 +16,10 @@ type UserAsset struct {
 	CouponsExpiring int            `gorm:"default:0" json:"coupons_expiring"`
 	ComputeHours    float64        `gorm:"default:0" json:"compute_hours"`
 	ComputeGPU      float64        `gorm:"default:0" json:"compute_gpu"`
+	AlibabaCredit  int            `gorm:"default:0" json:"alibaba_credit"`
+	QoderAccount   string         `json:"qoder_account"`
+	QoderPassword  string        `json:"-"`
+	QoderExpiresAt *time.Time     `json:"qoder_expires_at"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`

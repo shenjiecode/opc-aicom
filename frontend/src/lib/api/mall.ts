@@ -5,6 +5,8 @@ import type {
   PurchaseResponse,
   PackageListResponse,
   MyPackageListResponse,
+  QoderPurchaseRequest,
+  QoderPurchaseResponse,
 } from "@/types/mall";
 
 const API_BASE = "/mall";
@@ -38,4 +40,16 @@ export async function purchasePackage(data: PurchaseRequest): Promise<PurchaseRe
  */
 export async function getMyPackages(): Promise<MyPackageListResponse> {
   return apiFetch<MyPackageListResponse>(`${API_BASE}/my-packages`);
+}
+
+
+
+/**
+ * Purchase a Qoder account
+ */
+export async function purchaseQoder(data: QoderPurchaseRequest): Promise<{ code: number; message: string; data: QoderPurchaseResponse }> {
+  return apiFetch<{ code: number; message: string; data: QoderPurchaseResponse }>(`${API_BASE}/purchase-qoder`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }

@@ -26,7 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getPackages, getBalance, purchasePackage, getMyPackages } from "@/lib/api/mall";
+import { getPackages, getBalance, purchasePackage, getMyPackages, purchaseQoder } from "@/lib/api/mall";
 import type { MallPackage, MallBalance, MyPackage } from "@/types/mall";
 
 // Toast notification type
@@ -90,6 +90,9 @@ export default function PointsMall() {
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isQoderDialogOpen, setIsQoderDialogOpen] = useState(false);
+  const [qoderEmail, setQoderEmail] = useState("");
+  const [isQoderPurchasing, setIsQoderPurchasing] = useState(false);
 
   // Fetch data on mount
   useEffect(() => {
@@ -198,6 +201,44 @@ export default function PointsMall() {
     }
   };
 
+  // Handle Qoder purchase click
+  const handleQoderPurchaseClick = () => {
+    if (balance.points < 300) {
+      showToast("error", "积分不足", `您的积分余额 (${balance.points}) 不足以购买此账号 (300)`);
+      return;
+    }
+    setIsQoderDialogOpen(true);
+  };
+
+  // Confirm Qoder purchase
+  const handleConfirmQoderPurchase = async () => {
+    if (!qoderEmail || !qoderEmail.includes("@")) {
+      showToast("error", "参数错误", "请输入有效的邮箱地址");
+      return;
+    }
+
+    setIsQoderPurchasing(true);
+    try {
+      const response = await purchaseQoder({ email: qoderEmail });
+
+      if (response.code === 0) {
+        showToast("success", "购买成功", `Qoder账号：${response.data.account_email}，有效期至 ${response.data.expires_at}`);
+        await loadBalance();
+        setIsQoderDialogOpen(false);
+        setQoderEmail("");
+      } else if (response.code === 402) {
+        showToast("error", "积分不足", "您的积分不足以购买此账号");
+      } else {
+        showToast("error", "购买失败", response.message || "购买过程中出现错误");
+      }
+    } catch (err) {
+      console.error("[PointsMall] Qoder purchase failed:", err);
+      showToast("error", "购买失败", err instanceof Error ? err.message : "购买过程中出现错误");
+    } finally {
+      setIsQoderPurchasing(false);
+    }
+  };
+
   return (
     <div className="min-h-full bg-slate-50/50 p-4 lg:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -289,78 +330,134 @@ export default function PointsMall() {
                 <p className="text-slate-500">商品正在上架中，请稍后再来</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {packages.map((pkg) => {
-                  const typeInfo = getPackageTypeInfo(pkg.type);
-                  const IconComponent = typeInfo.icon;
-                  const canAfford = balance.points >= pkg.price;
+              <>
+                {/* Qoder Account Featured Product */}
+                <Card className="group flex flex-col border-blue-200 transition-all duration-300 hover:shadow-lg hover:border-blue-300 mb-6 bg-gradient-to-br from-blue-50/50 to-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <Zap className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                        AI 工具
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg">Qoder 账号</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      专业AI代码助手，智能编程伴侣，提升开发效率
+                    </CardDescription>
+                  </CardHeader>
 
-                  return (
-                    <Card
-                      key={pkg.id}
-                      className="group flex flex-col border-slate-200 transition-all duration-300 hover:shadow-lg hover:border-amber-200"
+                  <CardContent className="flex-1 space-y-3">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        <span>每月无限次AI代码生成</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        <span>支持多种主流编程语言</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Clock className="w-4 h-4 text-amber-500" />
+                        <span>有效期 30 天</span>
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex items-center gap-1 text-xl font-bold text-blue-600">
+                      <Coins className="w-5 h-5" />
+                      300
+                    </div>
+                    <Button
+                      onClick={handleQoderPurchaseClick}
+                      disabled={balance.points < 300}
+                      className={cn(
+                        "transition-all",
+                        balance.points >= 300
+                          ? "bg-blue-500 hover:bg-blue-600 text-white"
+                          : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                      )}
                     >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between mb-3">
-                          <div
+                      {balance.points >= 300 ? "立即购买" : "积分不足"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {packages.map((pkg) => {
+                    const typeInfo = getPackageTypeInfo(pkg.type);
+                    const IconComponent = typeInfo.icon;
+                    const canAfford = balance.points >= pkg.price;
+
+                    return (
+                      <Card
+                        key={pkg.id}
+                        className="group flex flex-col border-slate-200 transition-all duration-300 hover:shadow-lg hover:border-amber-200"
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between mb-3">
+                            <div
+                              className={cn(
+                                "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                                typeInfo.color,
+                                "bg-opacity-10"
+                              )}
+                            >
+                              <IconComponent className={cn("w-6 h-6", typeInfo.textColor)} />
+                            </div>
+                            <Badge variant="outline" className={cn("text-xs", typeInfo.textColor)}>
+                              {typeInfo.label}
+                            </Badge>
+                          </div>
+                          <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                          <CardDescription className="line-clamp-2">
+                            {pkg.description}
+                          </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="flex-1 space-y-3">
+                          {/* Specs */}
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                              <span>{pkg.specs}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Wallet className="w-4 h-4 text-blue-500" />
+                              <span>包含 {formatNumber(pkg.credits)} 积分</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Clock className="w-4 h-4 text-amber-500" />
+                              <span>有效期 {pkg.duration_days} 天</span>
+                            </div>
+                          </div>
+                        </CardContent>
+
+                        <CardFooter className="flex items-center justify-between border-t border-slate-100 pt-4">
+                          <div className="flex items-center gap-1 text-xl font-bold text-amber-600">
+                            <Coins className="w-5 h-5" />
+                            {formatNumber(pkg.price)}
+                          </div>
+                          <Button
+                            onClick={() => handlePurchaseClick(pkg)}
+                            disabled={!canAfford}
                             className={cn(
-                              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
-                              typeInfo.color,
-                              "bg-opacity-10"
+                              "transition-all",
+                              canAfford
+                                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                : "bg-slate-100 text-slate-400 cursor-not-allowed"
                             )}
                           >
-                            <IconComponent className={cn("w-6 h-6", typeInfo.textColor)} />
-                          </div>
-                          <Badge variant="outline" className={cn("text-xs", typeInfo.textColor)}>
-                            {typeInfo.label}
-                          </Badge>
-                        </div>
-                        <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {pkg.description}
-                        </CardDescription>
-                      </CardHeader>
-
-                      <CardContent className="flex-1 space-y-3">
-                        {/* Specs */}
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            <span>{pkg.specs}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Wallet className="w-4 h-4 text-blue-500" />
-                            <span>包含 {formatNumber(pkg.credits)} 积分</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Clock className="w-4 h-4 text-amber-500" />
-                            <span>有效期 {pkg.duration_days} 天</span>
-                          </div>
-                        </div>
-                      </CardContent>
-
-                      <CardFooter className="flex items-center justify-between border-t border-slate-100 pt-4">
-                        <div className="flex items-center gap-1 text-xl font-bold text-amber-600">
-                          <Coins className="w-5 h-5" />
-                          {formatNumber(pkg.price)}
-                        </div>
-                        <Button
-                          onClick={() => handlePurchaseClick(pkg)}
-                          disabled={!canAfford}
-                          className={cn(
-                            "transition-all",
-                            canAfford
-                              ? "bg-amber-500 hover:bg-amber-600 text-white"
-                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          )}
-                        >
-                          {canAfford ? "立即购买" : "积分不足"}
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  );
-                })}
-              </div>
+                            {canAfford ? "立即购买" : "积分不足"}
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </>
         )}
@@ -518,6 +615,101 @@ export default function PointsMall() {
                 className="bg-amber-500 hover:bg-amber-600 text-white"
               >
                 {isPurchasing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    处理中...
+                  </>
+                ) : (
+                  "确认购买"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Qoder Purchase Dialog */}
+        <Dialog open={isQoderDialogOpen} onOpenChange={setIsQoderDialogOpen}>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-blue-600" />
+                购买 Qoder 账号
+              </DialogTitle>
+              <DialogDescription>
+                请输入您的邮箱地址，用于接收 Qoder 账号凭证
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-slate-900">Qoder 账号</h4>
+                  <Badge variant="outline">AI 工具</Badge>
+                </div>
+                <p className="text-sm text-slate-500 mb-3">专业AI代码助手</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    <span>每月无限次AI代码生成</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    <span>支持多种主流编程语言</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    <span>有效期 30 天</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">邮箱地址</label>
+                <input
+                  type="email"
+                  value={qoderEmail}
+                  onChange={(e) => setQoderEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="text-sm text-slate-600">支付金额</span>
+                <div className="flex items-center gap-1 text-xl font-bold text-amber-600">
+                  <Coins className="w-5 h-5" />
+                  300
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">购买后余额</span>
+                <span className={cn(
+                  "font-medium",
+                  balance.points - 300 < 0 ? "text-red-500" : "text-slate-900"
+                )}>
+                  {formatNumber(balance.points - 300)} 积分
+                </span>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsQoderDialogOpen(false);
+                  setQoderEmail("");
+                }}
+                disabled={isQoderPurchasing}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleConfirmQoderPurchase}
+                disabled={isQoderPurchasing || balance.points < 300 || !qoderEmail}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                {isQoderPurchasing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     处理中...

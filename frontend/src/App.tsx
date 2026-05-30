@@ -44,6 +44,8 @@ import AgentChatPage from "./pages/agentbaba/AgentChat";
 import EditAgentPage from "./pages/agentbaba/EditAgent";
 import CreditHistoryPage from "./pages/credit/CreditHistory";
 import CreditRechargePage from "./pages/admin/CreditRecharge";
+import PointsAllocationPage from "./pages/admin/PointsAllocation";
+import PointsOrders from "./pages/PointsOrders";
 import ContractDetail from './pages/ContractDetail';
 
 function App() {
@@ -70,7 +72,8 @@ function App() {
 				<Route path="agents" element={<AgentSettings />} />
 			  <Route path="opc" element={<OPCManagement />} />
 			  <Route path="api-gateway" element={<AIModelGateway />} />
-		  <Route path="credit-recharge" element={<CreditRechargePage />} />
+<Route path="credit-recharge" element={<CreditRechargePage />} />
+				  <Route path="points/allocation" element={<PointsAllocationPage />} />
 <Route path="billing" element={<AdminBilling />} />
 			</Route>
             {/* Routes with Layout */}
@@ -102,6 +105,7 @@ function App() {
                 <Route path="/post/create" element={<CreatePost />} />
                 <Route path="/agent/chat/:id" element={<AgentChatPage />} />
                 <Route path="/credit/history" element={<CreditHistoryPage />} />
+                <Route path="/points/orders" element={<PointsOrders />} />
             </Route>
             </Route>
           </Routes>

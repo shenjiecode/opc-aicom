@@ -58,3 +58,15 @@ workspace:
     bucket_name: ""
     region: ""
     prefix: "openc-aicom/workspace/"
+
+# Qoder AI configuration
+qoder:
+  base_url: https://api.qoder.ai
+  api_key: ${QODER_API_KEY}
+  monthly_plan_id: ${QODER_MONTHLY_PLAN_ID}
+
+# Alibaba Cloud configuration
+alibaba_cloud:
+  access_key_id: ${ALIBABA_CLOUD_ACCESS_KEY_ID}
+  access_key_secret: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET}
+  region: cn-hangzhou

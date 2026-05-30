@@ -16,6 +16,7 @@ import {
   Bot,
   Globe,
   CreditCard,
+  Coins,
 } from "lucide-react";
 
 interface User {
@@ -33,6 +34,7 @@ const navigationItems = [
   { path: "/admin/orders", label: "订单管理", icon: ShoppingCart },
   { path: "/admin/agents", label: "智能体设置", icon: Bot },
   { path: "/admin/billing", label: "计费管理", icon: CreditCard },
+  { path: "/admin/points/allocation", label: "积分分配", icon: Coins },
   { path: "/admin/api-gateway", label: "AI 模型网关", icon: Globe },
 ];
 export default function AdminLayout() {

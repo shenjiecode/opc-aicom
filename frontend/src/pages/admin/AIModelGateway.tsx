@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import {
   Brain,
   Zap,
-  DollarSign,
   Activity,
   CheckCircle,
   Server,
@@ -17,14 +16,11 @@ import {
   RefreshCw,
   Edit,
   Trash2,
-  Play,
   Key,
   BarChart3,
   Cpu,
   Clock,
   X,
-  Users,
-  TrendingUp,
   AlertCircle,
   Globe,
   Lock,
@@ -184,11 +180,6 @@ export default function AIModelGateway() {
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadData().finally(() => setIsRefreshing(false));
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "永久";
-    return new Date(dateString).toLocaleDateString("zh-CN");
   };
 
   const formatNumber = (num: number) => num.toLocaleString();

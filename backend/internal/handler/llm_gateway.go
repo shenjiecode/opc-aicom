@@ -227,8 +227,150 @@ func (h *LLMGatewayHandler) GetUsage(c *gin.Context) {
 			Quota:        gateway.Quota,
 			UsedTokens:   gateway.UsedTokens,
 			CreditsUsed:  gateway.CreditsUsed,
+		Remaining:    gateway.Quota - gateway.UsedTokens,
+		UsagePercent: usagePercent,
+		},
+	})
+}
+
+// GatewayConfigResponse represents gateway config response
+type GatewayConfigResponse struct {
+	ID          uint   `json:"id"`
+	APIKey      string `json:"api_key"` // Masked
+	GatewayURL  string `json:"gateway_url"`
+	Source      string `json:"source"`
+	Quota       int64  `json:"quota"`
+	UsedTokens  int64  `json:"used_tokens"`
+	Remaining   int64  `json:"remaining"`
+	UsagePercent float64 `json:"usage_percent"`
+	Status      string `json:"status"`
+}
+
+// GetGatewayConfig returns gateway configuration
+// GET /api/gateway/config
+func (h *LLMGatewayHandler) GetGatewayConfig(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未登录"})
+		return
+	}
+
+	var gateway model.LLMGateway
+	err := h.db.Where("user_id = ?", userID).First(&gateway).Error
+
+	if err == gorm.ErrRecordNotFound {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    0,
+			"message": "success",
+			"data":    nil,
+		})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "查询失败"})
+		return
+	}
+
+	// Mask API key - show only last 4 chars
+	maskedKey := ""
+	if len(gateway.APIKey) > 4 {
+		maskedKey = "*" + gateway.APIKey[len(gateway.APIKey)-4:]
+	}
+
+	usagePercent := float64(0)
+	if gateway.Quota > 0 {
+		usagePercent = float64(gateway.UsedTokens) / float64(gateway.Quota) * 100
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": GatewayConfigResponse{
+			ID:           gateway.ID,
+			APIKey:       maskedKey,
+			GatewayURL:   gateway.GatewayURL,
+			Source:       gateway.Source,
+			Quota:        gateway.Quota,
+			UsedTokens:   gateway.UsedTokens,
 			Remaining:    gateway.Quota - gateway.UsedTokens,
 			UsagePercent: usagePercent,
+			Status:       gateway.Status,
+		},
+	})
+}
+
+// UpdateGatewayConfigRequest represents update config request
+type UpdateGatewayConfigRequest struct {
+	GatewayURL string `json:"gateway_url"`
+}
+
+// UpdateGatewayConfig updates gateway configuration
+// PUT /api/gateway/config
+func (h *LLMGatewayHandler) UpdateGatewayConfig(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未登录"})
+		return
+	}
+
+	var req UpdateGatewayConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "请求参数错误"})
+		return
+	}
+
+	var gateway model.LLMGateway
+	err := h.db.Where("user_id = ?", userID).First(&gateway).Error
+
+	if err == gorm.ErrRecordNotFound {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    0,
+			"message": "success",
+			"data":    nil,
+		})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "查询失败"})
+		return
+	}
+
+	// Update GatewayURL if provided
+	if req.GatewayURL != "" {
+		gateway.GatewayURL = req.GatewayURL
+	}
+
+	if err := h.db.Save(&gateway).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "更新失败"})
+		return
+	}
+
+	// Mask API key for response
+	maskedKey := ""
+	if len(gateway.APIKey) > 4 {
+		maskedKey = "*" + gateway.APIKey[len(gateway.APIKey)-4:]
+	}
+
+	usagePercent := float64(0)
+	if gateway.Quota > 0 {
+		usagePercent = float64(gateway.UsedTokens) / float64(gateway.Quota) * 100
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": GatewayConfigResponse{
+			ID:           gateway.ID,
+			APIKey:       maskedKey,
+			GatewayURL:   gateway.GatewayURL,
+			Source:       gateway.Source,
+			Quota:        gateway.Quota,
+			UsedTokens:   gateway.UsedTokens,
+			Remaining:    gateway.Quota - gateway.UsedTokens,
+			UsagePercent: usagePercent,
+			Status:       gateway.Status,
 		},
 	})
 }

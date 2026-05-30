@@ -11,12 +11,14 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Server    ServerConfig    `mapstructure:"server"`
-	Database  DatabaseConfig  `mapstructure:"database"`
-	JWT       JWTConfig       `mapstructure:"jwt"`
-	Matrix    MatrixConfig    `mapstructure:"matrix"`
-	LLM       LLMConfig       `mapstructure:"llm"`
-	Workspace WorkspaceConfig  `mapstructure:"workspace"`
+	Server       ServerConfig        `mapstructure:"server"`
+	Database     DatabaseConfig      `mapstructure:"database"`
+	JWT          JWTConfig           `mapstructure:"jwt"`
+	Matrix       MatrixConfig        `mapstructure:"matrix"`
+	LLM          LLMConfig           `mapstructure:"llm"`
+	Workspace    WorkspaceConfig     `mapstructure:"workspace"`
+	Qoder        QoderConfig         `mapstructure:"qoder"`
+	AlibabaCloud AlibabaCloudConfig  `mapstructure:"alibaba_cloud"`
 }
 
 // OfficialRoom represents an official room configuration
@@ -29,7 +31,7 @@ type OfficialRoom struct {
 // MatrixConfig holds Matrix server configuration
 type MatrixConfig struct {
 	HomeserverURL  string         `mapstructure:"homeserver_url"`
-	ServerName      string         `mapstructure:"server_name"`
+	ServerName     string         `mapstructure:"server_name"`
 	SharedSecret   string         `mapstructure:"shared_secret"`
 	AdminUser      string         `mapstructure:"admin_user"`
 	AdminPassword  string         `mapstructure:"admin_password"`
@@ -72,6 +74,21 @@ type OSSConfig struct {
 	Region          string `mapstructure:"region"`
 	Prefix          string `mapstructure:"prefix"`
 }
+
+// QoderConfig holds Qoder AI configuration
+type QoderConfig struct {
+	BaseURL       string `mapstructure:"base_url"`
+	APIKey        string `mapstructure:"api_key"`
+	MonthlyPlanID string `mapstructure:"monthly_plan_id"`
+}
+
+// AlibabaCloudConfig holds Alibaba Cloud configuration
+type AlibabaCloudConfig struct {
+	AccessKeyID     string `mapstructure:"access_key_id"`
+	AccessKeySecret string `mapstructure:"access_key_secret"`
+	Region          string `mapstructure:"region"`
+}
+
 // ServerConfig holds server configuration
 type ServerConfig struct {
 	Port int    `mapstructure:"port"`
@@ -170,12 +187,12 @@ func Load() (*Config, error) {
 
 	// JWT config
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
-viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
+	viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
 
-// Matrix config
-viper.BindEnv("matrix.homeserver_url", "MATRIX_HOMESERVER_URL")
-viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
-viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
+	// Matrix config
+	viper.BindEnv("matrix.homeserver_url", "MATRIX_HOMESERVER_URL")
+	viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
+	viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
 	viper.BindEnv("matrix.admin_api_url", "MATRIX_ADMIN_API_URL")
 
 	// LLM config
@@ -183,7 +200,7 @@ viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
 	viper.BindEnv("llm.openai.api_key", "OPENAI_API_KEY")
 	viper.BindEnv("llm.openai.base_url", "OPENAI_BASE_URL")
 	viper.BindEnv("llm.anthropic.api_key", "ANTHROPIC_API_KEY")
-viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
+	viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
 
 	// Workspace config
 	viper.BindEnv("workspace.type", "WORKSPACE_TYPE")
@@ -195,10 +212,21 @@ viper.BindEnv("llm.anthropic.base_url", "ANTHROPIC_BASE_URL")
 	viper.BindEnv("workspace.oss.region", "OSS_REGION")
 	viper.BindEnv("workspace.oss.prefix", "OSS_PREFIX")
 
+	// Qoder config
+	viper.BindEnv("qoder.base_url", "QODER_BASE_URL")
+	viper.BindEnv("qoder.api_key", "QODER_API_KEY")
+	viper.BindEnv("qoder.monthly_plan_id", "QODER_MONTHLY_PLAN_ID")
+
+	// Alibaba Cloud config
+	viper.BindEnv("alibaba_cloud.access_key_id", "ALIBABA_CLOUD_ACCESS_KEY_ID")
+	viper.BindEnv("alibaba_cloud.access_key_secret", "ALIBABA_CLOUD_ACCESS_KEY_SECRET")
+	viper.BindEnv("alibaba_cloud.region", "ALIBABA_CLOUD_REGION")
+
 	// Enable automatic environment variable detection
 	// This allows any environment variable to override config file values
 	// without explicit BindEnv calls
 	viper.AutomaticEnv()
+
 	// Read configuration from file
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -246,14 +274,14 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("jwt secret cannot be empty")
 	}
 	if cfg.JWT.ExpireHours <= 0 {
-cfg.JWT.ExpireHours = 24
+		cfg.JWT.ExpireHours = 24
 	}
 	// Matrix config defaults
 	if cfg.Matrix.HomeserverURL == "" {
 		cfg.Matrix.HomeserverURL = "http://localhost:8008"
 	}
-if cfg.Matrix.ServerName == "" {
-cfg.Matrix.ServerName = "localhost"
+	if cfg.Matrix.ServerName == "" {
+		cfg.Matrix.ServerName = "localhost"
 	}
 	// LLM config defaults
 	if cfg.LLM.DefaultProvider == "" {
@@ -265,6 +293,14 @@ cfg.Matrix.ServerName = "localhost"
 	}
 	if cfg.Workspace.LocalDir == "" {
 		cfg.Workspace.LocalDir = "uploads/workspace"
+	}
+	// Qoder config defaults
+	if cfg.Qoder.BaseURL == "" {
+		cfg.Qoder.BaseURL = "https://api.qoder.ai"
+	}
+	// Alibaba Cloud config defaults
+	if cfg.AlibabaCloud.Region == "" {
+		cfg.AlibabaCloud.Region = "cn-hangzhou"
 	}
 	return nil
 }

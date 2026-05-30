@@ -9,6 +9,7 @@ import (
 	"github.com/opc-aicom/backend/internal/middleware"
 	"github.com/opc-aicom/backend/internal/model"
 	"github.com/opc-aicom/backend/internal/pkg/database"
+	"github.com/opc-aicom/backend/internal/service"
 	"github.com/opc-aicom/backend/pkg/config"
 )
 
@@ -38,15 +39,13 @@ cfg, err := config.Load()
 		&model.CreditTransaction{}, &model.LLMGateway{},
 		&model.Verification{},
 		&model.ComputePackage{}, &model.ComputeUsage{},
-	&model.Contract{}, &model.ContractStage{},
+		&model.Contract{}, &model.ContractStage{},
 		&model.TaskNotification{}, &model.RequirementSession{},
 		&model.Project{}, &model.ProjectMember{}, &model.ProjectRoom{},
 		&model.ProjectDeliverable{}, &model.ProjectPayment{},
 		&model.ProjectWorkspace{}, &model.ProjectWorkspaceFile{},
 		&model.ProjectActivity{},
-
-		&model.Contract{}, &model.ContractStage{},
-		&model.TaskNotification{}, &model.RequirementSession{},
+		&model.PointsOrder{}, &model.PointsBatch{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -278,6 +277,8 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 		// Credit & Gateway handlers
 		creditHandler := handler.NewCreditHandler(db)
 		gatewayHandler := handler.NewLLMGatewayHandler(db)
+		alibabaService := service.NewAlibabaCloudService(&cfg.AlibabaCloud, db)
+		computeRechargeHandler := handler.NewComputeRechargeHandler(db, alibabaService)
 
 		// Admin routes
 
@@ -398,9 +399,12 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 	{
 		mallAuth.GET("/balance", mallHandler.GetBalance)
 		mallAuth.GET("/my-packages", mallHandler.ListMyPackages)
-		mallAuth.POST("/purchase", mallHandler.Purchase)
-	}
+	mallAuth.POST("/purchase", mallHandler.Purchase)
+		mallAuth.POST("/recharge-compute", computeRechargeHandler.RechargeCompute)
 
+		qoderPurchaseHandler := handler.NewQoderPurchaseHandler(db, &cfg.Qoder)
+		mallAuth.POST("/purchase-qoder", qoderPurchaseHandler.PurchaseQoder)
+	}
 	// Contract routes
 	contractHandler := handler.NewContractHandler(db, matrixClient)
 	contractsAuth := api.Group("/contracts")

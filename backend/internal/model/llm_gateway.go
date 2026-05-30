@@ -16,9 +16,11 @@ type LLMGateway struct {
 	UsedTokens  int64          `gorm:"default:0" json:"used_tokens"`                // 已使用token
 	CreditsUsed int            `gorm:"default:0" json:"credits_used"`               // 已消费积分
 	Status      string         `gorm:"size:20;default:active" json:"status"`        // active, revoked
-	ExpiresAt   *time.Time     `json:"expires_at,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	GatewayURL  string         `gorm:"size:200;default:https://api.opc-ai.com/v1" json:"gateway_url"` // Gateway URL
+	Source      string         `gorm:"size:50;default:user_created" json:"source"`   // user_created, system
+	ExpiresAt   *time.Time    `json:"expires_at,omitempty"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

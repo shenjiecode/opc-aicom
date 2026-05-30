@@ -53,3 +53,17 @@ export interface MyPackageListResponse {
   list: MyPackage[];
   total: number;
 }
+
+
+// Qoder Purchase Types
+export interface QoderPurchaseRequest {
+  email: string;
+}
+
+export interface QoderPurchaseResponse {
+  order_no: string;
+  account_id: string;
+  account_email: string;
+  points_deducted: number;
+  expires_at: string;
+}
