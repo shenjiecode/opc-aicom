@@ -277,6 +277,7 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 		// Credit & Gateway handlers
 		creditHandler := handler.NewCreditHandler(db)
 		gatewayHandler := handler.NewLLMGatewayHandler(db)
+		adminPointsHandler := handler.NewAdminPointsHandler(db)
 		alibabaService := service.NewAlibabaCloudService(&cfg.AlibabaCloud, db)
 		computeRechargeHandler := handler.NewComputeRechargeHandler(db, alibabaService)
 
@@ -325,6 +326,7 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			admin.POST("/api/keys/create", handler.CreateAPIKey(db))
 			admin.POST("/api/keys/:id/revoke", handler.RevokeAPIKey(db))
 			admin.POST("/credit/recharge", creditHandler.Recharge)
+			admin.POST("/points/allocate", adminPointsHandler.AllocatePoints)
 			admin.POST("/compute/usage/list", handler.GetAdminComputeUsageList(db))
 			admin.POST("/compute/usage/summary", handler.GetAdminComputeUsageSummary(db))
 		}
@@ -378,6 +380,14 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			creditAuth.POST("/transactions", creditHandler.GetTransactions)
 		}
 
+		// Orders routes (auth required)
+		ordersAuth := api.Group("/orders")
+		ordersAuth.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			ordersAuth.GET("", handler.GetPointsOrders(db))
+			ordersAuth.GET("/:id", handler.GetPointsOrderDetail(db))
+		}
+
 	// Compute Usage routes (auth required)
 	computeUsageHandler := handler.NewComputeUsageHandler(db)
 	compute := api.Group("/compute")
@@ -423,6 +433,8 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			gatewayAuth.GET("/my", gatewayHandler.GetMyGateway)
 			gatewayAuth.POST("/create", gatewayHandler.CreateGateway)
 			gatewayAuth.POST("/usage", gatewayHandler.GetUsage)
+			gatewayAuth.GET("/config", gatewayHandler.GetGatewayConfig)
+			gatewayAuth.PUT("/config", gatewayHandler.UpdateGatewayConfig)
 		}
 
 
