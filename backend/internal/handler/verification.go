@@ -197,19 +197,17 @@ func SubmitPersonalVerification(db *gorm.DB) gin.HandlerFunc {
 			"real_name":           req.RealName,
 		})
 
-		// 自动审核通过（简化版，实际生产环境需要人工审核）
-		approveVerification(db, verification.ID, 0, "系统自动审核通过")
-
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
-			Message: "个人实名认证提交成功",
+			Message: "个人实名认证提交成功，等待审核",
 			Data: gin.H{
 				"verificationId": verification.ID,
-				"status":         "approved",
+				"status":         "pending",
 			},
 		})
 	}
 }
+
 
 // SubmitEnterpriseVerification 提交企业认证
 // POST /api/verification/enterprise
@@ -305,20 +303,18 @@ func SubmitEnterpriseVerification(db *gorm.DB) gin.HandlerFunc {
 			"enterprise_name":     req.EnterpriseName,
 		})
 
-		// 自动审核通过（简化版，实际生产环境需要人工审核）
-		approveVerification(db, verification.ID, 0, "系统自动审核通过")
-
 		c.JSON(http.StatusOK, UnifiedResponse{
 			Code:    0,
-			Message: "企业认证提交成功",
+			Message: "企业认证提交成功，等待审核",
 			Data: gin.H{
 				"verificationId": verification.ID,
-				"status":         "approved",
+				"status":         "pending",
 			},
 		})
 	}
 }
 
+// GetVerificationStatus 获取认证状态
 // GetVerificationStatus 获取认证状态
 // GET /api/verification/status
 func GetVerificationStatus(db *gorm.DB) gin.HandlerFunc {
