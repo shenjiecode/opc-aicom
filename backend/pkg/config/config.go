@@ -11,39 +11,40 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Server       ServerConfig        `mapstructure:"server"`
-	Database     DatabaseConfig      `mapstructure:"database"`
-	JWT          JWTConfig           `mapstructure:"jwt"`
-	Matrix       MatrixConfig        `mapstructure:"matrix"`
-	LLM          LLMConfig           `mapstructure:"llm"`
-	Workspace    WorkspaceConfig     `mapstructure:"workspace"`
-	Qoder        QoderConfig         `mapstructure:"qoder"`
-	AlibabaCloud AlibabaCloudConfig  `mapstructure:"alibaba_cloud"`
+	Server       ServerConfig       `mapstructure:"server"`
+	Database     DatabaseConfig     `mapstructure:"database"`
+	JWT          JWTConfig          `mapstructure:"jwt"`
+	Matrix       MatrixConfig       `mapstructure:"matrix"`
+	LLM          LLMConfig          `mapstructure:"llm"`
+	Workspace    WorkspaceConfig    `mapstructure:"workspace"`
+	Qoder        QoderConfig        `mapstructure:"qoder"`
+	AlibabaCloud AlibabaCloudConfig `mapstructure:"alibaba_cloud"`
 }
 
 // OfficialRoom represents an official room configuration
 type OfficialRoom struct {
-	Name     string `mapstructure:"name"`
-	Topic    string `mapstructure:"topic"`
-	Alias    string `mapstructure:"alias"`
+	Name  string `mapstructure:"name"`
+	Topic string `mapstructure:"topic"`
+	Alias string `mapstructure:"alias"`
 }
 
 // MatrixConfig holds Matrix server configuration
 type MatrixConfig struct {
-	HomeserverURL  string         `mapstructure:"homeserver_url"`
-	ServerName     string         `mapstructure:"server_name"`
-	SharedSecret   string         `mapstructure:"shared_secret"`
-	AdminUser      string         `mapstructure:"admin_user"`
-	AdminPassword  string         `mapstructure:"admin_password"`
-	Workers        []string       `mapstructure:"workers"`
-	OfficialRooms  []OfficialRoom `mapstructure:"official_rooms"`
+	HomeserverURL       string         `mapstructure:"homeserver_url"`
+	PublicHomeserverURL string         `mapstructure:"public_homeserver_url"`
+	ServerName          string         `mapstructure:"server_name"`
+	SharedSecret        string         `mapstructure:"shared_secret"`
+	AdminUser           string         `mapstructure:"admin_user"`
+	AdminPassword       string         `mapstructure:"admin_password"`
+	Workers             []string       `mapstructure:"workers"`
+	OfficialRooms       []OfficialRoom `mapstructure:"official_rooms"`
 }
 
 // LLMConfig holds LLM provider configuration
 type LLMConfig struct {
-	DefaultProvider string             `mapstructure:"default_provider"`
-	OpenAI          OpenAIConfig       `mapstructure:"openai"`
-	Anthropic       AnthropicConfig    `mapstructure:"anthropic"`
+	DefaultProvider string          `mapstructure:"default_provider"`
+	OpenAI          OpenAIConfig    `mapstructure:"openai"`
+	Anthropic       AnthropicConfig `mapstructure:"anthropic"`
 }
 
 // OpenAIConfig holds OpenAI configuration
@@ -60,7 +61,7 @@ type AnthropicConfig struct {
 
 // WorkspaceConfig holds workspace storage configuration
 type WorkspaceConfig struct {
-	Type     string    `mapstructure:"type"`     // "local" or "oss"
+	Type     string    `mapstructure:"type"` // "local" or "oss"
 	LocalDir string    `mapstructure:"local_dir"`
 	OSS      OSSConfig `mapstructure:"oss"`
 }
@@ -279,6 +280,9 @@ func validate(cfg *Config) error {
 	// Matrix config defaults
 	if cfg.Matrix.HomeserverURL == "" {
 		cfg.Matrix.HomeserverURL = "http://localhost:8008"
+	}
+	if cfg.Matrix.PublicHomeserverURL == "" {
+		cfg.Matrix.PublicHomeserverURL = cfg.Matrix.HomeserverURL
 	}
 	if cfg.Matrix.ServerName == "" {
 		cfg.Matrix.ServerName = "localhost"
