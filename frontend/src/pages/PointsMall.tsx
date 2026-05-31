@@ -14,7 +14,7 @@ import {
   Wallet,
   ChevronRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getPackages, getBalance, purchasePackage, getMyPackages, purchaseQoder } from "@/lib/api/mall";
 import type { MallPackage, MallBalance, MyPackage } from "@/types/mall";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Toast notification type
 interface Toast {
@@ -78,6 +79,9 @@ const getStatusBadge = (status: string, expiresAt: string) => {
 };
 
 export default function PointsMall() {
+  // Auth context for global user state
+  const { user, refreshUser } = useAuth();
+
   // State
   const [packages, setPackages] = useState<MallPackage[]>([]);
   const [balance, setBalance] = useState<MallBalance>({ points: 0 });
@@ -93,6 +97,9 @@ export default function PointsMall() {
   const [isQoderDialogOpen, setIsQoderDialogOpen] = useState(false);
   const [qoderEmail, setQoderEmail] = useState("");
   const [isQoderPurchasing, setIsQoderPurchasing] = useState(false);
+
+  // Use auth user assets as primary source for points display
+  const displayPoints = user?.assets?.points ?? balance.points;
 
   // Fetch data on mount
   useEffect(() => {
@@ -188,6 +195,8 @@ export default function PointsMall() {
         // Refresh balance and my packages
         await loadBalance();
         await loadMyPackages();
+        // Refresh global user state
+        await refreshUser();
         setIsPurchaseDialogOpen(false);
         setSelectedPackage(null);
       } else {
@@ -224,6 +233,8 @@ export default function PointsMall() {
       if (response.code === 0) {
         showToast("success", "购买成功", `Qoder账号：${response.data.account_email}，有效期至 ${response.data.expires_at}`);
         await loadBalance();
+        // Refresh global user state
+        await refreshUser();
         setIsQoderDialogOpen(false);
         setQoderEmail("");
       } else if (response.code === 402) {
@@ -240,77 +251,101 @@ export default function PointsMall() {
   };
 
   return (
-    <div className="min-h-full bg-slate-50/50 p-4 lg:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <ShoppingBag className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-white w-full overflow-x-hidden flex flex-col">
+      {/* Header - Sticky with backdrop blur */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 h-[var(--header-height)] shrink-0">
+        <div className="flex items-center space-x-3">
+          <span className="text-2xl">🛒</span>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">积分商城</h1>
+          <div className="h-4 w-px bg-slate-200 mx-2"></div>
+          <p className="text-sm text-slate-500 hidden md:block">使用积分兑换算力套餐与AI工具</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          {/* Balance Badge */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20">
+            <Coins className="w-4 h-4 text-white" />
+            {balanceLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+            {!balanceLoading && <span className="text-sm font-bold text-white">{formatNumber(displayPoints)}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 py-6 flex-1 max-w-[1400px]">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Stat 1 */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-4">
+              <span className="text-xl">⚡</span>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">积分商城</h1>
-              <p className="text-sm text-slate-500">使用积分购买算力套餐</p>
+            <div className="text-3xl font-bold text-slate-900 mb-1">{packages.length}</div>
+            <div className="text-sm text-slate-500 mb-3">在架套餐</div>
+            <div className="text-xs font-medium text-emerald-500 flex items-center">
+              <span className="mr-1">↑</span> 多种算力可选
             </div>
           </div>
-
-          {/* Balance Card */}
-          <Card className="bg-gradient-to-br from-amber-500 to-orange-600 border-0 shadow-lg shadow-amber-500/20">
-            <CardContent className="flex items-center gap-4 py-3 px-4">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Coins className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-amber-100 text-xs font-medium">当前积分</p>
-                {balanceLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-white" />
-                ) : (
-                  <p className="text-2xl font-bold text-white">{formatNumber(balance.points)}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Stat 2 */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
+              <span className="text-xl">🤖</span>
+            </div>
+            <div className="text-3xl font-bold text-slate-900 mb-1">AI</div>
+            <div className="text-sm text-slate-500 mb-3">Qoder 账号</div>
+            <div className="text-xs font-medium text-emerald-500 flex items-center">
+              <span className="mr-1">↑</span> 专业代码助手
+            </div>
+          </div>
+          {/* Stat 3 */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-4">
+              <span className="text-xl">📦</span>
+            </div>
+            <div className="text-3xl font-bold text-slate-900 mb-1">{myPackages.length}</div>
+            <div className="text-sm text-slate-500 mb-3">已购套餐</div>
+            <div className="text-xs font-medium text-emerald-500 flex items-center">
+              <span className="mr-1">↑</span> 随时查看使用
+            </div>
+          </div>
+          {/* Stat 4 */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-4">
+              <span className="text-xl">💎</span>
+            </div>
+            <div className="text-3xl font-bold text-slate-900 mb-1">100%</div>
+            <div className="text-sm text-slate-500 mb-3">即时生效</div>
+            <div className="text-xs font-medium text-emerald-500 flex items-center">
+              <span className="mr-1">↑</span> 购买即用
+            </div>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-200">
+        {/* Tabs - Pill style */}
+        <div className="flex space-x-3 mb-8">
           <button
-            onClick={() => setActiveTab("shop")}
-            className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors relative",
-              activeTab === "shop"
-                ? "text-amber-600"
-                : "text-slate-500 hover:text-slate-700"
-            )}
+            onClick={() => setActiveTab('shop')}
+            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center space-x-2 ${
+              activeTab === 'shop'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4" />
-              商品列表
-            </div>
-            {activeTab === "shop" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />
-            )}
+            <span>🛒</span>
+            <span>商品列表</span>
           </button>
           <button
-            onClick={() => setActiveTab("my-packages")}
-            className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors relative",
-              activeTab === "my-packages"
-                ? "text-amber-600"
-                : "text-slate-500 hover:text-slate-700"
-            )}
+            onClick={() => setActiveTab('my-packages')}
+            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center space-x-2 ${
+              activeTab === 'my-packages'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              我的套餐
-              {myPackages.length > 0 && (
-                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
-                  {myPackages.length}
-                </Badge>
-              )}
-            </div>
-            {activeTab === "my-packages" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />
+            <span>📦</span>
+            <span>我的套餐</span>
+            {myPackages.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-400/30 text-xs">
+                {myPackages.length}
+              </span>
             )}
           </button>
         </div>
@@ -331,129 +366,102 @@ export default function PointsMall() {
               </div>
             ) : (
               <>
-                {/* Qoder Account Featured Product */}
-                <Card className="group flex flex-col border-blue-200 transition-all duration-300 hover:shadow-lg hover:border-blue-300 mb-6 bg-gradient-to-br from-blue-50/50 to-white">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                        <Zap className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
-                        AI 工具
-                      </Badge>
+                {/* Qoder Account Featured Product - Modern Card Style */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 group mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl mb-5">
+                    <Zap className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">
+                    Qoder 账号
+                  </h3>
+                  <div className="text-xs font-medium text-slate-500 mb-4">AI 工具</div>
+                  <p className="text-sm text-slate-600 leading-relaxed mb-5">
+                    专业AI代码助手，智能编程伴侣，提升开发效率
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mb-6">
+                    <div className="px-2.5 py-1 bg-emerald-50 rounded-md text-[11px] font-medium text-emerald-600">
+                      无限次AI代码生成
                     </div>
-                    <CardTitle className="text-lg">Qoder 账号</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      专业AI代码助手，智能编程伴侣，提升开发效率
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="flex-1 space-y-3">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        <span>每月无限次AI代码生成</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        <span>支持多种主流编程语言</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <Clock className="w-4 h-4 text-amber-500" />
-                        <span>有效期 30 天</span>
-                      </div>
+                    <div className="px-2.5 py-1 bg-amber-50 rounded-md text-[11px] font-medium text-amber-600">
+                      有效期 30 天
                     </div>
-                  </CardContent>
-
-                  <CardFooter className="flex items-center justify-between border-t border-slate-100 pt-4">
-                    <div className="flex items-center gap-1 text-xl font-bold text-blue-600">
-                      <Coins className="w-5 h-5" />
-                      300
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div className="text-lg font-bold text-blue-600">
+                      300 <span className="text-sm font-medium">积分</span>
                     </div>
-                    <Button
+                    <button
                       onClick={handleQoderPurchaseClick}
                       disabled={balance.points < 300}
                       className={cn(
-                        "transition-all",
+                        "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
                         balance.points >= 300
-                          ? "bg-blue-500 hover:bg-blue-600 text-white"
+                          ? "bg-blue-100 hover:bg-blue-500 hover:text-white text-blue-700"
                           : "bg-slate-100 text-slate-400 cursor-not-allowed"
                       )}
                     >
                       {balance.points >= 300 ? "立即购买" : "积分不足"}
-                    </Button>
-                  </CardFooter>
-                </Card>
+                    </button>
+                  </div>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {packages.map((pkg) => {
                     const typeInfo = getPackageTypeInfo(pkg.type);
                     const IconComponent = typeInfo.icon;
                     const canAfford = balance.points >= pkg.price;
 
                     return (
-                      <Card
+                      <div
                         key={pkg.id}
-                        className="group flex flex-col border-slate-200 transition-all duration-300 hover:shadow-lg hover:border-amber-200"
+                        className="bg-white border border-slate-100 rounded-2xl p-6 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300 group flex flex-col h-full"
                       >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between mb-3">
-                            <div
-                              className={cn(
-                                "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
-                                typeInfo.color,
-                                "bg-opacity-10"
-                              )}
-                            >
-                              <IconComponent className={cn("w-6 h-6", typeInfo.textColor)} />
-                            </div>
-                            <Badge variant="outline" className={cn("text-xs", typeInfo.textColor)}>
-                              {typeInfo.label}
-                            </Badge>
-                          </div>
-                          <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                          <CardDescription className="line-clamp-2">
-                            {pkg.description}
-                          </CardDescription>
-                        </CardHeader>
+                        {/* Icon */}
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5", typeInfo.color.replace('bg-', 'bg-').replace('500', '50'))}>
+                          <IconComponent className={cn("w-6 h-6", typeInfo.textColor)} />
+                        </div>
+                        
+                        {/* Content */}
+                        <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-amber-600 transition-colors">
+                          {pkg.name}
+                        </h3>
+                        <div className="text-xs font-medium text-slate-500 mb-4">{typeInfo.label}</div>
+                        <p className="text-sm text-slate-600 leading-relaxed mb-5 line-clamp-3 flex-1">
+                          {pkg.description}
+                        </p>
 
-                        <CardContent className="flex-1 space-y-3">
-                          {/* Specs */}
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <CheckCircle className="w-4 h-4 text-emerald-500" />
-                              <span>{pkg.specs}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Wallet className="w-4 h-4 text-blue-500" />
-                              <span>包含 {formatNumber(pkg.credits)} 积分</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Clock className="w-4 h-4 text-amber-500" />
-                              <span>有效期 {pkg.duration_days} 天</span>
-                            </div>
+                        {/* Meta row */}
+                        <div className="flex flex-wrap items-center gap-2 mb-6">
+                          <div className="px-2.5 py-1 bg-emerald-50 rounded-md text-[11px] font-medium text-emerald-600">
+                            {pkg.specs}
                           </div>
-                        </CardContent>
+                          <div className="px-2.5 py-1 bg-blue-50 rounded-md text-[11px] font-medium text-blue-600">
+                            {formatNumber(pkg.credits)} 积分
+                          </div>
+                          <div className="px-2.5 py-1 bg-amber-50 rounded-md text-[11px] font-medium text-amber-600">
+                            有效期 {pkg.duration_days} 天
+                          </div>
+                        </div>
 
-                        <CardFooter className="flex items-center justify-between border-t border-slate-100 pt-4">
-                          <div className="flex items-center gap-1 text-xl font-bold text-amber-600">
-                            <Coins className="w-5 h-5" />
-                            {formatNumber(pkg.price)}
+                        {/* Footer */}
+                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                          <div className="text-lg font-bold text-amber-600">
+                            {formatNumber(pkg.price)} <span className="text-sm font-medium">积分</span>
                           </div>
-                          <Button
+                          <button
                             onClick={() => handlePurchaseClick(pkg)}
                             disabled={!canAfford}
                             className={cn(
-                              "transition-all",
+                              "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
                               canAfford
-                                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                ? "bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-700"
                                 : "bg-slate-100 text-slate-400 cursor-not-allowed"
                             )}
                           >
                             {canAfford ? "立即购买" : "积分不足"}
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

@@ -13,6 +13,13 @@ interface User {
   verificationStatus: string; // none, pending, verified, rejected
   realName?: string;
   enterpriseName?: string;
+  assets?: {
+    points: number;
+    coupons: number;
+    couponsExpiring: number;
+    computeHours: number;
+    computeGpu: number;
+  };
 }
 
 interface AuthContextType {
@@ -89,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           verificationStatus: data.data.verificationStatus || 'none',
           realName: data.data.realName,
           enterpriseName: data.data.enterpriseName,
+          assets: data.data.assets,
         });
       } else {
         setUser(null);
@@ -136,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         vipLevel: data.data.vipLevel || 0,
         memberType: data.data.memberType || 'normal',
         verificationStatus: data.data.verificationStatus || 'none',
+        assets: data.data.assets,
       };
       setUser(userData);
     }

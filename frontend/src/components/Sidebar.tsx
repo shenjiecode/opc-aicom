@@ -5,7 +5,6 @@ import {
   Globe,
   ClipboardList,
   Bot,
-  Palette,
   User,
   ShoppingBag,
   ChevronLeft,
@@ -82,6 +81,12 @@ const navigationGroups: NavGroup[] = [
         icon: Hash,
         label: "Bite广场",
       },
+      {
+        id: "points-mall",
+        path: "/points-mall",
+        icon: ShoppingBag,
+        label: "积分商城",
+      },
     ],
   },
   {
@@ -100,12 +105,6 @@ const navigationGroups: NavGroup[] = [
         path: "/opc-channel",
         icon: MessageCircle,
         label: "OPC Channel",
-      },
-      {
-        id: "points-mall",
-        path: "/points-mall",
-        icon: ShoppingBag,
-        label: "积分商城",
       },
     ],
   },

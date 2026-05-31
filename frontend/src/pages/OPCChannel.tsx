@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+
 import {
   Hash,
   Bell,
@@ -22,6 +24,7 @@ import { useMatrix } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
 
 export default function OPCChannel() {
+  const [searchParams] = useSearchParams();
   const {
     rooms,
     currentRoom,
@@ -40,6 +43,17 @@ export default function OPCChannel() {
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  // Select room from query parameter
+  useEffect(() => {
+    const roomId = searchParams.get("room");
+    if (roomId && rooms.length > 0) {
+      const roomExists = rooms.find(r => r.roomId === roomId);
+      if (roomExists) {
+        selectRoom(roomId);
+      }
+    }
+  }, [searchParams, rooms, selectRoom]);
 
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);

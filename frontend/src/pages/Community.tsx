@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   PenLine,
   Globe,
-  MessageCircle,
   Ticket,
   MapPin,
   Clock,

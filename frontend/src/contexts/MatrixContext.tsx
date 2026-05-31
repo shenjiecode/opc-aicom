@@ -91,6 +91,7 @@ interface MatrixContextType {
   selectRoom: (roomId: string) => void;
   sendMessage: (text: string) => Promise<void>;
   createRoom: (name: string, topic?: string, isPublic?: boolean) => Promise<string>;
+  createDirectMessage: (userId: string, name?: string) => Promise<string>;
   joinRoom: (roomId: string) => Promise<void>;
   leaveRoom: (roomId: string) => Promise<void>;
   inviteUser: (roomId: string, userId: string) => Promise<void>;
@@ -577,6 +578,30 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     return data.data.room_id;
   }, [refreshRooms]);
 
+  // Create a direct message room with a specific user
+  const createDirectMessage = useCallback(async (userId: string, name?: string): Promise<string> => {
+    const response = await fetchApi(`${API_BASE}/matrix/rooms`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: name || `DM with ${userId.split(':')[0].replace('@', '')}`,
+        visibility: 'private',
+        invite: [userId],
+        is_direct: true,
+      }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.code !== 0 || !data.data) {
+      throw new Error(data.message || 'Failed to create direct message');
+    }
+    
+    // Refresh rooms
+    await refreshRooms();
+    
+    return data.data.room_id;
+  }, [refreshRooms]);
+
   // Join a room
   const joinRoom = useCallback(async (roomId: string) => {
     const response = await fetchApi(`${API_BASE}/matrix/rooms/${encodeURIComponent(roomId)}/join`, {
@@ -811,6 +836,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     selectRoom,
     sendMessage,
     createRoom,
+    createDirectMessage,
     joinRoom,
     leaveRoom,
     inviteUser,
