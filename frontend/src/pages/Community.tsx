@@ -207,7 +207,8 @@ export default function Community() {
         {/* Main Tabs */}
         <div className="pt-6 px-6 mb-6">
           <div className="flex items-center gap-3">
-            <button
+            {/* 论坛 Tab 暂时隐藏 */}
+            {/* <button
               onClick={() => setActiveTab("forum")}
               className={cn(
                 "flex items-center px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200",
@@ -218,7 +219,7 @@ export default function Community() {
             >
               <MessageCircle className="w-4 h-4 mr-2" />
               论坛
-            </button>
+            </button> */}
             <button
               onClick={() => setActiveTab("events")}
               className={cn(

@@ -51,7 +51,7 @@ const AiResources: React.FC = () => {
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 h-[var(--header-height)] shrink-0">
         <div className="flex items-center space-x-3">
           <span className="text-2xl">🧠</span>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">AI资源</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">服务集市</h1>
           <div className="h-4 w-px bg-slate-200 mx-2"></div>
           <p className="text-sm text-slate-500 hidden md:block">聚合可交易IP资源与专家服务，帮助OPC快速补齐能力</p>
         </div>

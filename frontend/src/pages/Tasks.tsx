@@ -304,7 +304,7 @@ alert("创建聊天房间失败，请稍后重试");
         <div className="flex items-center gap-3">
           <ClipboardList className="w-8 h-8 text-amber-700" />
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            任务中心
+            需求中心
           </h1>
           <p className="text-slate-500 text-sm ml-4 border-l border-slate-200 pl-4">
             发现优质任务，用技能赚取收益和积分
