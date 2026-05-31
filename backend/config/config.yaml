@@ -24,7 +24,7 @@ jwt:
 
 matrix:
   homeserver_url: http://8.217.143.228:8008
-  public_homeserver_url: https://bitbay.changingstudy.com
+  public_homeserver_url: https://bitbay.changingstudy.com/matrix
   server_name: 8.217.143.228
   shared_secret: nexus_matrix_secret_xK9mP2vL7qR4wY6j
   admin_user: opcgateway
