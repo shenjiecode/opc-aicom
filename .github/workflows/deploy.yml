@@ -35,7 +35,7 @@ jobs:
       - name: Build frontend
         run: cd frontend && npm run build
         env:
-          VITE_MATRIX_HOMESERVER: http://8.217.143.228:8008
+          VITE_MATRIX_HOMESERVER: https://bitbay.changingstudy.com/matrix
 
       - name: Setup SSH key
         run: |
