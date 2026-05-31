@@ -461,7 +461,7 @@ func LoginMatrixUser(matrixClient *MatrixClient) gin.HandlerFunc {
 
 				"home_server": matrixClient.config.Matrix.ServerName,
 
-				"homeserver_url": matrixClient.config.Matrix.HomeserverURL,
+				"homeserver_url": matrixClient.config.Matrix.PublicHomeserverURL,
 
 				"opc_username": opcUser.Username,
 

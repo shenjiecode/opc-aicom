@@ -24,6 +24,7 @@ jwt:
 
 matrix:
   homeserver_url: http://localhost:8008
+  public_homeserver_url: http://localhost:8008
   server_name: localhost
   shared_secret: nexus_matrix_secret_xK9mP2vL7qR4wY6j
   admin_user: opcgateway
