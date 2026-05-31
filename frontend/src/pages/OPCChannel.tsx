@@ -1,6 +1,3 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,48 +48,6 @@ export default function OPCChannel() {
   const [showMentionPopup, setShowMentionPopup] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // 选项多选状态 - 存储每条消息的选中选项
-  const [selectedOptions, setSelectedOptions] = useState<Map<string, string[]>>(new Map());
-  
-  // 解析消息中的选项 - 支持 [选项] 格式
-  const parseOptions = (content: string): string[] => {
-    const optionRegex = /\[([^\]]+)\]/g;
-    const matches: string[] = [];
-    let match;
-    while ((match = optionRegex.exec(content)) !== null) {
-      matches.push(match[1]);
-    }
-    return matches;
-  };
-  
-  // 切换选项选中状态
-  const toggleOption = (messageId: string, option: string) => {
-    setSelectedOptions(prev => {
-      const newMap = new Map(prev);
-      const current = newMap.get(messageId) || [];
-      if (current.includes(option)) {
-        newMap.set(messageId, current.filter(o => o !== option));
-      } else {
-        newMap.set(messageId, [...current, option]);
-      }
-      return newMap;
-    });
-  };
-  
-  // 确认选择并填入输入框
-  const confirmOptions = (messageId: string) => {
-    const selected = selectedOptions.get(messageId) || [];
-    if (selected.length > 0) {
-      setInputText(selected.join(", "));
-      // 清除该消息的选择状态
-      setSelectedOptions(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(messageId);
-        return newMap;
-      });
-    }
-  };
   
   // bite私聊房间展开/折叠状态
   const [isBiteDMExpanded, setIsBiteDMExpanded] = useState(true);
@@ -501,64 +456,16 @@ export default function OPCChannel() {
                                 </span>
                               </div>
                             )}
+                            <div
+                              className={cn(
+                                "px-3 py-2 rounded-lg text-sm",
+                                message.isOwn
+                                  ? "bg-violet-500 text-white"
+                                  : "bg-slate-800 text-slate-200"
+                              )}
                             >
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                                  ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                                  ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                                  li: ({children}) => <li className="ml-2">{children}</li>,
-                                  strong: ({children}) => <strong className="font-semibold">{children}</strong>,
-                                  code: ({children}) => <code className="bg-slate-900/50 px-1 py-0.5 rounded text-xs">{children}</code>,
-                                  pre: ({children}) => <pre className="bg-slate-900/50 p-2 rounded-lg overflow-x-auto text-xs mb-2">{children}</pre>,
-                                  blockquote: ({children}) => <blockquote className="border-l-2 border-slate-600 pl-2 italic">{children}</blockquote>,
-                                  h1: ({children}) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                                  h2: ({children}) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                                  h3: ({children}) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-                                }}
-                              >
-                                {message.content.replace(/\[([^\]]+)\]/g, "")}
-                              </ReactMarkdown>
-                              {/* 选项多选UI */}
-                              {(() => {
-                                const options = parseOptions(message.content);
-                                if (options.length > 0 && !message.isOwn) {
-                                  const selected = selectedOptions.get(message.id) || [];
-                                  return (
-                                    <div className="mt-2 pt-2 border-t border-slate-700">
-                                      <div className="flex flex-wrap gap-2 mb-2">
-                                        {options.map((option) => (
-                                          <button
-                                            key={option}
-                                            onClick={() => toggleOption(message.id, option)}
-                                            className={cn(
-                                              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                                              selected.includes(option)
-                                                ? "bg-emerald-500 text-white"
-                                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                                            )}
-                                          >
-                                            {selected.includes(option) && (
-                                              <span className="mr-1">✓</span>
-                                            )}
-                                            {option}
-                                          </button>
-                                        ))}
-                                      </div>
-                                      {selected.length > 0 && (
-                                        <button
-                                          onClick={() => confirmOptions(message.id)}
-                                          className="w-full py-1.5 bg-violet-500 hover:bg-violet-600 text-white text-xs font-medium rounded-lg transition-colors"
-                                        >
-                                          确认选择 ({selected.length}项)
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
+                              {message.content}
+                            </div>
                           </div>
                         </div>
                       );
