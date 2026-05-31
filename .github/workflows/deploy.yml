@@ -47,9 +47,12 @@ jobs:
       - name: Deploy backend
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
-          $SSH "pkill opc-aicom-backend || true; sleep 1"
-          cat backend/opc-aicom-backend | $SSH "cat > /opt/opc-aicom/backend/opc-aicom-backend"
+          # Upload to temp file first to avoid "Text file busy"
+          cat backend/opc-aicom-backend | $SSH "cat > /opt/opc-aicom/backend/opc-aicom-backend.new"
           $SSH "
+            pkill opc-aicom-backend || true
+            sleep 2
+            mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
             cp /opt/opc-aicom/backend/config/config.yaml /opt/opc-aicom/backend/config.yaml
             cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /dev/null 2>&1 &
