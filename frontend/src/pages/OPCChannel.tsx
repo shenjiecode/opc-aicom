@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -19,28 +19,33 @@ import {
   ChevronDown,
   ChevronRight,
   MessageCircle,
+  LogIn,
+  Loader2,
 } from "lucide-react";
 import { useMatrix } from "@/contexts/MatrixContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 export default function OPCChannel() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const {
     rooms,
     currentRoom,
     messages,
     sendMessage,
     isInitialized,
+    isLoading: matrixLoading,
     matrixUserId,
     workers,
     selectRoom,
     initialize,
   } = useMatrix();
 
-  // 进入页面自动连接Matrix服务器
   useEffect(() => {
-    if (!isInitialized) {
-      initialize();
+    if (isAuthenticated && !isInitialized) {
+      initialize().catch(() => {});
     }
   }, [isInitialized, initialize]);
 
@@ -404,14 +409,42 @@ export default function OPCChannel() {
               background: #5a5b6e;
             }
           `}</style>
-          {!isInitialized ? (
+          {!isAuthenticated && !authLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-500">
-              <Users className="w-16 h-16 mb-4 opacity-50" />
-              <p className="mb-4">正在连接 Matrix...</p>
-              <Button onClick={initialize} variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                连接
+              <LogIn className="w-16 h-16 mb-4 opacity-50" />
+              <p className="mb-2 text-lg font-medium">还未登录</p>
+              <p className="mb-6 text-sm text-slate-400">请先登录 OPC 账号后使用聊天功能</p>
+              <Button
+                onClick={() => navigate('/login')}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl px-6"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                去登录
               </Button>
+            </div>
+          ) : !isInitialized ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-500">
+              {matrixLoading ? (
+                <>
+                  <div className="relative mb-6">
+                    <Loader2 className="w-16 h-16 animate-spin text-emerald-500" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-6 h-6 bg-emerald-500/20 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-medium text-slate-300 mb-2">正在连接 Matrix</p>
+                  <p className="text-sm text-slate-500">正在建立加密连接，请稍候...</p>
+                </>
+              ) : (
+                <>
+                  <Users className="w-16 h-16 mb-4 opacity-50" />
+                  <p className="mb-4">正在连接 Matrix...</p>
+                  <Button onClick={() => initialize()} variant="outline" size="sm">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    连接
+                  </Button>
+                </>
+              )}
             </div>
           ) : !currentRoom ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-500">
