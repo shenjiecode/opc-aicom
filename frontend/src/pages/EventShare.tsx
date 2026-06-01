@@ -5,6 +5,15 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Calendar,
   MapPin,
@@ -43,6 +52,9 @@ export default function EventShare() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showRegisterDialog, setShowRegisterDialog] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -63,23 +75,37 @@ export default function EventShare() {
     }
   };
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
+    setShowRegisterDialog(true);
+  };
+
+  const handleGuestRegister = async () => {
+    if (!guestName.trim() || !guestPhone.trim()) {
+      setError("请填写姓名和电话");
+      return;
+    }
+    if (!/^\d{11}$/.test(guestPhone)) {
+      setError("请输入正确的手机号码");
+      return;
+    }
     setIsRegistering(true);
+    setError("");
     try {
-      await apiFetch("/event/join", {
+      await apiFetch("/event/guest-register", {
         method: "POST",
-        body: JSON.stringify({ event_id: event?.id }),
+        body: JSON.stringify({
+          event_id: event?.id,
+          name: guestName.trim(),
+          phone: guestPhone.trim(),
+        }),
       });
       setIsRegistered(true);
+      setShowRegisterDialog(false);
       setEvent((prev) =>
         prev ? { ...prev, joined_count: prev.joined_count + 1 } : null
       );
     } catch (err) {
-      if (err instanceof Error && err.message.includes("登录")) {
-        navigate(`/login?redirect=/event/share/${code}`);
-      } else {
-        setError(err instanceof Error ? err.message : "报名失败");
-      }
+      setError(err instanceof Error ? err.message : "报名失败");
     } finally {
       setIsRegistering(false);
     }
@@ -248,6 +274,65 @@ export default function EventShare() {
             )}
           </CardContent>
         </Card>
+
+        {/* Guest Registration Dialog */}
+        <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
+          <DialogContent className="bg-slate-900 border-slate-700 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white">活动报名</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                请填写您的信息完成报名
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">姓名</label>
+                <Input
+                  placeholder="请输入姓名"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">电话</label>
+                <Input
+                  placeholder="请输入11位手机号码"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                  maxLength={11}
+                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+            {error && (
+              <div className="text-red-400 text-sm">{error}</div>
+            )}
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowRegisterDialog(false)}
+                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-800"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleGuestRegister}
+                disabled={isRegistering}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isRegistering ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    提交中...
+                  </>
+                ) : (
+                  "确认报名"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <p className="text-center text-xs text-slate-400 mt-6">
           Powered by BitBay OPC

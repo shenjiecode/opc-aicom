@@ -85,11 +85,12 @@ func (r *EventRepository) Register(eventID, userID uint) error {
 		return gorm.ErrDuplicatedKey
 	}
 
+	userIDPtr := userID
 	// 创建报名记录
 	registration := &model.EventRegistration{
 		EventID:   eventID,
-		UserID:    userID,
-		Status:    "registered",
+		UserID:   &userIDPtr,
+		Status:   "registered",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -103,6 +104,48 @@ func (r *EventRepository) Register(eventID, userID uint) error {
 		return tx.Model(&model.Event{}).Where("id = ?", eventID).
 			UpdateColumn("joined_count", gorm.Expr("joined_count + 1")).Error
 	})
+}
+
+// GuestRegister 访客报名活动
+func (r *EventRepository) GuestRegister(eventID uint, name, phone string) error {
+	// 检查是否已报名（同手机号）
+	var existing model.EventRegistration
+	err := r.db.Where("event_id = ? AND guest_phone = ?", eventID, phone).First(&existing).Error
+	if err == nil {
+		return gorm.ErrDuplicatedKey
+	}
+
+	// 创建报名记录
+	registration := &model.EventRegistration{
+		EventID:    eventID,
+		UserID:    nil,
+		GuestName:  name,
+		GuestPhone: phone,
+		Status:    "registered",
+		CreatedAt:  time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// 使用事务
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(registration).Error; err != nil {
+			return err
+		}
+		// 更新报名人数
+		return tx.Model(&model.Event{}).Where("id = ?", eventID).
+			UpdateColumn("joined_count", gorm.Expr("joined_count + 1")).Error
+	})
+}
+
+// GetRegistrations 获取活动的所有报名记录（脱敏）
+func (r *EventRepository) GetRegistrations(eventID uint) ([]map[string]interface{}, error) {
+	var registrations []map[string]interface{}
+	err := r.db.Model(&model.EventRegistration{}).
+		Where("event_id = ?", eventID).
+		Order("created_at DESC").
+		Select("id, event_id, guest_name, guest_phone, status, created_at").
+		Find(&registrations).Error
+	return registrations, err
 }
 
 // GetRegistration 获取用户报名状态

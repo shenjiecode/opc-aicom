@@ -7,6 +7,22 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Contract, ContractStage, ContractStatus } from "@/types/models";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
+import {
   Coins,
   Ticket,
   Cpu,
@@ -26,6 +42,7 @@ import {
   PlusCircle,
   DollarSign,
   User,
+  Loader2,
 } from "lucide-react";
 
 // Types
@@ -77,6 +94,7 @@ interface Event {
   limit_count?: number;
   is_featured?: boolean;
   theme_color?: string;
+  user_id?: number;
 }
 
 interface UserInfo {
@@ -205,6 +223,12 @@ export default function MyOPC() {
   const [userContracts, setUserContracts] = useState<ContractItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { user } = useAuth();
+  const [registrationsDialogOpen, setRegistrationsDialogOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -287,6 +311,18 @@ export default function MyOPC() {
 
   const handleEventClick = (eventId: number) => {
     navigate(`/event/${eventId}`);
+  };
+
+  const fetchRegistrations = async (eventId: number) => {
+    setIsLoadingRegistrations(true);
+    try {
+      const result = await apiFetch<{ registrations: any[] }>(`/event/${eventId}/registrations`);
+      setRegistrations(result.registrations || []);
+    } catch (err) {
+      console.error('Failed to fetch registrations:', err);
+    } finally {
+      setIsLoadingRegistrations(false);
+    }
   };
 
   if (isLoading) {
@@ -542,16 +578,32 @@ export default function MyOPC() {
                                 {event.joined_count || 0} 人
                               </span>
                             </div>
-                            {event.limit_count && event.limit_count > 0 && (
-                              <div className="flex items-center">
-                                限额{" "}
-                                <span className="font-semibold text-slate-700 ml-1">
-                                  {event.limit_count} 人
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {event.limit_count && event.limit_count > 0 && (
+                                <div className="flex items-center">
+                                  限额{" "}
+                                  <span className="font-semibold text-slate-700 ml-1">
+                                    {event.limit_count} 人
+                                  </span>
+                                </div>
+                              )}
+                              {event.user_id === user?.userId && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedEventId(event.id);
+                                    fetchRegistrations(event.id);
+                                    setRegistrationsDialogOpen(true);
+                                  }}
+                                >
+                                  查看报名表
+                                </Button>
+                              )}
+                            </div>
                           </div>
-
                           <div className="mt-4 pt-4 flex items-center justify-between">
                             <span className="text-sm font-medium text-indigo-600 group-hover:text-indigo-700 transition-colors flex items-center">
                               查看详情 <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
@@ -735,6 +787,59 @@ export default function MyOPC() {
           )}
         </div>
       </div>
+
+      {/* Registrations Dialog */}
+      <Dialog open={registrationsDialogOpen} onOpenChange={setRegistrationsDialogOpen}>
+        <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              报名表 - {userEvents.find(e => e.id === selectedEventId)?.title}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              共 {registrations.length} 人报名
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingRegistrations ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            </div>
+          ) : registrations.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <User className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+              <p>暂无报名</p>
+            </div>
+          ) : (
+            <div className="max-h-[400px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-700 hover:bg-slate-800">
+                    <TableHead className="text-slate-400">姓名</TableHead>
+                    <TableHead className="text-slate-400">电话</TableHead>
+                    <TableHead className="text-slate-400">报名时间</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {registrations.map((reg) => (
+                    <TableRow key={reg.id} className="border-slate-700 hover:bg-slate-800">
+                      <TableCell className="text-white">{reg.guest_name}</TableCell>
+                      <TableCell className="text-white">{reg.guest_phone}</TableCell>
+                      <TableCell className="text-slate-400 text-sm">
+                        {new Date(reg.created_at).toLocaleString('zh-CN', {
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

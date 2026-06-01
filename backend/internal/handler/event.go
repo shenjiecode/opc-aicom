@@ -316,3 +316,162 @@ func JoinEvent(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// GuestJoinEventRequest 访客报名请求
+type GuestJoinEventRequest struct {
+	EventID uint   `json:"event_id" binding:"required"`
+	Name    string `json:"name" binding:"required"`
+	Phone   string `json:"phone" binding:"required"`
+}
+
+// isValidChinesePhone 验证中国手机号格式
+func isValidChinesePhone(phone string) bool {
+	if len(phone) != 11 {
+		return false
+	}
+	if phone[0] != '1' {
+		return false
+	}
+	// 检查都是数字
+	for _, c := range phone {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// GuestJoinEvent 访客报名活动（无需认证）
+func GuestJoinEvent(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req GuestJoinEventRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "参数错误",
+			})
+			return
+		}
+
+		// 验证手机号格式
+		if !isValidChinesePhone(req.Phone) {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "手机号格式不正确，需为11位中国大陆手机号",
+			})
+			return
+		}
+
+		eventRepo := repository.NewEventRepository(db)
+
+		// 获取活动信息
+		event, err := eventRepo.GetByID(req.EventID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, UnifiedResponse{
+				Code:    404,
+				Message: "活动不存在",
+			})
+			return
+		}
+
+		// 检查活动状态
+		if event.Status == "已结束" {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "活动已结束",
+			})
+			return
+		}
+
+		// 检查人数限制
+		if event.LimitCount > 0 && event.JoinedCount >= event.LimitCount {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "报名人数已满",
+			})
+			return
+		}
+
+		// 访客报名
+		err = eventRepo.GuestRegister(req.EventID, req.Name, req.Phone)
+		if err != nil {
+			if err == gorm.ErrDuplicatedKey {
+				c.JSON(http.StatusBadRequest, UnifiedResponse{
+					Code:    400,
+					Message: "该手机号已报名过此活动",
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "报名失败",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "报名成功",
+		})
+	}
+}
+
+// GetEventRegistrations 获取活动报名表（仅发起者）
+func GetEventRegistrations(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, UnifiedResponse{
+				Code:    401,
+				Message: "未授权",
+			})
+			return
+		}
+
+		idStr := c.Param("id")
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, UnifiedResponse{
+				Code:    400,
+				Message: "无效的活动ID",
+			})
+			return
+		}
+
+		eventRepo := repository.NewEventRepository(db)
+
+		// 获取活动信息
+		event, err := eventRepo.GetByID(uint(id))
+		if err != nil {
+			c.JSON(http.StatusNotFound, UnifiedResponse{
+				Code:    404,
+				Message: "活动不存在",
+			})
+			return
+		}
+
+		// 检查是否是活动发起者
+		if event.UserID != userID.(uint) {
+			c.JSON(http.StatusForbidden, UnifiedResponse{
+				Code:    403,
+				Message: "无权限查看此活动的报名名单",
+			})
+			return
+		}
+
+		// 获取报名列表
+		registrations, err := eventRepo.GetRegistrations(uint(id))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, UnifiedResponse{
+				Code:    500,
+				Message: "获取报名列表失败",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, UnifiedResponse{
+			Code:    0,
+			Message: "success",
+			Data:    registrations,
+		})
+	}
+}

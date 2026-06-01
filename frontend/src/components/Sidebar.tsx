@@ -211,7 +211,7 @@ export function Sidebar({
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <img 
-            src="/bitOcto.png" 
+            src={`${import.meta.env.BASE_URL}bitOcto.png`}
             alt="BitOcto" 
             className="w-9 h-9 rounded-xl object-contain flex-shrink-0"
           />

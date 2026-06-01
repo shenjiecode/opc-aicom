@@ -37,13 +37,15 @@ func (Event) TableName() string {
 
 // EventRegistration represents a user's registration for an event.
 type EventRegistration struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	EventID   uint           `gorm:"not null;index" json:"event_id"`
-	UserID    uint           `gorm:"not null;index" json:"user_id"`
-	Status    string         `gorm:"size:20;default:'registered'" json:"status"` // registered, cancelled, attended
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID         uint           `gorm:"primaryKey" json:"id"`
+	EventID    uint           `gorm:"not null;index" json:"event_id"`
+	UserID     *uint          `gorm:"index" json:"user_id"`
+	GuestName  string         `gorm:"size:50" json:"guest_name"`
+	GuestPhone string         `gorm:"size:20" json:"guest_phone"`
+	Status     string         `gorm:"size:20;default:'registered'" json:"status"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // TableName specifies the table name for GORM.

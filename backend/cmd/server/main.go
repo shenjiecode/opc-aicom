@@ -226,8 +226,12 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 
 
 		// Event routes (public)
-		api.GET("/event/:id", handler.GetEvent(db))
-		api.GET("/event/share/:code", handler.GetEventByShareCode(db))
+		eventRoutes := api.Group("/event")
+		{
+			eventRoutes.GET("/:id", handler.GetEvent(db))
+			eventRoutes.GET("/share/:code", handler.GetEventByShareCode(db))
+			eventRoutes.POST("/guest-register", handler.GuestJoinEvent(db))
+		}
 
 		// Event routes (auth required)
 		eventAuth := api.Group("/event")
@@ -236,7 +240,8 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 		{
 			eventAuth.POST("/create", handler.CreateEvent(db))
 			eventAuth.POST("/join", handler.JoinEvent(db))
-
+			eventAuth.GET("/:id/registrations", handler.GetEventRegistrations(db))
+		}
 		// Verification routes (auth required)
 		verification := api.Group("/verification")
 		verification.Use(middleware.AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Cookie.Name))
@@ -246,7 +251,6 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			verification.GET("/status", handler.GetVerificationStatus(db))
 		}
 
-		}
 
 		// Matrix routes
 		matrix := api.Group("/matrix")
