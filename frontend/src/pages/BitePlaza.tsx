@@ -17,6 +17,8 @@ import {
   Flame,
   Star,
   UserCheck,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { useMatrix } from "@/contexts/MatrixContext";
 import { cn } from "@/lib/utils";
@@ -130,19 +132,21 @@ function RoomCard({ room, onJoin, onEnter, onLeave, isJoining, isLeaving }: Room
 }
 
 // Create Room Dialog Component
-function CreateRoomDialog({ onCreate }: { onCreate: (name: string, topic: string) => Promise<void> }) {
+function CreateRoomDialog({ onCreate }: { onCreate: (name: string, topic: string, isPublic: boolean) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     setIsCreating(true);
     try {
-      await onCreate(name.trim(), topic.trim());
+      await onCreate(name.trim(), topic.trim(), isPublic);
       setName("");
       setTopic("");
+      setIsPublic(true);
       setOpen(false);
     } finally {
       setIsCreating(false);
@@ -179,6 +183,41 @@ function CreateRoomDialog({ onCreate }: { onCreate: (name: string, topic: string
               placeholder="输入房间描述（可选）"
               className="bg-[#13141f] border-slate-700 text-white placeholder:text-slate-600"
             />
+          </div>
+          <div>
+            <label className="text-sm text-slate-400 mb-2 block">房间可见性</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setIsPublic(true)}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-lg border transition-all",
+                  isPublic
+                    ? "bg-violet-500/20 border-violet-500 text-white"
+                    : "bg-[#13141f] border-slate-700 text-slate-400 hover:border-slate-600"
+                )}
+              >
+                <Globe className={cn("w-6 h-6", isPublic ? "text-violet-400" : "text-slate-500")} />
+                <div className="text-center">
+                  <div className="text-sm font-medium">公开可见</div>
+                  <div className="text-xs text-slate-500 mt-0.5">所有人都可以发现和加入</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setIsPublic(false)}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-lg border transition-all",
+                  !isPublic
+                    ? "bg-violet-500/20 border-violet-500 text-white"
+                    : "bg-[#13141f] border-slate-700 text-slate-400 hover:border-slate-600"
+                )}
+              >
+                <Lock className={cn("w-6 h-6", !isPublic ? "text-violet-400" : "text-slate-500")} />
+                <div className="text-center">
+                  <div className="text-sm font-medium">私密空间</div>
+                  <div className="text-xs text-slate-500 mt-0.5">仅受邀用户可加入</div>
+                </div>
+              </button>
+            </div>
           </div>
           <Button
             onClick={handleCreate}
@@ -285,8 +324,8 @@ export default function BitePlaza() {
     }
   };
 
-  const handleCreateRoom = async (name: string, topic: string) => {
-    await createRoom(name, topic, true);
+  const handleCreateRoom = async (name: string, topic: string, isPublic: boolean) => {
+    await createRoom(name, topic, isPublic);
   };
 
   const handleEnterRoom = (roomId: string) => {
