@@ -1,23 +1,36 @@
 import { Page } from '@playwright/test';
 import { testUser, testEnterprise, testAdmin } from '../fixtures/test-data';
 
+/**
+ * Login with username and password
+ */
 export async function login(page: Page, username: string = testUser.username, password: string = testUser.password): Promise<void> {
   await page.goto('/login');
-  await page.fill('[name="username"]', username);
-  await page.fill('[name="password"]', password);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('#username', { timeout: 10000 });
+  await page.fill('#username', username);
+  await page.fill('#password', password);
   await page.click('button:has-text("登录")');
-  await page.waitForURL('**/');
+  await page.waitForURL('**/', { timeout: 15000 });
 }
 
+/**
+ * Register a new user
+ */
 export async function register(page: Page, username: string, password: string): Promise<void> {
   await page.goto('/register');
-  await page.fill('[name="username"]', username);
-  await page.fill('[name="password"]', password);
-  await page.fill('[name="confirmPassword"]', password);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('#username', { timeout: 10000 });
+  await page.fill('#username', username);
+  await page.fill('#password', password);
+  await page.fill('#confirmPassword', password);
   await page.click('button:has-text("创建账号")');
-  await page.waitForURL('**/login');
+  await page.waitForURL('**/login', { timeout: 15000 });
 }
 
+/**
+ * Submit enterprise verification
+ */
 export async function submitEnterpriseVerification(page: Page, data: typeof testEnterprise = testEnterprise): Promise<void> {
   await page.click('[data-testid="verification-trigger"]');
   await page.click('button:has-text("企业认证")');
@@ -29,6 +42,9 @@ export async function submitEnterpriseVerification(page: Page, data: typeof test
   await page.click('button:has-text("提交认证")');
 }
 
+/**
+ * Call admin review API
+ */
 export async function callAdminReviewAPI(verificationId: number, action: 'approve' | 'reject', reason?: string): Promise<void> {
   const response = await fetch('http://localhost:8080/api/admin/verification/review', {
     method: 'POST',
@@ -43,6 +59,9 @@ export async function callAdminReviewAPI(verificationId: number, action: 'approv
   }
 }
 
+/**
+ * Wait for credit balance to show
+ */
 export async function waitForCreditBalance(page: Page, expected: number): Promise<void> {
   await page.waitForSelector(`[data-testid="credit-balance"]:has-text("${expected.toLocaleString()}")`, { timeout: 10000 });
 }

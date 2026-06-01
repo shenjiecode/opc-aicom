@@ -66,3 +66,7 @@ test_parse2.js
 # Python cache
 __pycache__/
 *.pyc
+
+# E2E测试环境
+backend/.env.e2e
+e2e-test-*.log
