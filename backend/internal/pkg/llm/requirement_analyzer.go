@@ -44,7 +44,7 @@ type RequirementAnalyzer struct {
 // NewRequirementAnalyzer creates a new requirement analyzer
 func NewRequirementAnalyzer(provider LLMProvider, model string) *RequirementAnalyzer {
 	if model == "" {
-		model = "gpt-4-turbo"
+		model = "glm-5.1"
 	}
 	return &RequirementAnalyzer{
 		provider: provider,

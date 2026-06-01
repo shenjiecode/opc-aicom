@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"os"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -136,7 +137,11 @@ func (h *EnterprisePublishHandler) AnalyzeRequirement(c *gin.Context) {
 		return
 	}
 
-	analyzer := llm.NewRequirementAnalyzer(provider, "")
+	llmModel := os.Getenv("LLM_MODEL")
+	if llmModel == "" {
+		llmModel = "glm-5.1"
+	}
+	analyzer := llm.NewRequirementAnalyzer(provider, llmModel)
 	form, err := analyzer.AnalyzeRequirement(ctx, req.InputType, req.InputContent, req.PDFPath)
 	if err != nil {
 		// Update session status to draft on error

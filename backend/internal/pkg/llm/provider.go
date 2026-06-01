@@ -98,7 +98,7 @@ func (p *OpenAIProvider) Chat(ctx context.Context, req *ChatRequest) (*ChatRespo
 		req.Model = p.config.Model
 	}
 	if req.Model == "" {
-		req.Model = "gpt-4-turbo"
+		req.Model = "glm-5.1"
 	}
 
 	body, err := json.Marshal(req)
@@ -143,7 +143,7 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req *ChatRequest) (<-ch
 			req.Model = p.config.Model
 		}
 		if req.Model == "" {
-			req.Model = "gpt-4-turbo"
+			req.Model = "glm-5.1"
 		}
 
 		body, err := json.Marshal(req)
@@ -209,6 +209,7 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req *ChatRequest) (<-ch
 
 func (p *OpenAIProvider) GetModels() []string {
 	return []string{
+		"glm-5.1",
 		"gpt-4-turbo",
 		"gpt-4",
 		"gpt-3.5-turbo",
