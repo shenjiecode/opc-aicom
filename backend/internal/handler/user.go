@@ -328,7 +328,7 @@ func Login(db *gorm.DB, cfg *config.Config, matrixClient *MatrixClient) gin.Hand
 			Code:    0,
 			Message: "success",
 			Data: LoginResponse{
-				Token:          "",
+				Token:          token,
 				UserID:         user.ID,
 				Username:       user.Username,
 				MatrixToken:    matrixToken,
