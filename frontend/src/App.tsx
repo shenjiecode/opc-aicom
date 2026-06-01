@@ -84,7 +84,7 @@ function App() {
               <Route path="/community" element={<Community />} />
               <Route path="/ai-resources" element={<AiResources />} />
               <Route path="/service-center" element={<ServiceCenter />} />
-              <Route path="/aibit" element={<AiBit />} />
+              <Route path="/aibit" element={<MatrixProvider><AiBit /></MatrixProvider>} />
               <Route path="/bite-plaza" element={<MatrixProvider><BitePlaza /></MatrixProvider>} />
               <Route path="/event/:id" element={<EventDetail />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />
