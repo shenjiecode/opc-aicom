@@ -1,21 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useMatrix } from "@/contexts/MatrixContext";
 
 export default function Home() {
 
-  const [query, setQuery] = useState("");
-  const { isAuthenticated } = useAuth();
-  const { isInitialized, initialize } = useMatrix();
 
-  useEffect(() => {
-    if (isAuthenticated && !isInitialized) {
-      initialize().catch(() => {});
-    }
-  }, [isAuthenticated, isInitialized, initialize]);
+  const [query, setQuery] = useState("");
 
   const handleSubmit = () => {
     // 不跳转，保留输入内容
