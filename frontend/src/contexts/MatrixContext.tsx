@@ -289,18 +289,24 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
   // Initialize Matrix client
   const initialize = useCallback(async () => {
     setIsLoading(true);
+    console.log('[Matrix] 开始初始化...');
     setError(null);
     
     try {
       // Step 1: Get Matrix credentials from backend
+      console.log('[Matrix] Step 1: 从后端获取 Matrix credentials...');
+      console.log('[Matrix] ⚠️ 这需要 OPC JWT token (cookie)');
       const loginResponse = await fetchApi(`${API_BASE}/matrix/login`, {
         method: 'POST',
         body: JSON.stringify({}),
       });
       
       const loginData = await loginResponse.json();
+      console.log('[Matrix] API 响应:', { code: loginData.code, message: loginData.message, hasData: !!loginData.data });
       
       if (loginData.code !== 0 || !loginData.data) {
+        console.error('[Matrix] ✗ 获取 credentials 失败');
+        console.log('[Matrix] 💡 可能原因: OPC 未登录 (JWT token 无效或不存在)');
         throw new Error(loginData.message || 'Failed to get Matrix credentials');
       }
       
@@ -309,8 +315,10 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       setAccessToken(access_token);
       setMatrixUserId(user_id);
       setHomeserverUrl(homeserver_url || MATRIX_HOMESERVER);
+      console.log('[Matrix] ✓ Credentials 获取成功:', { user_id, homeserver: homeserver_url || MATRIX_HOMESERVER, hasToken: !!access_token });
       
       // Step 2: Create Matrix client
+      console.log('[Matrix] Step 2: 创建 Matrix client...');
       const matrixClient = matrixSdk.createClient({
         baseUrl: homeserver_url || MATRIX_HOMESERVER,
         accessToken: access_token,
@@ -318,6 +326,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       });
       
       clientRef.current = matrixClient;
+      console.log('[Matrix] ✓ Matrix client 创建成功');
       
       // Step 3: Setup event listeners
       matrixClient.on(ClientEvent.Sync, (state) => {
@@ -434,6 +443,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
       });
       
       // Step 4: Start client sync
+      console.log('[Matrix] Step 3: 启动 Matrix client 同步...');
       await matrixClient.startClient({ 
         initialSyncLimit: 50,
         lazyLoadMembers: true,

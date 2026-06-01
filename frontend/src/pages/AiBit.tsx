@@ -15,37 +15,59 @@ export default function AiBit() {
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[AiBit] 开始跳转流程...');
+
     const redirectToBiteChat = async () => {
-      if (isRedirecting) return;
-      
+      if (isRedirecting) {
+        console.log('[AiBit] 已经在跳转中，跳过');
+        return;
+      }
+
+      console.log('[AiBit] 检查 Matrix 初始化状态:', { isInitialized });
+
       if (!isInitialized) {
+        console.log('[AiBit] Matrix 未初始化，开始初始化...');
+        console.log('[AiBit] ⚠️ 如果 OPC 未登录，Matrix 登录将失败并提示');
         try {
           await initialize();
+          console.log('[AiBit] ✓ Matrix 初始化成功');
         } catch (error) {
-          console.error('Failed to initialize Matrix:', error);
+          console.error('[AiBit] ✗ Matrix 初始化失败:', error);
+          console.log('[AiBit] 💡 提示: OPC 没有登录，请先登录 OPC 账号');
           setInitError('Matrix 连接失败，请先登录 OPC 账号');
           return;
         }
+      } else {
+        console.log('[AiBit] ✓ Matrix 已初始化');
       }
 
       setIsRedirecting(true);
 
+      console.log('[AiBit] 查找 bite DM 聊天:', {
+        totalRooms: rooms.length,
+        query: initialQuery
+      });
       const biteUserPattern = /@bite:/i;
-      const biteDMRooms = rooms.filter(room => 
+      const biteDMRooms = rooms.filter(room =>
         room.isDirect && room.directWith && biteUserPattern.test(room.directWith)
       );
+      console.log('[AiBit] 找到 bite DM 数量:', biteDMRooms.length);
 
       const queryParam = initialQuery ? `&q=${encodeURIComponent(initialQuery)}` : '';
 
       if (biteDMRooms.length > 0) {
         const mostRecentRoom = biteDMRooms[0];
+        console.log('[AiBit] ✓ 跳转到现有 bite 聊天:', mostRecentRoom.roomId);
         navigate(`/opc-channel?room=${encodeURIComponent(mostRecentRoom.roomId)}${queryParam}`);
       } else {
+        console.log('[AiBit] 没有现有 bite 聊天，创建新聊天...');
         try {
           const roomId = await createDirectMessage(BITE_USER_ID, 'bite');
+          console.log('[AiBit] ✓ 创建新 bite 聊天成功:', roomId);
           navigate(`/opc-channel?room=${encodeURIComponent(roomId)}${queryParam}`);
         } catch (error) {
-          console.error('Failed to create bite DM:', error);
+          console.error('[AiBit] ✗ 创建 bite DM 失败:', error);
+          console.log('[AiBit] 跳转到默认 opc-channel');
           navigate(`/opc-channel${queryParam ? '?' + queryParam.slice(1) : ''}`);
         }
       }
