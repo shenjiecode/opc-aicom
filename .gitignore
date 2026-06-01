@@ -47,6 +47,8 @@ backend/.env.e2e
 backend/bin/
 backend/opc-aicom
 backend/server
+backend/main
+backend/config/config.yaml
 build/
 coverage/
 data/mysql/
