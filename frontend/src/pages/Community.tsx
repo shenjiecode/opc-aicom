@@ -84,7 +84,7 @@ export default function Community() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"forum" | "events">("events"); // Defaulting to events for now
+  const [activeTab, setActiveTab] = useState<"events">("events");
   const [activeForumCategory, setActiveForumCategory] = useState("全部");
   const [activeEventCategory, setActiveEventCategory] = useState("全部活动");
 
@@ -127,12 +127,8 @@ export default function Community() {
   };
 
   useEffect(() => {
-    if (activeTab === "forum") {
-      fetchPosts(activeForumCategory);
-    } else {
-      fetchEvents(activeEventCategory);
-    }
-  }, [activeTab, activeForumCategory, activeEventCategory]);
+    fetchEvents(activeEventCategory);
+  }, [activeEventCategory]);
 
   const navigate = useNavigate();
 
@@ -190,15 +186,6 @@ export default function Community() {
         </div>
 
         <div className="flex items-center gap-4">
-          {activeTab === "forum" && (
-            <Button
-              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-6 h-9"
-              onClick={handleCreatePost}
-            >
-              <PenLine className="w-4 h-4 mr-2" />
-              发布帖子
-            </Button>
-          )}
         </div>
       </div>
 
@@ -266,48 +253,31 @@ export default function Community() {
 
         {/* Categories Section */}
         <div className="flex flex-wrap gap-2 mb-8 px-6">
-          {activeTab === "forum" ? (
-            FORUM_CATEGORIES.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveForumCategory(category)}
-                className={cn(
-                  "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                  activeForumCategory === category
-                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60",
-                )}
-              >
-                {category}
-              </button>
-            ))
-          ) : (
-            <div className="w-full flex items-center justify-between">
-              <div className="flex flex-wrap gap-2">
-                {EVENT_CATEGORIES.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setActiveEventCategory(category)}
-                    className={cn(
-                      "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                      activeEventCategory === category
-                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60",
-                    )}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                className="rounded-full bg-white text-slate-700 border-slate-200"
-              >
-                <Ticket className="w-4 h-4 mr-2 text-yellow-500" />
-                我的票券
-              </Button>
+          <div className="w-full flex items-center justify-between">
+            <div className="flex flex-wrap gap-2">
+              {EVENT_CATEGORIES.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setActiveEventCategory(category)}
+                  className={cn(
+                    "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
+                    activeEventCategory === category
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60",
+                  )}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
-          )}
+            <Button
+              variant="outline"
+              className="rounded-full bg-white text-slate-700 border-slate-200"
+            >
+              <Ticket className="w-4 h-4 mr-2 text-yellow-500" />
+              我的票券
+            </Button>
+          </div>
         </div>
 
         {/* Posts/Events Grid */}
@@ -317,81 +287,6 @@ export default function Community() {
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
               <p className="mt-4">加载中...</p>
             </div>
-          ) : activeTab === "forum" ? (
-            posts.length === 0 ? (
-              <div className="col-span-full py-20 text-center text-slate-500 bg-white rounded-2xl border border-slate-100">
-                暂无帖子
-              </div>
-            ) : (
-              posts.map((post) => (
-                <div key={post.id} className="break-inside-avoid">
-                  <Card 
-                    className="overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl group cursor-pointer border border-slate-100"
-                    onClick={() => handlePostClick(post.id)}
-                  >
-                    {/* Image Placeholder */}
-                    <div className="h-48 bg-slate-100 relative group-hover:bg-slate-200 transition-colors">
-                      {post.badge && (
-                        <div className="absolute bottom-3 right-3 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-md shadow-sm">
-                          {post.badge}
-                        </div>
-                      )}
-                    </div>
-
-                    <CardContent className="p-5">
-                      <div className="flex gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
-                          {post.author_avatar ? (
-                            <img
-                              src={post.author_avatar}
-                              alt={post.author_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            post.author_name?.charAt(0)?.toUpperCase() || "U"
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 leading-tight line-clamp-2 mb-1 group-hover:text-indigo-600 transition-colors">
-                            {post.title}
-                          </h3>
-                          <p className="text-xs text-slate-500">
-                            by {post.author_name || "Anonymous"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-slate-600 line-clamp-2 mb-4">
-                        {post.excerpt || post.content}
-                      </p>
-
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {parseTags(post.tags).map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-md font-medium"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-400 pt-4 border-t border-slate-50">
-                        <span>{getTimeAgo(post.created_at)}</span>
-                        <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1">
-                            {post.views || 0} 阅读
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {post.comments_count || 0} 评论
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))
-            )
           ) : events.length === 0 ? (
             <div className="col-span-full py-20 text-center text-slate-500 bg-white rounded-2xl border border-slate-100">
               暂无活动

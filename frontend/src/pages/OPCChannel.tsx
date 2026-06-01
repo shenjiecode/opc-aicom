@@ -55,7 +55,7 @@ export default function OPCChannel() {
     }
   }, [searchParams, rooms, selectRoom]);
 
-  const [inputText, setInputText] = useState("");
+  const [inputText, setInputText] = useState(() => searchParams.get("q") || "");
   const [isSending, setIsSending] = useState(false);
   
   // @提及功能状态
