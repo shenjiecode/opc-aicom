@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
@@ -7,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMatrix } from "@/contexts/MatrixContext";
 
 export default function Home() {
-  const navigate = useNavigate();
+
   const [query, setQuery] = useState("");
   const { isAuthenticated } = useAuth();
   const { isInitialized, initialize } = useMatrix();
@@ -19,8 +18,9 @@ export default function Home() {
   }, [isAuthenticated, isInitialized, initialize]);
 
   const handleSubmit = () => {
+    // 不跳转，保留输入内容
     if (query.trim()) {
-      navigate(`/aibit?q=${encodeURIComponent(query.trim())}`);
+      console.log('Query submitted:', query.trim());
     }
   };
 
