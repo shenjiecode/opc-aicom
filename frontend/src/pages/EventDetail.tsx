@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,9 +215,11 @@ export default function EventDetail() {
                     <h3 className="font-semibold text-slate-900 mb-2">
                       活动介绍
                     </h3>
-                    <p className="text-slate-600 whitespace-pre-wrap">
-                      {event.description}
-                    </p>
+                    <div className="text-slate-600 prose prose-slate max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {event.description}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 )}
               </CardContent>

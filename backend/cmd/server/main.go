@@ -99,6 +99,12 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 
 			}
 
+		// Image upload routes (public)
+		upload := api.Group("/upload")
+		{
+			upload.POST("/image", handler.UploadImage)
+			upload.GET("/image/:filename", handler.ServeImage)
+		}
 
 		// User routes (auth required)
 		userAuth := api.Group("/user")

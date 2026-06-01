@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, Users, Tag, Image, ArrowLeft } from "lucide-react";
-
+import MarkdownEditor from "@/components/MarkdownEditor";
 interface CreateEventRequest {
   title: string;
   description: string;
@@ -141,12 +141,11 @@ export default function CreateEvent() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   活动描述
                 </label>
-                <textarea
-                  name="description"
+                <MarkdownEditor
                   value={formData.description}
-                  onChange={handleChange}
-                  placeholder="活动详细介绍..."
-                  className="w-full min-h-[100px] px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+                  placeholder="活动详细介绍，支持 Markdown 格式，可粘贴或上传图片..."
+                  height={300}
                 />
               </div>
 

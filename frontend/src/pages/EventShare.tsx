@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -217,9 +219,11 @@ export default function EventShare() {
             </div>
 
             {event.description && (
-              <p className="text-slate-600 text-sm mb-6 line-clamp-3">
-                {event.description}
-              </p>
+              <div className="text-slate-600 text-sm mb-6 prose prose-slate prose-sm max-w-none line-clamp-3">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {event.description}
+                </ReactMarkdown>
+              </div>
             )}
 
             {isRegistered ? (
