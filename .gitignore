@@ -1,72 +1,71 @@
-# Dependencies
-node_modules/
 
-# Build
-dist/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
+__pycache__/
+.cache
 .DS_Store
-Thumbs.db
-
-# Environment
 .env
-.env.local
 .env.*.local
-
-# Logs
-*.log
-npm-debug.log*
-
-# OpenCode
-.opencode/auth.json
+.env.local
+.eslintcache
+.idea/
 .opencode/*.db*
+.opencode/auth.json
 .opencode/log/
-.sisyphus/
-
-# Playwright MCP
 .playwright-mcp/
-
-# Screenshots
+.pnp
+.pnp.js
 .screenshots/
-
-# Database data
-data/mysql/
-
+.sisyphus/
+.vscode/
+*.log
+*.png
+*.pyc
+*.swo
+*.swp
+*.tsbuildinfo
+*~
 # Backend binaries
+# Build
+# Database data
+# Dependencies
+# E2E test environment
+# E2E测试环境
+# Environment
+# IDE
+# Logs
+# Matrix database (should not be committed)
+# MatrixNet binaries
+# MatrixNet runtime data
+# Misc
+# Mock/test scripts
+# OpenCode
+# OS
+# Playwright MCP
+# Python cache
+# Screenshots
+# Testing
+backend/.env.e2e
+backend/bin/
 backend/opc-aicom
 backend/server
-backend/bin/
+build/
+coverage/
+data/mysql/
+dist/
+e2e-test-*.log
 frontend/dist/
-
-# MatrixNet runtime data
+logs/
+MatrixNet/commander/backend/commander-backend
 MatrixNet/data/
-MatrixNet/postgres-data/
-MatrixNet/synapse-pgdata/
 MatrixNet/light-agent-server/venv/
 MatrixNet/nginx/
-
-# MatrixNet binaries
-MatrixNet/commander/backend/commander-backend
+MatrixNet/postgres-data/
+MatrixNet/synapse-pgdata/
 MatrixNet/worker/worker
-
-# Screenshots
-*.png
-
-# Mock/test scripts
 mock_light_agent.js
+node_modules/
+npm-debug.log*
+playwright-report/
 test_parse.js
 test_parse2.js
-
-# Python cache
-__pycache__/
-*.pyc
-
-# E2E测试环境
-backend/.env.e2e
-e2e-test-*.log
+test-results/
+Thumbs.db
