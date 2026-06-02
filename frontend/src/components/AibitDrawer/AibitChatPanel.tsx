@@ -148,18 +148,11 @@ function EmptyState() {
 export function AibitChatPanel() {
   const { messages, isLoading } = useMatrix()
   const containerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when messages change (refresh or new message)
   useEffect(() => {
-    if (containerRef.current) {
-      // Small delay to ensure DOM is updated
-      const timer = setTimeout(() => {
-        if (containerRef.current) {
-          containerRef.current.scrollTop = containerRef.current.scrollHeight
-        }
-      }, 50)
-      return () => clearTimeout(timer)
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   return (
@@ -198,6 +191,8 @@ export function AibitChatPanel() {
           {messages.length > 0 && messages[messages.length - 1].isOwn && (
             <TypingIndicator />
           )}
+          {/* Bottom spacer for scroll */}
+          <div ref={messagesEndRef} className="h-4" />
         </div>
       )}
     </div>

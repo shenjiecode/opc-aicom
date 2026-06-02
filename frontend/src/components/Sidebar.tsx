@@ -10,7 +10,6 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Circle,
   LogOut,
   ChevronUp,
@@ -56,7 +55,6 @@ const navigationGroups: NavGroup[] = [
     section: "核心板块",
     items: [
       { id: "home", path: "/", icon: Home, label: "首页" },
-      { id: "aibit", path: "/aibit", icon: Zap, label: "AI比特", badgeType: "hot" },
       {
         id: "community",
         path: "/community",

@@ -68,54 +68,6 @@ const AiResources: React.FC = () => {
       </div>
 
       <div className="px-6 py-6 flex-1 max-w-[1400px]">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Stat 1 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">📦</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">126</div>
-            <div className="text-sm text-slate-500 mb-3">在架IP资源</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 本月新增 14 个
-            </div>
-          </div>
-          {/* Stat 2 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">🔄</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">9,540</div>
-            <div className="text-sm text-slate-500 mb-3">累计调用</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 周增长 21%
-            </div>
-          </div>
-          {/* Stat 3 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">💎</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">4.8</div>
-            <div className="text-sm text-slate-500 mb-3">资源评分均值</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 优质率 91%
-            </div>
-          </div>
-          {/* Stat 4 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">💰</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">32.8k</div>
-            <div className="text-sm text-slate-500 mb-3">本月交易积分</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 资源流转活跃
-            </div>
-          </div>
-        </div>
-
         {/* Tabs */}
         <div className="flex space-x-3 mb-8">
           <button

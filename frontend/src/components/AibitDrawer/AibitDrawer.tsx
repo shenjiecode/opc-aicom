@@ -1,4 +1,4 @@
-import { X, Circle } from "lucide-react"
+import { Circle } from "lucide-react"
 import { useState, useEffect } from "react"
 
 import {
@@ -105,7 +105,7 @@ export function AibitDrawer() {
         <SheetHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <SheetTitle className="text-white text-base">Aibit 助手</SheetTitle>
+              <SheetTitle className="text-white text-base">比特AI</SheetTitle>
               {/* Online status indicator */}
               {biteOnline !== null && (
                 <div className="flex items-center gap-1">
@@ -126,13 +126,6 @@ export function AibitDrawer() {
               AI 智能助手，随时为您服务
             </SheetDescription>
           </div>
-          <button
-            onClick={closeDrawer}
-            className="p-2 rounded-md hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-600"
-            aria-label="关闭"
-          >
-            <X className="h-5 w-5 text-slate-400" />
-          </button>
         </SheetHeader>
 
         <AibitChatPanel />
