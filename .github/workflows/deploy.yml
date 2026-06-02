@@ -44,18 +44,15 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H 8.217.143.228 >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy backend
+      - name: Stop old backend & upload new binary
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
             backend/opc-aicom-backend root@8.217.143.228:/opt/opc-aicom/backend/opc-aicom-backend.new
           $SSH "
-            # 1. Stop old process and kill anything on port 18081
             pkill opc-aicom-backend || true
             fuser -k 18081/tcp 2>/dev/null || true
             sleep 2
-
-            # 2. Wait for port 18081 to be fully released
             for i in 1 2 3 4 5 6 7 8 9 10; do
               if ! fuser 18081/tcp > /dev/null 2>&1; then
                 echo 'Port 18081 released'
@@ -66,35 +63,31 @@ jobs:
             done
             if fuser 18081/tcp > /dev/null 2>&1; then
               echo 'ERROR: Port 18081 still in use after 10s'
-              fuser 18081/tcp 2>/dev/null
               ss -tlnp | grep 18081
               exit 1
             fi
-
-            # 3. Replace binary and start (setsid creates new session, fully detaches from SSH)
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
-            cd /opt/opc-aicom/backend && setsid ./opc-aicom-backend </dev/null > /tmp/backend.log 2>&1 &
-
-            # 4. Health check with curl (more reliable than pgrep)
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              if curl -sf -X POST http://127.0.0.1:18081/api/home/stats > /dev/null 2>&1; then
-                echo 'Backend is healthy'
-                break
-              fi
-              echo \"Waiting for backend to be ready... (\$i)\"
-              sleep 1
-            done
-
-            # 5. Final verify
-            if curl -sf -X POST http://127.0.0.1:18081/api/home/stats > /dev/null 2>&1; then
-              echo 'Backend running and healthy'
-            else
-              echo 'Backend failed health check'
-              tail -30 /tmp/backend.log
-              exit 1
-            fi
           "
+
+      - name: Start backend (detached)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
+            "cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /dev/null 2>&1 &"
+
+      - name: Wait for backend healthy
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if $SSH "curl -sf -X POST http://127.0.0.1:18081/api/home/stats" > /dev/null 2>&1; then
+              echo 'Backend is healthy'
+              exit 0
+            fi
+            echo "Waiting for backend to be ready... ($i)"
+            sleep 1
+          done
+          echo 'Backend failed health check'
+          exit 1
 
       - name: Deploy frontend
         run: |
@@ -103,7 +96,7 @@ jobs:
           tar czf - -C frontend dist | $SSH "tar xzf - -C /opt/opc-aicom/frontend"
           $SSH "nginx -s reload"
 
-      - name: Health check
+      - name: Final health check
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
             "curl -sf -X POST http://127.0.0.1:18081/api/home/stats"
