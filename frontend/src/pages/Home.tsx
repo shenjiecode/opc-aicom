@@ -1,3 +1,4 @@
+import bitOctoLogo from "@/assets/bitOcto.png";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,7 @@ export default function Home() {
       {/* Footer */}
       <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center gap-2">
         <img 
-          src={`${import.meta.env.BASE_URL}bitOcto.png`}
+          src={bitOctoLogo}
           alt="BitOcto Logo" 
           className="h-5 w-auto opacity-70"
         />

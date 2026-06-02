@@ -1,3 +1,4 @@
+import bitOctoLogo from "@/assets/bitOcto.png";
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -210,7 +211,7 @@ export function Sidebar({
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <img 
-            src={`${import.meta.env.BASE_URL}bitOcto.png`}
+            src={bitOctoLogo}
             alt="BitOcto" 
             className="w-9 h-9 rounded-xl object-contain flex-shrink-0"
           />
