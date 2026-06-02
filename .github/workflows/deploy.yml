@@ -74,22 +74,24 @@ jobs:
             # 3. Replace binary and start
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
-            cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /tmp/backend.log 2>&1 &
+            cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend </dev/null > /tmp/backend.log 2>&1 &
+            disown
 
-            # 4. Wait for backend to start (with retries)
-            for i in 1 2 3 4 5; do
-              sleep 1
-              if pgrep opc-aicom-backend > /dev/null 2>&1; then
-                echo 'Backend started successfully'
+            # 4. Health check with curl (more reliable than pgrep)
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if curl -sf -X POST http://127.0.0.1:18081/api/home/stats > /dev/null 2>&1; then
+                echo 'Backend is healthy'
                 break
               fi
+              echo \"Waiting for backend to be ready... (\$i)\"
+              sleep 1
             done
 
-            # 5. Verify
-            if pgrep opc-aicom-backend > /dev/null 2>&1; then
-              echo 'Backend running'
+            # 5. Final verify
+            if curl -sf -X POST http://127.0.0.1:18081/api/home/stats > /dev/null 2>&1; then
+              echo 'Backend running and healthy'
             else
-              echo 'Backend failed to start'
+              echo 'Backend failed health check'
               tail -30 /tmp/backend.log
               exit 1
             fi
