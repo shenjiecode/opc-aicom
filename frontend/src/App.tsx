@@ -46,6 +46,7 @@ import EditAgentPage from "./pages/agentbaba/EditAgent";
 import CreditHistoryPage from "./pages/credit/CreditHistory";
 import CreditRechargePage from "./pages/admin/CreditRecharge";
 import PointsAllocationPage from "./pages/admin/PointsAllocation";
+import CommunityManagement from "./pages/admin/CommunityManagement";
 import PointsOrders from "./pages/PointsOrders";
 import ContractDetail from './pages/ContractDetail';
 import { AibitDrawer } from "./components/AibitDrawer/AibitDrawer";
@@ -66,6 +67,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/opc-workbench" element={<OPCWorkbench />} />
               <Route path="/opc-channel" element={<OPCChannel />} />
+              <Route path="/event/:id" element={<EventDetail />} />
               <Route path="/event/share/:code" element={<EventShare />} />
 
               {/* Admin routes - Fullscreen with own layout */}
@@ -76,7 +78,9 @@ function App() {
                 <Route path="tasks" element={<TaskManagement />} />
                 <Route path="orders" element={<OrderManagement />} />
                 <Route path="agents" element={<AgentSettings />} />
-                <Route path="opc" element={<OPCManagement />} />
+                <Route path="opc" element={<OPCManagement />} />;
+                <Route path="community" element={<CommunityManagement />} />;
+                <Route path="api-gateway" element={<AIModelGateway />} />
                 <Route path="api-gateway" element={<AIModelGateway />} />
                 <Route path="credit-recharge" element={<CreditRechargePage />} />
                 <Route path="points/allocation" element={<PointsAllocationPage />} />

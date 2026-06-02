@@ -17,6 +17,7 @@ import {
   Globe,
   CreditCard,
   Coins,
+  Building2,
 } from "lucide-react";
 
 interface User {
@@ -26,7 +27,8 @@ interface User {
   vipLevel: number;
 }
 
-const navigationItems = [
+// Navigation items for admin role (full access)
+const adminNavigationItems = [
   { path: "/admin", label: "控制台", icon: LayoutDashboard },
   { path: "/admin/users", label: "用户管理", icon: Users },
   { path: "/admin/review", label: "内容审核", icon: FileText },
@@ -37,6 +39,23 @@ const navigationItems = [
   { path: "/admin/points/allocation", label: "积分分配", icon: Coins },
   { path: "/admin/api-gateway", label: "AI 模型网关", icon: Globe },
 ];
+
+// Navigation items for community_admin role (limited access)
+const communityAdminNavigationItems = [
+  { path: "/admin", label: "控制台", icon: LayoutDashboard },
+  { path: "/admin/users", label: "用户管理", icon: Users },
+  { path: "/admin/community", label: "社区管理", icon: Building2 },
+  { path: "/admin/opc", label: "OPC企业认证", icon: Shield },
+];
+
+// Function to get navigation items based on role
+const getNavigationItems = (role: string) => {
+  if (role === "community_admin") {
+    return communityAdminNavigationItems;
+  }
+  return adminNavigationItems;
+};
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,8 +71,8 @@ export default function AdminLayout() {
         navigate("/login", { state: { from: location.pathname } });
         return;
       }
-      // Check if user is admin (role should be "admin" or similar)
-      if (currentUser.role !== "admin") {
+      // Check if user is admin or community_admin
+      if (currentUser.role !== "admin" && currentUser.role !== "community_admin") {
         navigate("/");
         return;
       }
@@ -85,6 +104,7 @@ export default function AdminLayout() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Mobile Sidebar Overlay */}
@@ -131,7 +151,7 @@ export default function AdminLayout() {
 
         {/* Navigation */}
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-          {navigationItems.map((item) => {
+          {getNavigationItems(user.role).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path ||
               (item.path !== "/admin" && location.pathname.startsWith(item.path));

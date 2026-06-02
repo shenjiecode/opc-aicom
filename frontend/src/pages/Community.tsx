@@ -223,27 +223,48 @@ export default function Community() {
 
         {/* Hero Banner for Events */}
         {activeTab === "events" && (
-          <div className="w-full bg-[#2A2B3D] overflow-hidden mb-8 relative px-12 py-8 flex items-center justify-between min-h-[220px]">
-            {/* Background glowing effects */}
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/20 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-600/20 blur-[80px] rounded-full -translate-x-1/4 translate-y-1/4 pointer-events-none" />
-
-            <div className="relative z-10 w-full flex flex-col justify-center">
-              <div className="max-w-2xl">
-                <div className="inline-block bg-white/10 text-slate-200 text-xs font-medium px-3 py-1 rounded-full mb-4 backdrop-blur-sm">
-                  年度重磅
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Banner 1 - OPC x 阿里云 */}
+            <div className="bg-gradient-to-br from-orange-500 to-amber-600 overflow-hidden relative px-8 py-6 flex items-center min-h-[180px] rounded-2xl shadow-lg">
+              {/* Background decoration */}
+              <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-white/10 blur-[80px] rounded-full translate-x-1/4 -translate-y-1/4 pointer-events-none" />
+              
+              <div className="relative z-10 w-full flex flex-col justify-center">
+                <div className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 backdrop-blur-sm w-fit">
+                  🔥 限时福利
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
-                  2026 AI Native 创新者大会
+                <h2 className="text-2xl md:text-2xl font-bold text-white mb-2 leading-tight">
+                  2026年五常街道OPC x 阿里云
                 </h2>
-                <p className="text-slate-300 text-sm md:text-base leading-relaxed line-clamp-2 mb-4">
-                  汇聚全球顶尖 AI
-                  创业者、技术极客与早期投资人。洞见趋势，链接资源，共建 AI
-                  原生时代的新商业生态。
+                <p className="text-white/90 text-sm md:text-base leading-relaxed mb-4">
+                  入驻千元大礼包开始预约申请了！
                 </p>
-                <div className="flex items-center mt-6">
-                  <Button className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-8 py-5 text-base font-medium transition-all hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/25">
-                    立即抢票
+                <div className="flex items-center mt-2">
+                  <Button className="bg-white text-orange-600 hover:bg-orange-50 rounded-lg px-6 py-3 text-sm font-bold transition-all hover:scale-105 shadow-md">
+                    立即预约 →
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Banner 2 - Placeholder for future event */}
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden relative px-8 py-6 flex items-center min-h-[180px] rounded-2xl shadow-lg">
+              {/* Background decoration */}
+              <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-white/10 blur-[80px] rounded-full -translate-x-1/4 translate-y-1/4 pointer-events-none" />
+              
+              <div className="relative z-10 w-full flex flex-col justify-center">
+                <div className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 backdrop-blur-sm w-fit">
+                  📢 敬请期待
+                </div>
+                <h2 className="text-2xl md:text-2xl font-bold text-white mb-2 leading-tight">
+                  OPC社区更多福利
+                </h2>
+                <p className="text-white/90 text-sm md:text-base leading-relaxed mb-4">
+                  更多合作活动即将上线，敬请关注！
+                </p>
+                <div className="flex items-center mt-2">
+                  <Button className="bg-white/20 text-white hover:bg-white/30 rounded-lg px-6 py-3 text-sm font-bold transition-all backdrop-blur-sm">
+                    了解更多 →
                   </Button>
                 </div>
               </div>

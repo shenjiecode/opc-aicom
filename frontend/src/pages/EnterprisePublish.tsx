@@ -13,17 +13,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { useAibitDrawer } from "@/contexts/AibitDrawerContext";
 import {
   ArrowLeft,
   FileText,
-  Upload,
   Sparkles,
   CheckCircle,
   Loader2,
   Building2,
   AlertCircle,
+  MessageSquare,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface AnalysisResult {
   title: string;
@@ -41,74 +42,47 @@ interface EnterprisePublishProps {
   onClose?: () => void;
   onPublishSuccess?: () => void;
 }
+
 interface ConfirmResponse {
-task_id: number;
+  task_id: number;
 }
 
 export default function EnterprisePublish({ modalMode, onClose, onPublishSuccess }: EnterprisePublishProps) {
   const navigate = useNavigate();
-  const [inputType, setInputType] = useState<"text" | "pdf">("text");
+  const { openDrawer } = useAibitDrawer();
   const [requirementText, setRequirementText] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState("");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === "application/pdf") {
-      setSelectedFile(file);
-      setError("");
-    } else if (file) {
-      setError("请上传 PDF 格式的文件");
-      setSelectedFile(null);
+  const handleAibitGenerate = () => {
+    if (!requirementText.trim()) {
+      setError("请先输入需求描述");
+      return;
     }
+    setError("");
+    openDrawer(`请根据以下需求描述，帮我生成一份完整的需求规格书：\n\n${requirementText}`);
   };
 
   const handleAnalyze = async () => {
     setError("");
 
-    if (inputType === "text" && !requirementText.trim()) {
+    if (!requirementText.trim()) {
       setError("请输入需求描述");
-      return;
-    }
-
-    if (inputType === "pdf" && !selectedFile) {
-      setError("请上传 PDF 文件");
       return;
     }
 
     setIsAnalyzing(true);
 
     try {
-      let response: AnalysisResult;
-
-      if (inputType === "text") {
-        response = await apiFetch<AnalysisResult>("/publish/analyze", {
-          method: "POST",
-          body: JSON.stringify({
-            type: "text",
-            content: requirementText,
-          }),
-        });
-      } else {
-        const formData = new FormData();
-        formData.append("type", "pdf");
-        formData.append("file", selectedFile!);
-
-        const res = await fetch("/api/publish/analyze", {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!res.ok || data.code !== 0) {
-          throw new Error(data.message || "解析失败");
-        }
-        response = data.data;
-      }
+      const response = await apiFetch<AnalysisResult>("/publish/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "text",
+          content: requirementText,
+        }),
+      });
 
       setAnalysisResult(response);
     } catch (err) {
@@ -206,84 +180,31 @@ export default function EnterprisePublish({ modalMode, onClose, onPublishSuccess
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Input Type Selector */}
+                {/* Text Input */}
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-3 block">
-                    输入方式
+                  <Label className="text-sm font-medium text-slate-700 mb-2 block">
+                    需求描述 *
                   </Label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setInputType("text")}
-                      className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                        inputType === "text"
-                          ? "border-amber-500 bg-amber-50 text-amber-700"
-                          : "border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
-                      <FileText className="w-5 h-5" />
-                      <span className="font-medium">文本描述</span>
-                    </button>
-                    <button
-                      onClick={() => setInputType("pdf")}
-                      className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                        inputType === "pdf"
-                          ? "border-amber-500 bg-amber-50 text-amber-700"
-                          : "border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
-                      <Upload className="w-5 h-5" />
-                      <span className="font-medium">PDF 文档</span>
-                    </button>
-                  </div>
+                  <Textarea
+                    value={requirementText}
+                    onChange={(e) => setRequirementText(e.target.value)}
+                    placeholder="请详细描述您的需求，包括项目背景、目标、技术要求、预算范围、交付时间等..."
+                    className="min-h-[200px] resize-none"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    建议 100-500 字，描述越详细，AI 分析越精准
+                  </p>
                 </div>
 
-                {/* Text Input */}
-                {inputType === "text" && (
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700 mb-2 block">
-                      需求描述 *
-                    </Label>
-                    <Textarea
-                      value={requirementText}
-                      onChange={(e) => setRequirementText(e.target.value)}
-                      placeholder="请详细描述您的需求，包括项目背景、目标、技术要求、预算范围、交付时间等..."
-                      className="min-h-[200px] resize-none"
-                    />
-                    <p className="text-xs text-slate-400 mt-2">
-                      建议 100-500 字，描述越详细，AI 分析越精准
-                    </p>
-                  </div>
-                )}
-
-                {/* PDF Upload */}
-                {inputType === "pdf" && (
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700 mb-2 block">
-                      上传需求文档 *
-                    </Label>
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-amber-400 transition-colors">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="pdf-upload"
-                      />
-                      <label
-                        htmlFor="pdf-upload"
-                        className="cursor-pointer flex flex-col items-center"
-                      >
-                        <Upload className="w-10 h-10 text-slate-400 mb-3" />
-                        <span className="text-slate-600 font-medium">
-                          {selectedFile ? selectedFile.name : "点击上传 PDF 文件"}
-                        </span>
-                        <span className="text-slate-400 text-sm mt-1">
-                          支持 10MB 以内的 PDF 文档
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
+                {/* Aibit Button */}
+                <Button
+                  onClick={handleAibitGenerate}
+                  variant="outline"
+                  className="w-full h-12 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium border-0"
+                >
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  比特AI 帮忙生成需求规格书
+                </Button>
 
                 {/* Analyze Button */}
                 <Button

@@ -339,7 +339,16 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 			admin.POST("/credit/recharge", creditHandler.Recharge)
 			admin.POST("/points/allocate", adminPointsHandler.AllocatePoints)
 			admin.POST("/compute/usage/list", handler.GetAdminComputeUsageList(db))
-			admin.POST("/compute/usage/summary", handler.GetAdminComputeUsageSummary(db))
+        }
+
+		// Community Admin routes (accessible by admin and community_admin)
+		communityAdmin := api.Group("/community-admin")
+		communityAdmin.Use(handler.AdminAuthMiddleware(db, cfg.JWT.Secret, cfg.JWT.Cookie.Name))
+		{
+			communityAdmin.POST("/users/list", handler.GetCommunityUsersList(db))
+			communityAdmin.POST("/enterprises/list", handler.GetOPCEnterprisesList(db))
+			communityAdmin.POST("/enterprises/approve", handler.ApproveEnterpriseVerification(db))
+			communityAdmin.POST("/enterprises/reject", handler.RejectEnterpriseVerification(db))
 		}
 
 		// AgentBaba routes (auth required)

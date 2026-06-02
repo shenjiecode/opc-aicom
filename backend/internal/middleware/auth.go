@@ -79,10 +79,48 @@ func GetUsername(c *gin.Context) (string, bool) {
 
 // GetClaims extracts full claims from gin context (after AuthMiddleware)
 func GetClaims(c *gin.Context) (*jwtpkg.Claims, bool) {
-	claims, exists := c.Get("claims")
-	if !exists {
-		return nil, false
+claims, exists := c.Get("claims")
+if !exists {
+return nil, false
+}
+cclaims, ok := claims.(*jwtpkg.Claims)
+return cclaims, ok
+}
+
+// RequireRoleMiddleware creates a middleware that checks for specific roles
+// This middleware should be used after AuthMiddleware
+func RequireRoleMiddleware(allowedRoles []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get user role from context (set by AuthMiddleware or AdminAuthMiddleware)
+		userRole, exists := c.Get("userRole")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "role information not available"})
+			c.Abort()
+			return
+		}
+
+		role, ok := userRole.(string)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid role format"})
+			c.Abort()
+			return
+		}
+
+		// Check if user role is in allowed roles
+		allowed := false
+		for _, allowedRole := range allowedRoles {
+			if role == allowedRole {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
 	}
-	cclaims, ok := claims.(*jwtpkg.Claims)
-	return cclaims, ok
 }

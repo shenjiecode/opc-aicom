@@ -429,15 +429,14 @@ func ChangeUserRole(db *gorm.DB) gin.HandlerFunc {
 		}
 		
 		// Validate role
-		validRoles := map[string]bool{"user": true, "admin": true, "operator": true}
-		if !validRoles[req.Role] {
-			c.JSON(http.StatusBadRequest, UnifiedResponse{
-				Code:    400,
-				Message: "invalid role",
-			})
-			return
-		}
-		
+validRoles := map[string]bool{"user": true, "admin": true, "operator": true, "community_admin": true}
+if !validRoles[req.Role] {
+	c.JSON(http.StatusBadRequest, UnifiedResponse{
+		Code:    400,
+		Message: "invalid role",
+	})
+	return
+}
 		var user model.User
 		if err := db.First(&user, userID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {

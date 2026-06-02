@@ -1,18 +1,18 @@
+import { useAibitDrawer } from "@/contexts/AibitDrawerContext";
 import bitOctoLogo from "@/assets/bitOcto.png";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
-
 export default function Home() {
-
+  const { openDrawer } = useAibitDrawer();
 
   const [query, setQuery] = useState("");
 
   const handleSubmit = () => {
-    // 不跳转，保留输入内容
     if (query.trim()) {
-      console.log('Query submitted:', query.trim());
+      openDrawer(query.trim());
+      setQuery("");
     }
   };
 

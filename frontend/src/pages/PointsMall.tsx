@@ -265,60 +265,11 @@ export default function PointsMall() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20">
             <Coins className="w-4 h-4 text-white" />
             {balanceLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
-            {!balanceLoading && <span className="text-sm font-bold text-white">{formatNumber(displayPoints)}</span>}
           </div>
         </div>
       </div>
 
       <div className="px-6 py-6 flex-1 max-w-[1400px]">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Stat 1 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">⚡</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{packages.length}</div>
-            <div className="text-sm text-slate-500 mb-3">在架套餐</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 多种算力可选
-            </div>
-          </div>
-          {/* Stat 2 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">🤖</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">AI</div>
-            <div className="text-sm text-slate-500 mb-3">Qoder 账号</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 专业代码助手
-            </div>
-          </div>
-          {/* Stat 3 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">📦</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{myPackages.length}</div>
-            <div className="text-sm text-slate-500 mb-3">已购套餐</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 随时查看使用
-            </div>
-          </div>
-          {/* Stat 4 */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-xl">💎</span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">100%</div>
-            <div className="text-sm text-slate-500 mb-3">即时生效</div>
-            <div className="text-xs font-medium text-emerald-500 flex items-center">
-              <span className="mr-1">↑</span> 购买即用
-            </div>
-          </div>
-        </div>
-
         {/* Tabs - Pill style */}
         <div className="flex space-x-3 mb-8">
           <button

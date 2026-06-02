@@ -6,6 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   ChevronLeft,
@@ -16,6 +31,8 @@ import {
   RefreshCw,
   Shield,
   User,
+  UserCog,
+  Building2,
 } from "lucide-react";
 
 interface User {
@@ -42,6 +59,7 @@ interface FilterState {
 const ROLES = [
   { value: "", label: "全部角色" },
   { value: "admin", label: "管理员" },
+  { value: "community_admin", label: "社区管理员" },
   { value: "user", label: "普通用户" },
 ];
 
@@ -64,6 +82,10 @@ export default function UserManagement() {
     status: "",
   });
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [roleChangeUser, setRoleChangeUser] = useState<User | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
+
 
   useEffect(() => {
     fetchUsers();
@@ -116,6 +138,65 @@ export default function UserManagement() {
       alert("操作失败，请稍后重试");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleChangeRole = async () => {
+    if (!roleChangeUser || !selectedRole) return;
+
+    setRoleChangeLoading(true);
+    try {
+      await apiFetch(`/admin/users/${roleChangeUser.id}/role`, {
+        method: "POST",
+        body: JSON.stringify({
+          role: selectedRole,
+        }),
+      });
+      // Refresh the list
+      fetchUsers();
+      setRoleChangeUser(null);
+      setSelectedRole("");
+    } catch (err) {
+      console.error("Failed to change user role:", err);
+      alert("修改角色失败，请稍后重试");
+    } finally {
+      setRoleChangeLoading(false);
+    }
+  };
+
+  const openRoleChangeDialog = (user: User) => {
+    setRoleChangeUser(user);
+    setSelectedRole(user.role);
+  };
+
+  const getRoleLabel = (role: string) => {
+    const roleMap: Record<string, string> = {
+      admin: "管理员",
+      community_admin: "社区管理员",
+      user: "普通用户",
+    };
+    return roleMap[role] || role;
+  };
+
+  const getRoleBadgeClass = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "bg-purple-100 text-purple-700";
+      case "community_admin":
+        return "bg-blue-100 text-blue-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case "admin":
+        return <Shield className="w-3 h-3 mr-1" />;
+      case "community_admin":
+        return <Building2 className="w-3 h-3 mr-1" />;
+      default:
+        return <User className="w-3 h-3 mr-1" />;
     }
   };
 
@@ -255,18 +336,10 @@ export default function UserManagement() {
                       <td className="py-3 px-4">
                         <Badge
                           variant="secondary"
-                          className={cn(
-                            user.role === "admin"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-slate-100 text-slate-700"
-                          )}
+                          className={cn(getRoleBadgeClass(user.role))}
                         >
-                          {user.role === "admin" ? (
-                            <Shield className="w-3 h-3 mr-1" />
-                          ) : (
-                            <User className="w-3 h-3 mr-1" />
-                          )}
-                          {user.role === "admin" ? "管理员" : "普通用户"}
+                          {getRoleIcon(user.role)}
+                          {getRoleLabel(user.role)}
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
@@ -285,32 +358,43 @@ export default function UserManagement() {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-8",
-                            user.status === "active"
-                              ? "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-                          )}
-                          onClick={() => handleBanUser(user.id, user.status)}
-                          disabled={actionLoading === user.id}
-                        >
-                          {actionLoading === user.id ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : user.status === "active" ? (
-                            <>
-                              <Ban className="w-3.5 h-3.5 mr-1" />
-                              封禁
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                              解封
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                            onClick={() => openRoleChangeDialog(user)}
+                          >
+                            <UserCog className="w-3.5 h-3.5 mr-1" />
+                            修改角色
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "h-8",
+                              user.status === "active"
+                                ? "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                            )}
+                            onClick={() => handleBanUser(user.id, user.status)}
+                            disabled={actionLoading === user.id}
+                          >
+                            {actionLoading === user.id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : user.status === "active" ? (
+                              <>
+                                <Ban className="w-3.5 h-3.5 mr-1" />
+                                封禁
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                解封
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -350,6 +434,48 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Role Change Dialog */}
+      <Dialog open={!!roleChangeUser} onOpenChange={() => setRoleChangeUser(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>修改用户角色</DialogTitle>
+            <DialogDescription>
+              为用户 <span className="font-medium text-slate-900">{roleChangeUser?.username}</span> 选择新角色
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="选择角色" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.filter(r => r.value !== "").map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleChangeUser(null)}>
+              取消
+            </Button>
+            <Button
+              onClick={handleChangeRole}
+              disabled={!selectedRole || roleChangeLoading || selectedRole === roleChangeUser?.role}
+            >
+              {roleChangeLoading ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <UserCog className="w-4 h-4 mr-2" />
+              )}
+              确认修改
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
