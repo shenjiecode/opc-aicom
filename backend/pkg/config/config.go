@@ -195,6 +195,8 @@ func Load() (*Config, error) {
 	viper.BindEnv("matrix.server_name", "MATRIX_SERVER_NAME")
 	viper.BindEnv("matrix.shared_secret", "MATRIX_SHARED_SECRET")
 	viper.BindEnv("matrix.admin_api_url", "MATRIX_ADMIN_API_URL")
+	viper.BindEnv("matrix.admin_user", "MATRIX_ADMIN_USER")
+	viper.BindEnv("matrix.admin_password", "MATRIX_ADMIN_PASSWORD")
 
 	// LLM config
 	viper.BindEnv("llm.default_provider", "LLM_DEFAULT_PROVIDER")
