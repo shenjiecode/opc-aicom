@@ -47,17 +47,34 @@ jobs:
       - name: Deploy backend
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
-          # Upload to temp file first to avoid "Text file busy"
-          cat backend/opc-aicom-backend | $SSH "cat > /opt/opc-aicom/backend/opc-aicom-backend.new"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
+            backend/opc-aicom-backend root@8.217.143.228:/opt/opc-aicom/backend/opc-aicom-backend.new
           $SSH "
-            pkill opc-aicom-backend || true
-            sleep 2
+            pkill -9 opc-aicom-backend || true
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if ! pgrep opc-aicom-backend > /dev/null 2>&1; then
+                echo 'Process exited'
+                break
+              fi
+              echo \"Waiting for process to exit... (\$i)\"
+              sleep 1
+            done
+            if pgrep opc-aicom-backend > /dev/null 2>&1; then
+              echo 'ERROR: Process still running after 10s, forcing kill'
+              killall -9 opc-aicom-backend 2>/dev/null || true
+              sleep 2
+            fi
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
-            cp /opt/opc-aicom/backend/config/config.yaml /opt/opc-aicom/backend/config.yaml
-            cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /dev/null 2>&1 &
-            sleep 3
-            pgrep opc-aicom-backend > /dev/null && echo 'Backend running' || echo 'Backend failed to start'
+            cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /tmp/backend.log 2>&1 &
+            for i in 1 2 3 4 5; do
+              if pgrep opc-aicom-backend > /dev/null 2>&1; then
+                echo 'Backend started successfully'
+                break
+              fi
+              sleep 1
+            done
+            pgrep opc-aicom-backend > /dev/null && echo 'Backend running' || (echo 'Backend failed to start'; tail -20 /tmp/backend.log; exit 1)
           "
 
       - name: Deploy frontend
