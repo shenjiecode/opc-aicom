@@ -71,11 +71,10 @@ jobs:
               exit 1
             fi
 
-            # 3. Replace binary and start
+            # 3. Replace binary and start (setsid creates new session, fully detaches from SSH)
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
-            cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend </dev/null > /tmp/backend.log 2>&1 &
-            disown
+            cd /opt/opc-aicom/backend && setsid ./opc-aicom-backend </dev/null > /tmp/backend.log 2>&1 &
 
             # 4. Health check with curl (more reliable than pgrep)
             for i in 1 2 3 4 5 6 7 8 9 10; do
