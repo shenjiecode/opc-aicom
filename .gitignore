@@ -71,3 +71,5 @@ test_parse.js
 test_parse2.js
 test-results/
 Thumbs.db
+backend/config/*.backup
+frontend/@/
