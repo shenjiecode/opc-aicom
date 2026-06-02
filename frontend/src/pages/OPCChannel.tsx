@@ -67,6 +67,7 @@ export default function OPCChannel() {
   const [showMentionPopup, setShowMentionPopup] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // bite私聊房间展开/折叠状态
   const [isBiteDMExpanded, setIsBiteDMExpanded] = useState(true);
@@ -179,6 +180,11 @@ export default function OPCChannel() {
     },
     []
   );
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <div className="h-screen bg-[#13141f] flex overflow-hidden">
@@ -533,6 +539,8 @@ export default function OPCChannel() {
                   </div>
                 </div>
               )}
+              {/* Bottom spacer for scroll */}
+              <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
         </div>
