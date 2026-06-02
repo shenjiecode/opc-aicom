@@ -98,6 +98,10 @@ interface MatrixContextType {
   renameRoom: (roomId: string, newName: string) => Promise<void>;
   refreshRooms: () => Promise<void>;
 
+
+  // User presence
+  getUserPresence: (userId: string) => Promise<{ isOnline: boolean; lastActive?: number }>;
+
   // Worker state
   workers: MatrixWorker[];
   refreshWorkers: () => Promise<void>;
@@ -797,7 +801,24 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     setInvitations(prev => prev.filter(inv => inv.roomId !== roomId));
     setUnreadNotificationCount(prev => Math.max(0, prev - 1));
   }, []);
-  
+	// Get user presence status
+	const getUserPresence = useCallback(async (userId: string): Promise<{ isOnline: boolean; lastActive?: number }> => {
+		if (!clientRef.current) {
+			return { isOnline: false };
+		}
+		
+		try {
+			const presence = await clientRef.current.getPresence(userId);
+			const isOnline = presence.presence === 'online' || presence.presence === 'unavailable';
+			const lastActive = presence.last_active_ago ? Date.now() - presence.last_active_ago : undefined;
+			return { isOnline, lastActive };
+		} catch (error) {
+			console.error('[Matrix] Failed to get presence for', userId, error);
+			return { isOnline: false };
+		}
+	}, []);
+	
+  // Mark notification as read
   // Mark notification as read
   const markNotificationRead = useCallback((notificationId: string) => {
     setNotifications(prev => prev.map(n => 
@@ -870,6 +891,7 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     rejectInvitation,
     markNotificationRead,
     clearAllNotifications,
+    getUserPresence,
   };
 
   return <MatrixContext.Provider value={value}>{children}</MatrixContext.Provider>;

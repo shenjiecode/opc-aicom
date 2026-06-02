@@ -89,7 +89,7 @@ matrixClient := handler.NewMatrixClient(cfg, db)
 
 			{
 
-				user.POST("/register", handler.Register(db))
+				user.POST("/register", handler.Register(db, matrixClient))
 
 				user.POST("/login", handler.Login(db, cfg, matrixClient))
 

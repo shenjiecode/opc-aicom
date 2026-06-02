@@ -43,7 +43,8 @@ type UnifiedResponse struct {
 
 // Register handles user registration
 // POST /api/user/register
-func Register(db *gorm.DB) gin.HandlerFunc {
+// Also creates Matrix user with same password for seamless integration
+func Register(db *gorm.DB, matrixClient *MatrixClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RegisterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,6 +113,40 @@ func Register(db *gorm.DB) gin.HandlerFunc {
 				Message: "Failed to create user",
 			})
 			return
+		}
+
+		// Create Matrix user with same password
+		if matrixClient != nil {
+			matrixUsername := sanitizeMatrixUsername(user.Username)
+			
+			// Check if Matrix user already exists
+			matrixUserExists := checkMatrixUserExists(matrixClient, matrixUsername)
+			
+			if !matrixUserExists {
+				// Register Matrix user with same password
+				regErr := registerMatrixUserInternal(matrixClient, matrixUsername, req.Password)
+				if regErr != nil {
+					log.Printf("[Matrix] Failed to register Matrix user %s for OPC user %s: %v", matrixUsername, user.Username, regErr)
+					// Don't fail registration - Matrix is optional
+				} else {
+					log.Printf("[Matrix] Successfully registered Matrix user %s for OPC user %s", matrixUsername, user.Username)
+					
+					// Try to login and get Matrix credentials to store
+					accessToken, uid, loginErr := LoginOrRegisterMatrixUser(matrixClient, matrixUsername, req.Password)
+					if loginErr == nil {
+						// Update user with Matrix credentials
+						db.Model(&user).Updates(map[string]interface{}{
+							"matrix_username": matrixUsername,
+							"matrix_token":    accessToken,
+							"matrix_user_id":  uid,
+						})
+						setMatrixToken(user.ID, accessToken)
+						log.Printf("[Matrix] Stored Matrix credentials for OPC user %s (matrix_user_id=%s)", user.Username, uid)
+					}
+				}
+			} else {
+				log.Printf("[Matrix] Matrix user %s already exists, skipping registration", matrixUsername)
+			}
 		}
 
 		// Create user asset record with default values
