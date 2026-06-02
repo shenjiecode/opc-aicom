@@ -50,8 +50,9 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
             backend/opc-aicom-backend root@8.217.143.228:/opt/opc-aicom/backend/opc-aicom-backend.new
           $SSH "
-            pkill -9 opc-aicom-backend || true
-            for i in 1 2 3 4 5 6 7 8 9 10; do
+            # 1. Stop old process
+            pkill opc-aicom-backend || true
+            for i in 1 2 3 4 5; do
               if ! pgrep opc-aicom-backend > /dev/null 2>&1; then
                 echo 'Process exited'
                 break
@@ -60,21 +61,43 @@ jobs:
               sleep 1
             done
             if pgrep opc-aicom-backend > /dev/null 2>&1; then
-              echo 'ERROR: Process still running after 10s, forcing kill'
-              killall -9 opc-aicom-backend 2>/dev/null || true
+              echo 'Force killing process'
+              pkill -9 opc-aicom-backend || true
               sleep 2
             fi
+
+            # 2. Wait for port 18081 to be fully released
+            for i in 1 2 3 4 5; do
+              if ! fuser 18081/tcp > /dev/null 2>&1; then
+                echo 'Port 18081 released'
+                break
+              fi
+              echo \"Waiting for port 18081 to be released... (\$i)\"
+              sleep 1
+            done
+
+            # 3. Replace binary and start
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
             cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /tmp/backend.log 2>&1 &
+
+            # 4. Wait for backend to start (with retries)
             for i in 1 2 3 4 5; do
+              sleep 1
               if pgrep opc-aicom-backend > /dev/null 2>&1; then
                 echo 'Backend started successfully'
                 break
               fi
-              sleep 1
             done
-            pgrep opc-aicom-backend > /dev/null && echo 'Backend running' || (echo 'Backend failed to start'; tail -20 /tmp/backend.log; exit 1)
+
+            # 5. Verify
+            if pgrep opc-aicom-backend > /dev/null 2>&1; then
+              echo 'Backend running'
+            else
+              echo 'Backend failed to start'
+              tail -30 /tmp/backend.log
+              exit 1
+            fi
           "
 
       - name: Deploy frontend
