@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MatrixProvider } from "./contexts/MatrixContext";
+import { AibitDrawerProvider } from "./contexts/AibitDrawerContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
@@ -47,71 +48,77 @@ import CreditRechargePage from "./pages/admin/CreditRecharge";
 import PointsAllocationPage from "./pages/admin/PointsAllocation";
 import PointsOrders from "./pages/PointsOrders";
 import ContractDetail from './pages/ContractDetail';
+import { AibitDrawer } from "./components/AibitDrawer/AibitDrawer";
+import { AibitFloatingButton } from "./components/AibitDrawer/AibitFloatingButton";
 
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Routes without Layout - Auth pages & Fullscreen pages */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/opc-workbench" element={<MatrixProvider><OPCWorkbench /></MatrixProvider>} />
-            <Route path="/opc-channel" element={<MatrixProvider><OPCChannel /></MatrixProvider>} />
-            {/* Event share page - fullscreen, no layout */}
-            <Route path="/event/share/:code" element={<EventShare />} />
+          <MatrixProvider>
+            <AibitDrawerProvider>
+              <AibitDrawer />
+              <AibitFloatingButton />
+              <Routes>
+              {/* Routes without Layout - Auth pages & Fullscreen pages */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/opc-workbench" element={<OPCWorkbench />} />
+              <Route path="/opc-channel" element={<OPCChannel />} />
+              <Route path="/event/share/:code" element={<EventShare />} />
 
-            {/* Admin routes - Fullscreen with own layout */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-			  <Route path="users" element={<UserManagement />} />
-			  <Route path="review" element={<ContentReview />} />
-			  <Route path="tasks" element={<TaskManagement />} />
-				<Route path="orders" element={<OrderManagement />} />
-				<Route path="agents" element={<AgentSettings />} />
-			  <Route path="opc" element={<OPCManagement />} />
-			  <Route path="api-gateway" element={<AIModelGateway />} />
-<Route path="credit-recharge" element={<CreditRechargePage />} />
-				  <Route path="points/allocation" element={<PointsAllocationPage />} />
-<Route path="billing" element={<AdminBilling />} />
-			</Route>
-            {/* Routes with Layout */}
-            <Route element={<Layout />}>
-              {/* Public pages */}
-              <Route path="/" element={<Home />} />
-              <Route path="/tasks" element={<Tasks />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/ai-resources" element={<AiResources />} />
-              <Route path="/service-center" element={<ServiceCenter />} />
-              <Route path="/aibit" element={<MatrixProvider><AiBit /></MatrixProvider>} />
-              <Route path="/bite-plaza" element={<MatrixProvider><BitePlaza /></MatrixProvider>} />
-              <Route path="/event/:id" element={<EventDetail />} />
-              <Route path="/contracts/:id" element={<ContractDetail />} />
-              <Route path="/post/:id" element={<PostDetail />} />
-              <Route path="/agentbaba" element={<AgentBaba />} />
-              <Route path="/agentbaba/create" element={<CreateAgentPage />} />
-<Route path="/agentbaba/:sessionId/edit" element={<EditAgentPage />} />
-              <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
-              <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
-              <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />
-              <Route path="/agentbaba/:sessionId/build" element={<BuildProgressPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/my-opc" element={<MyOPC />} />
-                <Route path="/my-agents" element={<MyAgents />} />
-                <Route path="/my-workflows" element={<MyWorkflows />} />
-                <Route path="/points-mall" element={<PointsMall />} />
-                <Route path="/event/create" element={<CreateEvent />} />
-                <Route path="/post/create" element={<CreatePost />} />
-                <Route path="/agent/chat/:id" element={<AgentChatPage />} />
-                <Route path="/credit/history" element={<CreditHistoryPage />} />
-                <Route path="/points/orders" element={<PointsOrders />} />
-            </Route>
-            </Route>
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+              {/* Admin routes - Fullscreen with own layout */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="review" element={<ContentReview />} />
+                <Route path="tasks" element={<TaskManagement />} />
+                <Route path="orders" element={<OrderManagement />} />
+                <Route path="agents" element={<AgentSettings />} />
+                <Route path="opc" element={<OPCManagement />} />
+                <Route path="api-gateway" element={<AIModelGateway />} />
+                <Route path="credit-recharge" element={<CreditRechargePage />} />
+                <Route path="points/allocation" element={<PointsAllocationPage />} />
+                <Route path="billing" element={<AdminBilling />} />
+              </Route>
+              {/* Routes with Layout */}
+              <Route element={<Layout />}>
+                {/* Public pages */}
+                <Route path="/" element={<Home />} />
+                <Route path="/tasks" element={<Tasks />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/ai-resources" element={<AiResources />} />
+                <Route path="/service-center" element={<ServiceCenter />} />
+                <Route path="/aibit" element={<AiBit />} />
+                <Route path="/bite-plaza" element={<BitePlaza />} />
+                <Route path="/contracts/:id" element={<ContractDetail />} />
+                <Route path="/post/:id" element={<PostDetail />} />
+                <Route path="/agentbaba" element={<AgentBaba />} />
+                <Route path="/agentbaba/create" element={<CreateAgentPage />} />
+                <Route path="/agentbaba/:sessionId/edit" element={<EditAgentPage />} />
+                <Route path="/agentbaba/:sessionId" element={<ClarificationPage />} />
+                <Route path="/agentbaba/:sessionId/skills" element={<SkillMatchPage />} />
+                <Route path="/agentbaba/:sessionId/config" element={<ConfigPreviewPage />} />
+                <Route path="/agentbaba/:sessionId/build" element={<BuildProgressPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/my-opc" element={<MyOPC />} />
+                  <Route path="/my-agents" element={<MyAgents />} />
+                  <Route path="/my-workflows" element={<MyWorkflows />} />
+                  <Route path="/points-mall" element={<PointsMall />} />
+                  <Route path="/event/create" element={<CreateEvent />} />
+                  <Route path="/post/create" element={<CreatePost />} />
+                  <Route path="/agent/chat/:id" element={<AgentChatPage />} />
+                  <Route path="/credit/history" element={<CreditHistoryPage />} />
+                  <Route path="/points/orders" element={<PointsOrders />} />
+                </Route>
+              </Route>
+            </Routes>
+          </AibitDrawerProvider>
+        </MatrixProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </ThemeProvider>
   );
 }
 
