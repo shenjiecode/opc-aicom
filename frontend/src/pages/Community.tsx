@@ -253,30 +253,21 @@ export default function Community() {
 
         {/* Categories Section */}
         <div className="flex flex-wrap gap-2 mb-8 px-6">
-          <div className="w-full flex items-center justify-between">
-            <div className="flex flex-wrap gap-2">
-              {EVENT_CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveEventCategory(category)}
-                  className={cn(
-                    "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                    activeEventCategory === category
-                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60",
-                  )}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              className="rounded-full bg-white text-slate-700 border-slate-200"
-            >
-              <Ticket className="w-4 h-4 mr-2 text-yellow-500" />
-              我的票券
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            {EVENT_CATEGORIES.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveEventCategory(category)}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
+                  activeEventCategory === category
+                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60",
+                )}
+              >
+                {category}
+              </button>
+            ))}
           </div>
         </div>
 
