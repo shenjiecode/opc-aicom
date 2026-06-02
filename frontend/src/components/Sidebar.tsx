@@ -12,7 +12,6 @@ import {
   Zap,
   Circle,
   LogOut,
-  Settings,
   ChevronUp,
   Sparkles,
   ShieldCheck,
@@ -440,13 +439,6 @@ export function Sidebar({
                 认证
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                className="text-[var(--text-secondary)] focus:text-[var(--text-primary)] focus:bg-[var(--bg-muted)] cursor-pointer"
-                onClick={() => navigate("/settings")}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                设置
-              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[var(--border-default)]" />
 
               <DropdownMenuItem

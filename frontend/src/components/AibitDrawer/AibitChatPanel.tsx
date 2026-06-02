@@ -33,6 +33,27 @@ function MessageSkeleton() {
 }
 
 /**
+ * Typing indicator with animated dots
+ */
+function TypingIndicator() {
+  return (
+    <div className="flex gap-3">
+      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
+        <span className="text-white text-sm">A</span>
+      </div>
+      <div className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 rounded-lg">
+        <div className="flex gap-1">
+          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+        <span className="text-xs text-slate-400 ml-1">正在输入</span>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Message type from MatrixContext
  */
 interface MessageData {
@@ -119,29 +140,27 @@ function EmptyState() {
  *
  * Features:
  * - Displays messages in a scrollable container
- * - Auto-scrolls to bottom on new message
+ * - Auto-scrolls to bottom when messages change
  * - Shows loading skeleton while fetching
+ * - Shows typing indicator when AI is thinking
  * - Shows empty state when no messages
  */
 export function AibitChatPanel() {
   const { messages, isLoading } = useMatrix()
   const containerRef = useRef<HTMLDivElement>(null)
-  const prevMessagesLengthRef = useRef<number>(messages.length)
 
-  // Auto-scroll to bottom when new message arrives
+  // Auto-scroll to bottom when messages change (refresh or new message)
   useEffect(() => {
-    if (messages.length > prevMessagesLengthRef.current && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    if (containerRef.current) {
+      // Small delay to ensure DOM is updated
+      const timer = setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight
+        }
+      }, 50)
+      return () => clearTimeout(timer)
     }
-    prevMessagesLengthRef.current = messages.length
-  }, [messages.length])
-
-  // Initial scroll to bottom on mount
-  useEffect(() => {
-    if (containerRef.current && messages.length > 0) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-    }
-  }, [])
+  }, [messages])
 
   return (
     <div
@@ -175,6 +194,10 @@ export function AibitChatPanel() {
               />
             )
           })}
+          {/* Typing indicator - shown when last message is from user (waiting for AI response) */}
+          {messages.length > 0 && messages[messages.length - 1].isOwn && (
+            <TypingIndicator />
+          )}
         </div>
       )}
     </div>
