@@ -50,24 +50,13 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
             backend/opc-aicom-backend root@8.217.143.228:/opt/opc-aicom/backend/opc-aicom-backend.new
           $SSH "
-            # 1. Stop old process
+            # 1. Stop old process and kill anything on port 18081
             pkill opc-aicom-backend || true
-            for i in 1 2 3 4 5; do
-              if ! pgrep opc-aicom-backend > /dev/null 2>&1; then
-                echo 'Process exited'
-                break
-              fi
-              echo \"Waiting for process to exit... (\$i)\"
-              sleep 1
-            done
-            if pgrep opc-aicom-backend > /dev/null 2>&1; then
-              echo 'Force killing process'
-              pkill -9 opc-aicom-backend || true
-              sleep 2
-            fi
+            fuser -k 18081/tcp 2>/dev/null || true
+            sleep 2
 
             # 2. Wait for port 18081 to be fully released
-            for i in 1 2 3 4 5; do
+            for i in 1 2 3 4 5 6 7 8 9 10; do
               if ! fuser 18081/tcp > /dev/null 2>&1; then
                 echo 'Port 18081 released'
                 break
@@ -75,6 +64,12 @@ jobs:
               echo \"Waiting for port 18081 to be released... (\$i)\"
               sleep 1
             done
+            if fuser 18081/tcp > /dev/null 2>&1; then
+              echo 'ERROR: Port 18081 still in use after 10s'
+              fuser 18081/tcp 2>/dev/null
+              ss -tlnp | grep 18081
+              exit 1
+            fi
 
             # 3. Replace binary and start
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
