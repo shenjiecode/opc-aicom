@@ -365,9 +365,6 @@ export default function OPCChannel() {
               </span>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-white p-1">
-            <Settings className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -520,6 +517,22 @@ export default function OPCChannel() {
                   </div>
                 </div>
               ))}
+              {/* Thinking indicator when last message is from user */}
+              {messages.length > 0 && messages[messages.length - 1].isOwn && (
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
+                    <span className="text-white text-sm">A</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 rounded-lg">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-xs text-slate-400 ml-1">思考中</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
