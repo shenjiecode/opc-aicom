@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMatrix } from '@/contexts/MatrixContext';
+import { useAibitDrawer } from '@/contexts/AibitDrawerContext';
 import { Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,6 +12,7 @@ export default function AiBit() {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const { rooms, isInitialized, initialize, createDirectMessage, error } = useMatrix();
+  const { openDrawer } = useAibitDrawer();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -57,18 +59,18 @@ export default function AiBit() {
 
       if (biteDMRooms.length > 0) {
         const mostRecentRoom = biteDMRooms[0];
-        console.log('[AiBit] ✓ 跳转到现有 bite 聊天:', mostRecentRoom.roomId);
-        navigate(`/opc-channel?room=${encodeURIComponent(mostRecentRoom.roomId)}${queryParam}`);
+        console.log('[AiBit] ✓ 打开现有 bite 聊天抽屉:', mostRecentRoom.roomId);
+        openDrawer();
       } else {
         console.log('[AiBit] 没有现有 bite 聊天，创建新聊天...');
         try {
           const roomId = await createDirectMessage(BITE_USER_ID, 'bite');
-          console.log('[AiBit] ✓ 创建新 bite 聊天成功:', roomId);
-          navigate(`/opc-channel?room=${encodeURIComponent(roomId)}${queryParam}`);
+        console.log('[AiBit] ✓ 创建新 bite 聊天成功:', roomId);
+        openDrawer();
         } catch (error) {
           console.error('[AiBit] ✗ 创建 bite DM 失败:', error);
-          console.log('[AiBit] 跳转到默认 opc-channel');
-          navigate(`/opc-channel${queryParam ? '?' + queryParam.slice(1) : ''}`);
+        console.log('[AiBit] 打开默认 opc-channel 抽屉');
+        openDrawer();
         }
       }
     };
@@ -98,8 +100,7 @@ export default function AiBit() {
   return (
     <div className="h-screen bg-slate-50 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-        <p className="text-sm text-slate-500">正在跳转到 bite 聊天...</p>
+        <p className="text-sm text-slate-500">正在打开 bite 聊天抽屉...</p>
       </div>
     </div>
   );
