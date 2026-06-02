@@ -44,7 +44,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H 8.217.143.228 >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Stop old backend & upload new binary
+      - name: Deploy backend
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
@@ -68,12 +68,8 @@ jobs:
             fi
             mv /opt/opc-aicom/backend/opc-aicom-backend.new /opt/opc-aicom/backend/opc-aicom-backend
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
+            systemctl start opc-aicom-backend
           "
-
-      - name: Start backend via systemd
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
-            "systemctl start opc-aicom-backend"
 
       - name: Wait for backend healthy
         run: |

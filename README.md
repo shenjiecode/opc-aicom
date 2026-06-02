@@ -159,6 +159,58 @@ A public room square where users can browse, join, and create Matrix public room
 - View room statistics (members, posts)
 
 **Access**: Navigate to `/bite-plaza` from the sidebar (核心板块)
+## Deployment
+
+通过 GitHub Actions 自动部署到生产环境（`8.217.143.228`），推送代码到 `deploy` 分支即触发。
+
+### 部署流程
+
+1. CI 编译 Go 后端（Linux amd64）和 React 前端
+2. SSH 上传 binary 到 `/opt/opc-aicom/backend/`
+3. systemd 管理 backend 进程：
+   ```bash
+   systemctl restart opc-aicom-backend
+   # 或手动：systemctl stop / start / status
+   ```
+4. `tar` 上传前端 dist 并 `nginx -s reload`
+5. 健康检查 `curl /api/home/stats`
+
+### 服务器运维
+
+```bash
+# 查看 backend 状态和日志
+systemctl status opc-aicom-backend
+journalctl -u opc-aicom-backend -f
+
+# 重启
+systemctl restart opc-aicom-backend
+
+# 查看端口
+ss -tlnp | grep 18081
+
+# 前端部署路径
+ls /opt/opc-aicom/frontend/dist/
+
+# 服务配置
+cat /opt/opc-aicom/backend/.env
+```
+
+### 环境变量（后端 .env）
+
+| 变量 | 说明 | 示例 |
+|------|------|------|
+| SERVER_PORT | 后端监听端口 | 18081 |
+| SERVER_MODE | Gin 运行模式 | release / debug |
+| DATABASE_HOST | 数据库地址 | localhost |
+| DATABASE_PORT | 数据库端口 | 3306 |
+| DATABASE_USER | 数据库用户名 | opc_user |
+| DATABASE_PASSWORD | 数据库密码 | *** |
+| DATABASE_NAME | 数据库名 | opc_aicom |
+| JWT_SECRET | JWT 签名密钥 | *** |
+| MATRIX_HOMESERVER_URL | Matrix 服务地址 | http://localhost:8008 |
+| MATRIX_SERVER_NAME | Matrix 服务名 | localhost |
+| MATRIX_SHARED_SECRET | Matrix 注册共享密钥 | *** |
+
 ## Configuration
 
 Database config in `docker-compose.yaml`:
