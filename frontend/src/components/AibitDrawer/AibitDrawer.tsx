@@ -123,7 +123,7 @@ export function AibitDrawer() {
     <Sheet open={isOpen} onOpenChange={(open: boolean) => !open && closeDrawer()}>
       <SheetContent
         side="right"
-        className="w-full lg:w-[400px] p-0 flex flex-col h-full border-l border-slate-800 bg-[#13141f]"
+        className="w-full lg:w-[800px] p-0 flex flex-col h-full border-l border-slate-800 bg-[#13141f]"
       >
         <SheetHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <div className="flex flex-col">

@@ -205,25 +205,6 @@ export default function EnterprisePublish({ modalMode, onClose, onPublishSuccess
                   <MessageSquare className="w-5 h-5 mr-2" />
                   比特AI 帮忙生成需求规格书
                 </Button>
-
-                {/* Analyze Button */}
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={isAnalyzing}
-                  className="w-full h-12 bg-amber-600 hover:bg-amber-700 text-white font-medium"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      AI 分析中...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      智能分析需求
-                    </>
-                  )}
-                </Button>
               </CardContent>
             </Card>
           )}

@@ -551,14 +551,15 @@ export function MatrixProvider({ children }: MatrixProviderProps) {
     
     try {
       await clientRef.current.sendTextMessage(currentRoom.roomId, text);
-    } finally {
-      // Refresh messages from server (replaces optimistic message with real one)
-      const room = clientRef.current?.getRoom(currentRoom.roomId);
-      if (room) {
-        loadRoomMessages(room);
-      }
+      // Don't reload messages here - let RoomEvent.Timeline handle it
+      // This prevents race condition where server hasn't processed the message yet
+    } catch (err) {
+      // On error, remove the optimistic message
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      throw err;
     }
-  }, [currentRoom, loadRoomMessages, updateActivity]);
+  }, [currentRoom, updateActivity]);
+
 
   // Send message to a specific room (without switching current room)
   const sendMessageToRoom = useCallback(async (roomId: string, text: string) => {
