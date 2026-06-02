@@ -50,7 +50,7 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
             backend/opc-aicom-backend root@8.217.143.228:/opt/opc-aicom/backend/opc-aicom-backend.new
           $SSH "
-            pkill opc-aicom-backend || true
+            systemctl stop opc-aicom-backend || true
             fuser -k 18081/tcp 2>/dev/null || true
             sleep 2
             for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -70,10 +70,10 @@ jobs:
             chmod +x /opt/opc-aicom/backend/opc-aicom-backend
           "
 
-      - name: Start backend (detached)
+      - name: Start backend via systemd
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o IdentitiesOnly=yes root@8.217.143.228 \
-            "cd /opt/opc-aicom/backend && nohup ./opc-aicom-backend > /dev/null 2>&1 & disown -a"
+            "systemctl start opc-aicom-backend"
 
       - name: Wait for backend healthy
         run: |
